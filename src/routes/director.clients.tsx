@@ -110,6 +110,15 @@ function DirectorClients() {
         />
       )}
 
+      {showAddClient && (
+        <AddClientDialog
+          state={state}
+          update={update}
+          defaultCategoryId={currentCat?.id}
+          onClose={() => setShowAddClient(false)}
+        />
+      )}
+
       {showAddCat && (
         <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card rounded-2xl border border-border shadow-[var(--shadow-lg)] w-full max-w-md p-6">
