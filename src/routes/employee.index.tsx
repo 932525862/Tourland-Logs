@@ -113,6 +113,15 @@ function EmployeeClients() {
           enableCallActions
         />
       )}
+
+      {showAddClient && (
+        <AddClientDialog
+          state={state}
+          update={update}
+          defaultCategoryId={currentCat?.id}
+          onClose={() => setShowAddClient(false)}
+        />
+      )}
     </div>
   );
 }
