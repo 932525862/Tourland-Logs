@@ -15,6 +15,7 @@ import { Route as DirectorIndexRouteImport } from './routes/director.index'
 import { Route as LoginEmployeeRouteImport } from './routes/login.employee'
 import { Route as LoginDirectorRouteImport } from './routes/login.director'
 import { Route as DirectorEmployeesRouteImport } from './routes/director.employees'
+import { Route as DirectorClientsRouteImport } from './routes/director.clients'
 
 const DirectorRoute = DirectorRouteImport.update({
   id: '/director',
@@ -46,10 +47,16 @@ const DirectorEmployeesRoute = DirectorEmployeesRouteImport.update({
   path: '/employees',
   getParentRoute: () => DirectorRoute,
 } as any)
+const DirectorClientsRoute = DirectorClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => DirectorRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/director': typeof DirectorRouteWithChildren
+  '/director/clients': typeof DirectorClientsRoute
   '/director/employees': typeof DirectorEmployeesRoute
   '/login/director': typeof LoginDirectorRoute
   '/login/employee': typeof LoginEmployeeRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/director/clients': typeof DirectorClientsRoute
   '/director/employees': typeof DirectorEmployeesRoute
   '/login/director': typeof LoginDirectorRoute
   '/login/employee': typeof LoginEmployeeRoute
@@ -66,6 +74,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/director': typeof DirectorRouteWithChildren
+  '/director/clients': typeof DirectorClientsRoute
   '/director/employees': typeof DirectorEmployeesRoute
   '/login/director': typeof LoginDirectorRoute
   '/login/employee': typeof LoginEmployeeRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/director'
+    | '/director/clients'
     | '/director/employees'
     | '/login/director'
     | '/login/employee'
@@ -83,6 +93,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/director/clients'
     | '/director/employees'
     | '/login/director'
     | '/login/employee'
@@ -91,6 +102,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/director'
+    | '/director/clients'
     | '/director/employees'
     | '/login/director'
     | '/login/employee'
@@ -148,15 +160,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DirectorEmployeesRouteImport
       parentRoute: typeof DirectorRoute
     }
+    '/director/clients': {
+      id: '/director/clients'
+      path: '/clients'
+      fullPath: '/director/clients'
+      preLoaderRoute: typeof DirectorClientsRouteImport
+      parentRoute: typeof DirectorRoute
+    }
   }
 }
 
 interface DirectorRouteChildren {
+  DirectorClientsRoute: typeof DirectorClientsRoute
   DirectorEmployeesRoute: typeof DirectorEmployeesRoute
   DirectorIndexRoute: typeof DirectorIndexRoute
 }
 
 const DirectorRouteChildren: DirectorRouteChildren = {
+  DirectorClientsRoute: DirectorClientsRoute,
   DirectorEmployeesRoute: DirectorEmployeesRoute,
   DirectorIndexRoute: DirectorIndexRoute,
 }
