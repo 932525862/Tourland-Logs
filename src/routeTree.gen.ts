@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DirectorRouteImport } from './routes/director'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginEmployeeRouteImport } from './routes/login.employee'
 import { Route as LoginDirectorRouteImport } from './routes/login.director'
 
+const DirectorRoute = DirectorRouteImport.update({
+  id: '/director',
+  path: '/director',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,36 +37,47 @@ const LoginDirectorRoute = LoginDirectorRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/director': typeof DirectorRoute
   '/login/director': typeof LoginDirectorRoute
   '/login/employee': typeof LoginEmployeeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/director': typeof DirectorRoute
   '/login/director': typeof LoginDirectorRoute
   '/login/employee': typeof LoginEmployeeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/director': typeof DirectorRoute
   '/login/director': typeof LoginDirectorRoute
   '/login/employee': typeof LoginEmployeeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login/director' | '/login/employee'
+  fullPaths: '/' | '/director' | '/login/director' | '/login/employee'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login/director' | '/login/employee'
-  id: '__root__' | '/' | '/login/director' | '/login/employee'
+  to: '/' | '/director' | '/login/director' | '/login/employee'
+  id: '__root__' | '/' | '/director' | '/login/director' | '/login/employee'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DirectorRoute: typeof DirectorRoute
   LoginDirectorRoute: typeof LoginDirectorRoute
   LoginEmployeeRoute: typeof LoginEmployeeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/director': {
+      id: '/director'
+      path: '/director'
+      fullPath: '/director'
+      preLoaderRoute: typeof DirectorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DirectorRoute: DirectorRoute,
   LoginDirectorRoute: LoginDirectorRoute,
   LoginEmployeeRoute: LoginEmployeeRoute,
 }
