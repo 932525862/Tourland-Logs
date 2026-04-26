@@ -14,6 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DirectorIndexRouteImport } from './routes/director.index'
 import { Route as LoginEmployeeRouteImport } from './routes/login.employee'
 import { Route as LoginDirectorRouteImport } from './routes/login.director'
+import { Route as DirectorFormsRouteImport } from './routes/director.forms'
 import { Route as DirectorEmployeesRouteImport } from './routes/director.employees'
 import { Route as DirectorClientsRouteImport } from './routes/director.clients'
 
@@ -42,6 +43,11 @@ const LoginDirectorRoute = LoginDirectorRouteImport.update({
   path: '/login/director',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DirectorFormsRoute = DirectorFormsRouteImport.update({
+  id: '/forms',
+  path: '/forms',
+  getParentRoute: () => DirectorRoute,
+} as any)
 const DirectorEmployeesRoute = DirectorEmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/director': typeof DirectorRouteWithChildren
   '/director/clients': typeof DirectorClientsRoute
   '/director/employees': typeof DirectorEmployeesRoute
+  '/director/forms': typeof DirectorFormsRoute
   '/login/director': typeof LoginDirectorRoute
   '/login/employee': typeof LoginEmployeeRoute
   '/director/': typeof DirectorIndexRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/director/clients': typeof DirectorClientsRoute
   '/director/employees': typeof DirectorEmployeesRoute
+  '/director/forms': typeof DirectorFormsRoute
   '/login/director': typeof LoginDirectorRoute
   '/login/employee': typeof LoginEmployeeRoute
   '/director': typeof DirectorIndexRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/director': typeof DirectorRouteWithChildren
   '/director/clients': typeof DirectorClientsRoute
   '/director/employees': typeof DirectorEmployeesRoute
+  '/director/forms': typeof DirectorFormsRoute
   '/login/director': typeof LoginDirectorRoute
   '/login/employee': typeof LoginEmployeeRoute
   '/director/': typeof DirectorIndexRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/director'
     | '/director/clients'
     | '/director/employees'
+    | '/director/forms'
     | '/login/director'
     | '/login/employee'
     | '/director/'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/director/clients'
     | '/director/employees'
+    | '/director/forms'
     | '/login/director'
     | '/login/employee'
     | '/director'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '/director'
     | '/director/clients'
     | '/director/employees'
+    | '/director/forms'
     | '/login/director'
     | '/login/employee'
     | '/director/'
@@ -153,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginDirectorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/director/forms': {
+      id: '/director/forms'
+      path: '/forms'
+      fullPath: '/director/forms'
+      preLoaderRoute: typeof DirectorFormsRouteImport
+      parentRoute: typeof DirectorRoute
+    }
     '/director/employees': {
       id: '/director/employees'
       path: '/employees'
@@ -173,12 +192,14 @@ declare module '@tanstack/react-router' {
 interface DirectorRouteChildren {
   DirectorClientsRoute: typeof DirectorClientsRoute
   DirectorEmployeesRoute: typeof DirectorEmployeesRoute
+  DirectorFormsRoute: typeof DirectorFormsRoute
   DirectorIndexRoute: typeof DirectorIndexRoute
 }
 
 const DirectorRouteChildren: DirectorRouteChildren = {
   DirectorClientsRoute: DirectorClientsRoute,
   DirectorEmployeesRoute: DirectorEmployeesRoute,
+  DirectorFormsRoute: DirectorFormsRoute,
   DirectorIndexRoute: DirectorIndexRoute,
 }
 
