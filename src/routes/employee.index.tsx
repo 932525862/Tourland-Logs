@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { useAppState, useSession } from "@/lib/store";
 import { ClientDetailDialog } from "@/components/ClientDetailDialog";
+import { AddClientDialog } from "@/components/AddClientDialog";
 import { ClientRow } from "./director.clients";
+import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import type { Client } from "@/lib/types";
 
@@ -15,6 +17,7 @@ function EmployeeClients() {
   const session = useSession();
   const [activeCat, setActiveCat] = useState(state.categories.find((c) => !c.isArchive)?.id ?? "");
   const [openClient, setOpenClient] = useState<Client | null>(null);
+  const [showAddClient, setShowAddClient] = useState(false);
 
   const visibleCats = state.categories.filter((c) => !c.isArchive);
   const currentCat = visibleCats.find((c) => c.id === activeCat) ?? visibleCats[0];
@@ -50,9 +53,17 @@ function EmployeeClients() {
 
   return (
     <div className="p-6 md:p-10">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Mijozlar</h1>
-        <p className="text-muted-foreground mt-1">Mijozlar bilan bog'laning va izoh qoldiring</p>
+      <header className="mb-8 flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Mijozlar</h1>
+          <p className="text-muted-foreground mt-1">Mijozlar bilan bog'laning va izoh qoldiring</p>
+        </div>
+        <button
+          onClick={() => setShowAddClient(true)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--gradient-primary)] text-primary-foreground font-medium shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-glow)] transition-all"
+        >
+          <UserPlus className="w-4 h-4" /> Yangi mijoz
+        </button>
       </header>
 
       <div className="flex flex-wrap gap-2 mb-6">
@@ -100,6 +111,15 @@ function EmployeeClients() {
           viewerName={`${me.firstName} ${me.lastName}`}
           viewerId={me.id}
           enableCallActions
+        />
+      )}
+
+      {showAddClient && (
+        <AddClientDialog
+          state={state}
+          update={update}
+          defaultCategoryId={currentCat?.id}
+          onClose={() => setShowAddClient(false)}
         />
       )}
     </div>

@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useAppState, addCategory, deleteCategory } from "@/lib/store";
 import { ClientDetailDialog } from "@/components/ClientDetailDialog";
-import { Plus, FolderPlus, Trash2, User as UserIcon, Bell } from "lucide-react";
+import { AddClientDialog } from "@/components/AddClientDialog";
+import { FolderPlus, User as UserIcon, Bell, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import type { Client } from "@/lib/types";
 
@@ -16,6 +17,7 @@ function DirectorClients() {
   const [openClient, setOpenClient] = useState<Client | null>(null);
   const [showAddCat, setShowAddCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  const [showAddClient, setShowAddClient] = useState(false);
 
   const currentCat = state.categories.find((c) => c.id === activeCat) ?? state.categories[0];
   const filtered = useMemo(
@@ -25,9 +27,17 @@ function DirectorClients() {
 
   return (
     <div className="p-6 md:p-10">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Mijozlar</h1>
-        <p className="text-muted-foreground mt-1">Bo'limlar bo'yicha mijozlar ro'yxati</p>
+      <header className="mb-8 flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Mijozlar</h1>
+          <p className="text-muted-foreground mt-1">Bo'limlar bo'yicha mijozlar ro'yxati</p>
+        </div>
+        <button
+          onClick={() => setShowAddClient(true)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--gradient-primary)] text-primary-foreground font-medium shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-glow)] transition-all"
+        >
+          <UserPlus className="w-4 h-4" /> Yangi mijoz
+        </button>
       </header>
 
       <div className="flex flex-wrap gap-2 mb-6 items-center">
@@ -97,6 +107,15 @@ function DirectorClients() {
           onClose={() => setOpenClient(null)}
           viewerRole="director"
           viewerName={state.director.name}
+        />
+      )}
+
+      {showAddClient && (
+        <AddClientDialog
+          state={state}
+          update={update}
+          defaultCategoryId={currentCat?.id}
+          onClose={() => setShowAddClient(false)}
         />
       )}
 
