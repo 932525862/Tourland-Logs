@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginEmployeeRouteImport } from './routes/login.employee'
+import { Route as LoginDirectorRouteImport } from './routes/login.director'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginEmployeeRoute = LoginEmployeeRouteImport.update({
+  id: '/login/employee',
+  path: '/login/employee',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginDirectorRoute = LoginDirectorRouteImport.update({
+  id: '/login/director',
+  path: '/login/director',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login/director': typeof LoginDirectorRoute
+  '/login/employee': typeof LoginEmployeeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login/director': typeof LoginDirectorRoute
+  '/login/employee': typeof LoginEmployeeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login/director': typeof LoginDirectorRoute
+  '/login/employee': typeof LoginEmployeeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/login/director' | '/login/employee'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/login/director' | '/login/employee'
+  id: '__root__' | '/' | '/login/director' | '/login/employee'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginDirectorRoute: typeof LoginDirectorRoute
+  LoginEmployeeRoute: typeof LoginEmployeeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login/employee': {
+      id: '/login/employee'
+      path: '/login/employee'
+      fullPath: '/login/employee'
+      preLoaderRoute: typeof LoginEmployeeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/director': {
+      id: '/login/director'
+      path: '/login/director'
+      fullPath: '/login/director'
+      preLoaderRoute: typeof LoginDirectorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginDirectorRoute: LoginDirectorRoute,
+  LoginEmployeeRoute: LoginEmployeeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
