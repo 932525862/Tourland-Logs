@@ -43,7 +43,15 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState;
     const parsed = JSON.parse(raw);
-    return { ...defaultState, ...parsed };
+    return {
+      ...defaultState,
+      ...parsed,
+      attendance: parsed.attendance ?? [],
+      categories: parsed.categories ?? defaultState.categories,
+      employees: parsed.employees ?? defaultState.employees,
+      forms: parsed.forms ?? [],
+      clients: parsed.clients ?? [],
+    };
   } catch {
     return defaultState;
   }
