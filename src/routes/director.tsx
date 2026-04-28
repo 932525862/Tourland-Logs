@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-
 import { useEffect } from "react";
 import { CrmSidebar } from "@/components/CrmSidebar";
 import { useSession } from "@/lib/store";
-import { User, Users, FileText, UserPlus } from "lucide-react";
+import { User, Users, FileText, UserPlus, ClipboardCheck } from "lucide-react";
 
 export const Route = createFileRoute("/director")({
   component: DirectorLayout,
