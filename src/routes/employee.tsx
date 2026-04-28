@@ -40,6 +40,7 @@ function EmployeeLayout() {
         subtitle="Hodim kabineti"
         items={[
           { to: "/employee", label: "Mijozlar", icon: Users },
+          { to: "/employee/attendance", label: "Davomat", icon: ClipboardCheck },
           { to: "/employee/archive", label: "Arxiv", icon: Archive },
         ]}
         footer={

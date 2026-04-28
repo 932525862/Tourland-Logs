@@ -30,6 +30,7 @@ function DirectorLayout() {
           { to: "/director/employees", label: "Hodimlar", icon: Users },
           { to: "/director/clients", label: "Mijozlar", icon: UserPlus },
           { to: "/director/forms", label: "Formalar", icon: FileText },
+          { to: "/director/attendance", label: "Davomat", icon: ClipboardCheck },
         ]}
       />
       <main className="flex-1 min-w-0">
