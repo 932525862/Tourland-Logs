@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { CrmSidebar } from "@/components/CrmSidebar";
 import { useSession, useAppState } from "@/lib/store";
-import { Users, Archive, User as UserIcon } from "lucide-react";
+import { Users, Archive, User as UserIcon, ClipboardCheck } from "lucide-react";
 
 export const Route = createFileRoute("/employee")({
   component: EmployeeLayout,
