@@ -66,10 +66,20 @@ export interface Client {
   createdAt: string;
 }
 
+export interface AttendanceRecord {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  checkInAt: string; // ISO datetime
+  date: string; // YYYY-MM-DD
+  photo?: string; // dataURL
+}
+
 export interface AppState {
   director: Director;
   employees: Employee[];
   forms: FormTemplate[];
   categories: ClientCategory[];
   clients: Client[];
+  attendance: AttendanceRecord[];
 }

@@ -34,6 +34,7 @@ const defaultState: AppState = {
     { id: "cat-archive", name: "Arxiv", isArchive: true },
   ],
   clients: [],
+  attendance: [],
 };
 
 export function loadState(): AppState {
@@ -189,4 +190,12 @@ export function updateClient(state: AppState, id: string, patch: Partial<Client>
 
 export function updateDirector(state: AppState, patch: Partial<Director>): AppState {
   return { ...state, director: { ...state.director, ...patch } };
+}
+
+export function addAttendance(
+  state: AppState,
+  rec: Omit<import("./types").AttendanceRecord, "id">
+): AppState {
+  const newRec: import("./types").AttendanceRecord = { ...rec, id: uid("att") };
+  return { ...state, attendance: [newRec, ...(state.attendance ?? [])] };
 }
