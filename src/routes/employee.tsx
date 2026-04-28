@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { CrmSidebar } from "@/components/CrmSidebar";
 import { useSession, useAppState } from "@/lib/store";
-import { Users, Archive, User as UserIcon } from "lucide-react";
+import { Users, Archive, User as UserIcon, ClipboardCheck } from "lucide-react";
 
 export const Route = createFileRoute("/employee")({
   component: EmployeeLayout,
@@ -40,6 +40,7 @@ function EmployeeLayout() {
         subtitle="Hodim kabineti"
         items={[
           { to: "/employee", label: "Mijozlar", icon: Users },
+          { to: "/employee/attendance", label: "Davomat", icon: ClipboardCheck },
           { to: "/employee/archive", label: "Arxiv", icon: Archive },
         ]}
         footer={
