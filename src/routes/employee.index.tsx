@@ -16,15 +16,25 @@ function EmployeeClients() {
   const { state, update } = useAppState();
   const session = useSession();
   const [activeCat, setActiveCat] = useState(state.categories.find((c) => !c.isArchive)?.id ?? "");
+  const [saleTab, setSaleTab] = useState<"unsold" | "sold">("unsold");
   const [openClient, setOpenClient] = useState<Client | null>(null);
   const [showAddClient, setShowAddClient] = useState(false);
 
   const visibleCats = state.categories.filter((c) => !c.isArchive);
   const currentCat = visibleCats.find((c) => c.id === activeCat) ?? visibleCats[0];
-  const filtered = useMemo(
+  const inCat = useMemo(
     () => state.clients.filter((c) => c.categoryId === currentCat?.id),
     [state.clients, currentCat]
   );
+  const filtered = useMemo(
+    () =>
+      saleTab === "sold"
+        ? inCat.filter((c) => c.sale && c.sale.status !== "none")
+        : inCat.filter((c) => !c.sale || c.sale.status === "none"),
+    [inCat, saleTab]
+  );
+  const soldCount = inCat.filter((c) => c.sale && c.sale.status !== "none").length;
+  const unsoldCount = inCat.length - soldCount;
 
   const me = session?.role === "employee"
     ? state.employees.find((e) => e.id === session.employeeId)
