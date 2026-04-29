@@ -129,7 +129,7 @@ function EmployeeClients() {
           Sotildi <span className="ml-1 text-xs opacity-70">{soldCount}</span>
         </button>
       </div>
-
+      {filtered.length === 0 ? (
         <div className="bg-card border border-dashed border-border rounded-2xl p-12 text-center">
           <p className="text-muted-foreground">Bu bo'limda mijoz yo'q</p>
         </div>
