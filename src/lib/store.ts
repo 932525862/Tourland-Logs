@@ -6,6 +6,7 @@ import type {
   Employee,
   FormTemplate,
   Director,
+  Task,
 } from "./types";
 
 const STORAGE_KEY = "agency_crm_state_v1";
