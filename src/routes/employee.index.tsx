@@ -45,11 +45,23 @@ function EmployeeClients() {
     const check = () => {
       const now = Date.now();
       state.clients.forEach((c) => {
+        const name = c.data["Ism familya"] || c.data["Ism"] || "Mijoz";
         if (c.call.remindAt) {
           const t = new Date(c.call.remindAt).getTime();
           if (t <= now && t > now - 65 * 1000) {
-            const name = c.data["Ism familya"] || c.data["Ism"] || "Mijoz";
-            toast.warning(`Eslatma: ${name} bilan qayta bog'lanish vaqti keldi`, { duration: 10000 });
+            toast.warning(`Eslatma: ${name} bilan qayta bog'lanish vaqti keldi`, {
+              duration: 10000,
+              action: { label: "Ochish", onClick: () => setOpenClient(c) },
+            });
+          }
+        }
+        if (c.sale?.status === "partial" && c.sale.nextPaymentAt) {
+          const t = new Date(c.sale.nextPaymentAt).getTime();
+          if (t <= now && t > now - 65 * 1000) {
+            toast.warning(`To'lovni eslat: ${name}`, {
+              duration: 10000,
+              action: { label: "Ochish", onClick: () => setOpenClient(c) },
+            });
           }
         }
       });
