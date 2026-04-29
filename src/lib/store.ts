@@ -36,6 +36,7 @@ const defaultState: AppState = {
   ],
   clients: [],
   attendance: [],
+  tasks: [],
 };
 
 export function loadState(): AppState {
@@ -52,6 +53,7 @@ export function loadState(): AppState {
       employees: parsed.employees ?? defaultState.employees,
       forms: parsed.forms ?? [],
       clients: parsed.clients ?? [],
+      tasks: parsed.tasks ?? [],
     };
   } catch {
     return defaultState;
