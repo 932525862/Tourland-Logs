@@ -95,6 +95,25 @@ function DirectorClients() {
         </button>
       </div>
 
+      <div className="flex gap-1 mb-6 p-1 bg-secondary/60 rounded-lg w-fit">
+        <button
+          onClick={() => setSaleTab("unsold")}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            saleTab === "unsold" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Sotilmagan <span className="ml-1 text-xs opacity-70">{unsoldCount}</span>
+        </button>
+        <button
+          onClick={() => setSaleTab("sold")}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            saleTab === "sold" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Sotildi <span className="ml-1 text-xs opacity-70">{soldCount}</span>
+        </button>
+      </div>
+
       {filtered.length === 0 ? (
         <div className="bg-card border border-dashed border-border rounded-2xl p-12 text-center">
           <p className="text-muted-foreground">
