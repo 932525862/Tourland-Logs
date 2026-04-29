@@ -55,6 +55,27 @@ export interface ClientCallStatus {
   remindAt?: string; // ISO datetime
 }
 
+export interface PaymentEntry {
+  id: string;
+  amount: number;
+  authorName: string;
+  authorRole: Role;
+  createdAt: string;
+}
+
+export type SaleStatus = "none" | "partial" | "full";
+
+export interface SaleInfo {
+  status: SaleStatus;
+  totalAmount?: number; // expected total
+  payments: PaymentEntry[];
+  nextPaymentAt?: string; // ISO datetime when remainder is due
+  soldAt?: string;
+  completedAt?: string; // when fully paid
+  completedByName?: string;
+  completedByRole?: Role;
+}
+
 export interface Client {
   id: string;
   formId: string;
@@ -63,6 +84,7 @@ export interface Client {
   data: Record<string, string>;
   notes: ClientNote[];
   call: ClientCallStatus;
+  sale?: SaleInfo;
   createdAt: string;
 }
 
