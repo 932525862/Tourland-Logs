@@ -97,6 +97,23 @@ export interface AttendanceRecord {
   photo?: string; // dataURL
 }
 
+export type TaskStatus = "new" | "in_progress" | "done" | "approved";
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  employeeId: string;
+  createdAt: string;
+  status: TaskStatus;
+  startedAt?: string;
+  completedAt?: string;
+  approvedAt?: string;
+  // notification flags
+  seenByEmployee?: boolean; // true after employee opened tasks page
+  seenByDirector?: boolean; // true after director opened tasks page (for "done" notif)
+}
+
 export interface AppState {
   director: Director;
   employees: Employee[];
@@ -104,4 +121,5 @@ export interface AppState {
   categories: ClientCategory[];
   clients: Client[];
   attendance: AttendanceRecord[];
+  tasks: Task[];
 }

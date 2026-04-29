@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { CrmSidebar } from "@/components/CrmSidebar";
 import { useSession, useAppState } from "@/lib/store";
-import { Users, Archive, User as UserIcon, ClipboardCheck } from "lucide-react";
+import { Users, Archive, User as UserIcon, ClipboardCheck, ListChecks } from "lucide-react";
 
 export const Route = createFileRoute("/employee")({
   component: EmployeeLayout,
@@ -24,7 +24,6 @@ function EmployeeLayout() {
       ? state.employees.find((e) => e.id === session.employeeId)
       : null;
 
-  // If employee got deleted, log out
   useEffect(() => {
     if (session?.role === "employee" && !state.employees.find((e) => e.id === session.employeeId)) {
       navigate({ to: "/login/employee" });
@@ -33,6 +32,11 @@ function EmployeeLayout() {
 
   if (!session || session.role !== "employee") return null;
 
+  const myEmpId = session.role === "employee" ? session.employeeId : "";
+  const taskBadge = (state.tasks ?? []).filter(
+    (t) => t.employeeId === myEmpId && !t.seenByEmployee
+  ).length;
+
   return (
     <div className="min-h-screen flex bg-background">
       <CrmSidebar
@@ -40,6 +44,7 @@ function EmployeeLayout() {
         subtitle="Hodim kabineti"
         items={[
           { to: "/employee", label: "Mijozlar", icon: Users },
+          { to: "/employee/tasks", label: "Topshiriqlar", icon: ListChecks, badge: taskBadge },
           { to: "/employee/attendance", label: "Davomat", icon: ClipboardCheck },
           { to: "/employee/archive", label: "Arxiv", icon: Archive },
         ]}

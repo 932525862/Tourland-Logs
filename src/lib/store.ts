@@ -6,6 +6,7 @@ import type {
   Employee,
   FormTemplate,
   Director,
+  Task,
 } from "./types";
 
 const STORAGE_KEY = "agency_crm_state_v1";
@@ -35,6 +36,7 @@ const defaultState: AppState = {
   ],
   clients: [],
   attendance: [],
+  tasks: [],
 };
 
 export function loadState(): AppState {
@@ -51,6 +53,7 @@ export function loadState(): AppState {
       employees: parsed.employees ?? defaultState.employees,
       forms: parsed.forms ?? [],
       clients: parsed.clients ?? [],
+      tasks: parsed.tasks ?? [],
     };
   } catch {
     return defaultState;
@@ -206,4 +209,28 @@ export function addAttendance(
 ): AppState {
   const newRec: import("./types").AttendanceRecord = { ...rec, id: uid("att") };
   return { ...state, attendance: [newRec, ...(state.attendance ?? [])] };
+}
+
+export function addTask(
+  state: AppState,
+  task: Omit<Task, "id" | "createdAt" | "status">
+): AppState {
+  const newTask: Task = {
+    ...task,
+    id: uid("task"),
+    createdAt: new Date().toISOString(),
+    status: "new",
+  };
+  return { ...state, tasks: [newTask, ...(state.tasks ?? [])] };
+}
+
+export function updateTask(state: AppState, id: string, patch: Partial<Task>): AppState {
+  return {
+    ...state,
+    tasks: (state.tasks ?? []).map((t) => (t.id === id ? { ...t, ...patch } : t)),
+  };
+}
+
+export function deleteTask(state: AppState, id: string): AppState {
+  return { ...state, tasks: (state.tasks ?? []).filter((t) => t.id !== id) };
 }
