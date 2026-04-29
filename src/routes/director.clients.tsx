@@ -195,7 +195,19 @@ export function ClientRow({ client, onClick }: { client: Client; onClick: () => 
         <UserIcon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-foreground truncate">{name}</p>
+        <p className="font-semibold text-foreground truncate flex items-center gap-2">
+          {client.sale?.status === "partial" && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-bold uppercase tracking-wide">
+              To'liq emas
+            </span>
+          )}
+          {client.sale?.status === "full" && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/15 text-success font-bold uppercase tracking-wide">
+              Sotildi
+            </span>
+          )}
+          <span className="truncate">{name}</span>
+        </p>
         <p className="text-xs text-muted-foreground truncate">
           {phone && <>📞 {phone} • </>}
           {client.formTitle}
