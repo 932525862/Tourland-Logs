@@ -16,15 +16,25 @@ function EmployeeClients() {
   const { state, update } = useAppState();
   const session = useSession();
   const [activeCat, setActiveCat] = useState(state.categories.find((c) => !c.isArchive)?.id ?? "");
+  const [saleTab, setSaleTab] = useState<"unsold" | "sold">("unsold");
   const [openClient, setOpenClient] = useState<Client | null>(null);
   const [showAddClient, setShowAddClient] = useState(false);
 
   const visibleCats = state.categories.filter((c) => !c.isArchive);
   const currentCat = visibleCats.find((c) => c.id === activeCat) ?? visibleCats[0];
-  const filtered = useMemo(
+  const inCat = useMemo(
     () => state.clients.filter((c) => c.categoryId === currentCat?.id),
     [state.clients, currentCat]
   );
+  const filtered = useMemo(
+    () =>
+      saleTab === "sold"
+        ? inCat.filter((c) => c.sale && c.sale.status !== "none")
+        : inCat.filter((c) => !c.sale || c.sale.status === "none"),
+    [inCat, saleTab]
+  );
+  const soldCount = inCat.filter((c) => c.sale && c.sale.status !== "none").length;
+  const unsoldCount = inCat.length - soldCount;
 
   const me = session?.role === "employee"
     ? state.employees.find((e) => e.id === session.employeeId)
@@ -35,11 +45,23 @@ function EmployeeClients() {
     const check = () => {
       const now = Date.now();
       state.clients.forEach((c) => {
+        const name = c.data["Ism familya"] || c.data["Ism"] || "Mijoz";
         if (c.call.remindAt) {
           const t = new Date(c.call.remindAt).getTime();
           if (t <= now && t > now - 65 * 1000) {
-            const name = c.data["Ism familya"] || c.data["Ism"] || "Mijoz";
-            toast.warning(`Eslatma: ${name} bilan qayta bog'lanish vaqti keldi`, { duration: 10000 });
+            toast.warning(`Eslatma: ${name} bilan qayta bog'lanish vaqti keldi`, {
+              duration: 10000,
+              action: { label: "Ochish", onClick: () => setOpenClient(c) },
+            });
+          }
+        }
+        if (c.sale?.status === "partial" && c.sale.nextPaymentAt) {
+          const t = new Date(c.sale.nextPaymentAt).getTime();
+          if (t <= now && t > now - 65 * 1000) {
+            toast.warning(`To'lovni eslat: ${name}`, {
+              duration: 10000,
+              action: { label: "Ochish", onClick: () => setOpenClient(c) },
+            });
           }
         }
       });
@@ -89,6 +111,24 @@ function EmployeeClients() {
         })}
       </div>
 
+      <div className="flex gap-1 mb-6 p-1 bg-secondary/60 rounded-lg w-fit">
+        <button
+          onClick={() => setSaleTab("unsold")}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            saleTab === "unsold" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Sotilmagan <span className="ml-1 text-xs opacity-70">{unsoldCount}</span>
+        </button>
+        <button
+          onClick={() => setSaleTab("sold")}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            saleTab === "sold" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Sotildi <span className="ml-1 text-xs opacity-70">{soldCount}</span>
+        </button>
+      </div>
       {filtered.length === 0 ? (
         <div className="bg-card border border-dashed border-border rounded-2xl p-12 text-center">
           <p className="text-muted-foreground">Bu bo'limda mijoz yo'q</p>

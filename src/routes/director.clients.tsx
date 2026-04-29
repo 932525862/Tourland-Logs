@@ -14,16 +14,26 @@ export const Route = createFileRoute("/director/clients")({
 function DirectorClients() {
   const { state, update } = useAppState();
   const [activeCat, setActiveCat] = useState(state.categories[0]?.id ?? "");
+  const [saleTab, setSaleTab] = useState<"unsold" | "sold">("unsold");
   const [openClient, setOpenClient] = useState<Client | null>(null);
   const [showAddCat, setShowAddCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [showAddClient, setShowAddClient] = useState(false);
 
   const currentCat = state.categories.find((c) => c.id === activeCat) ?? state.categories[0];
-  const filtered = useMemo(
+  const inCat = useMemo(
     () => state.clients.filter((c) => c.categoryId === currentCat?.id),
     [state.clients, currentCat]
   );
+  const filtered = useMemo(
+    () =>
+      saleTab === "sold"
+        ? inCat.filter((c) => c.sale && c.sale.status !== "none")
+        : inCat.filter((c) => !c.sale || c.sale.status === "none"),
+    [inCat, saleTab]
+  );
+  const soldCount = inCat.filter((c) => c.sale && c.sale.status !== "none").length;
+  const unsoldCount = inCat.length - soldCount;
 
   return (
     <div className="p-6 md:p-10">
@@ -82,6 +92,25 @@ function DirectorClients() {
           className="px-3 py-2 rounded-full text-sm font-medium border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary transition-colors inline-flex items-center gap-1.5"
         >
           <FolderPlus className="w-4 h-4" /> Bo'lim qo'shish
+        </button>
+      </div>
+
+      <div className="flex gap-1 mb-6 p-1 bg-secondary/60 rounded-lg w-fit">
+        <button
+          onClick={() => setSaleTab("unsold")}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            saleTab === "unsold" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Sotilmagan <span className="ml-1 text-xs opacity-70">{unsoldCount}</span>
+        </button>
+        <button
+          onClick={() => setSaleTab("sold")}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            saleTab === "sold" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Sotildi <span className="ml-1 text-xs opacity-70">{soldCount}</span>
         </button>
       </div>
 
@@ -166,7 +195,19 @@ export function ClientRow({ client, onClick }: { client: Client; onClick: () => 
         <UserIcon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-foreground truncate">{name}</p>
+        <p className="font-semibold text-foreground truncate flex items-center gap-2">
+          {client.sale?.status === "partial" && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-bold uppercase tracking-wide">
+              To'liq emas
+            </span>
+          )}
+          {client.sale?.status === "full" && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/15 text-success font-bold uppercase tracking-wide">
+              Sotildi
+            </span>
+          )}
+          <span className="truncate">{name}</span>
+        </p>
         <p className="text-xs text-muted-foreground truncate">
           {phone && <>📞 {phone} • </>}
           {client.formTitle}
