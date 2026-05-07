@@ -216,6 +216,17 @@ export function addAttendance(
   return { ...state, attendance: [newRec, ...(state.attendance ?? [])] };
 }
 
+export function updateAttendance(
+  state: AppState,
+  id: string,
+  patch: Partial<import("./types").AttendanceRecord>
+): AppState {
+  return {
+    ...state,
+    attendance: (state.attendance ?? []).map((a) => (a.id === id ? { ...a, ...patch } : a)),
+  };
+}
+
 export function addTask(
   state: AppState,
   task: Omit<Task, "id" | "createdAt" | "status">
