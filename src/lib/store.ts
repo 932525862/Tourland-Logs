@@ -181,9 +181,10 @@ export function deleteCategory(state: AppState, id: string): AppState {
   };
 }
 
-export function addClient(state: AppState, client: Omit<Client, "id" | "createdAt" | "notes" | "call">): AppState {
+export function addClient(state: AppState, client: Omit<Client, "id" | "createdAt" | "notes" | "call" | "stage"> & { stage?: Client["stage"] }): AppState {
   const newClient: Client = {
     ...client,
+    stage: client.stage ?? "new",
     id: uid("cl"),
     createdAt: new Date().toISOString(),
     notes: [],
