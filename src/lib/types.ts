@@ -76,11 +76,14 @@ export interface SaleInfo {
   completedByRole?: Role;
 }
 
+export type ClientStage = "new" | "no_answer" | "talked" | "sold";
+
 export interface Client {
   id: string;
   formId: string;
   formTitle: string;
   categoryId: string;
+  stage: ClientStage;
   data: Record<string, string>;
   notes: ClientNote[];
   call: ClientCallStatus;

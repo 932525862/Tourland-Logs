@@ -5,7 +5,14 @@ import { ClientDetailDialog } from "@/components/ClientDetailDialog";
 import { AddClientDialog } from "@/components/AddClientDialog";
 import { FolderPlus, User as UserIcon, Bell, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import type { Client } from "@/lib/types";
+import type { Client, ClientStage } from "@/lib/types";
+
+const STAGES: { id: ClientStage; label: string }[] = [
+  { id: "new", label: "Yangi" },
+  { id: "no_answer", label: "Ko'tarmadi" },
+  { id: "talked", label: "Gaplashildi" },
+  { id: "sold", label: "Sotildi" },
+];
 
 export const Route = createFileRoute("/director/clients")({
   component: DirectorClients,
@@ -14,7 +21,7 @@ export const Route = createFileRoute("/director/clients")({
 function DirectorClients() {
   const { state, update } = useAppState();
   const [activeCat, setActiveCat] = useState(state.categories[0]?.id ?? "");
-  const [saleTab, setSaleTab] = useState<"unsold" | "sold">("unsold");
+  const [stage, setStage] = useState<ClientStage>("new");
   const [openClient, setOpenClient] = useState<Client | null>(null);
   const [showAddCat, setShowAddCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -25,15 +32,13 @@ function DirectorClients() {
     () => state.clients.filter((c) => c.categoryId === currentCat?.id),
     [state.clients, currentCat]
   );
-  const filtered = useMemo(
-    () =>
-      saleTab === "sold"
-        ? inCat.filter((c) => c.sale && c.sale.status !== "none")
-        : inCat.filter((c) => !c.sale || c.sale.status === "none"),
-    [inCat, saleTab]
-  );
-  const soldCount = inCat.filter((c) => c.sale && c.sale.status !== "none").length;
-  const unsoldCount = inCat.length - soldCount;
+  const filtered = useMemo(() => inCat.filter((c) => c.stage === stage), [inCat, stage]);
+  const counts: Record<ClientStage, number> = {
+    new: inCat.filter((c) => c.stage === "new").length,
+    no_answer: inCat.filter((c) => c.stage === "no_answer").length,
+    talked: inCat.filter((c) => c.stage === "talked").length,
+    sold: inCat.filter((c) => c.stage === "sold").length,
+  };
 
   return (
     <div className="p-6 md:p-10">
@@ -95,23 +100,18 @@ function DirectorClients() {
         </button>
       </div>
 
-      <div className="flex gap-1 mb-6 p-1 bg-secondary/60 rounded-lg w-fit">
-        <button
-          onClick={() => setSaleTab("unsold")}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-            saleTab === "unsold" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Sotilmagan <span className="ml-1 text-xs opacity-70">{unsoldCount}</span>
-        </button>
-        <button
-          onClick={() => setSaleTab("sold")}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-            saleTab === "sold" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Sotildi <span className="ml-1 text-xs opacity-70">{soldCount}</span>
-        </button>
+      <div className="flex flex-wrap gap-1 mb-6 p-1 bg-secondary/60 rounded-lg w-fit">
+        {STAGES.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setStage(s.id)}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+              stage === s.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {s.label} <span className="ml-1 text-xs opacity-70">{counts[s.id]}</span>
+          </button>
+        ))}
       </div>
 
       {filtered.length === 0 ? (

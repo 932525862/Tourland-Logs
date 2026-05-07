@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { X, Phone, MessageSquare, Bell, ArrowRightLeft, Trash2, ShoppingCart, CheckCircle2, Wallet } from "lucide-react";
-import type { Client, AppState, PaymentEntry, SaleInfo } from "@/lib/types";
+import type { Client, AppState, PaymentEntry, SaleInfo, ClientStage } from "@/lib/types";
 import { updateClient, uid } from "@/lib/store";
 import { toast } from "sonner";
+
+const STAGE_LABELS: Record<ClientStage, string> = {
+  new: "Yangi",
+  no_answer: "Ko'tarmadi",
+  talked: "Gaplashildi",
+  sold: "Sotildi",
+};
 
 interface Props {
   client: Client;
@@ -26,7 +33,7 @@ export function ClientDetailDialog({
   enableCallActions = false,
 }: Props) {
   const [noteText, setNoteText] = useState("");
-  const [moveTo, setMoveTo] = useState(client.categoryId);
+  const [moveStage, setMoveStage] = useState<ClientStage>(client.stage);
   const [reminderDate, setReminderDate] = useState("");
 
   // Sale state
@@ -62,11 +69,10 @@ export function ClientDetailDialog({
     toast.success("Izoh qo'shildi");
   };
 
-  const handleMove = () => {
-    if (moveTo === client.categoryId) return;
-    update((s) => updateClient(s, client.id, { categoryId: moveTo }));
-    const cat = state.categories.find((c) => c.id === moveTo);
-    toast.success(`"${cat?.name}" bo'limiga ko'chirildi`);
+  const handleMoveStage = () => {
+    if (moveStage === client.stage) return;
+    update((s) => updateClient(s, client.id, { stage: moveStage }));
+    toast.success(`"${STAGE_LABELS[moveStage]}" bo'limiga ko'chirildi`);
   };
 
   const handleStartCall = () => {
@@ -101,6 +107,7 @@ export function ClientDetailDialog({
     update((s) =>
       updateClient(s, client.id, {
         notes: newNotes,
+        stage: didAnswer ? "talked" : "no_answer",
         call: reminderDate ? { remindAt: new Date(reminderDate).toISOString() } : {},
       })
     );
@@ -124,6 +131,7 @@ export function ClientDetailDialog({
     };
     update((s) =>
       updateClient(s, client.id, {
+        stage: "sold",
         sale: {
           status: "full",
           totalAmount: amt,
@@ -165,6 +173,7 @@ export function ClientDetailDialog({
     };
     update((s) =>
       updateClient(s, client.id, {
+        stage: "sold",
         sale: {
           status: "partial",
           totalAmount: total,
@@ -518,24 +527,27 @@ export function ClientDetailDialog({
             </div>
           </section>
 
-          {/* Move to category */}
+          {/* Move between stages within this category */}
           <section className="border-t border-border pt-5">
             <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-              <ArrowRightLeft className="w-4 h-4" /> Bo'limga ko'chirish
+              <ArrowRightLeft className="w-4 h-4" /> Holatga ko'chirish
             </h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              Mijozni shu bo'lim ichidagi bosqichlardan biriga ko'chirish
+            </p>
             <div className="flex gap-2">
               <select
-                value={moveTo}
-                onChange={(e) => setMoveTo(e.target.value)}
+                value={moveStage}
+                onChange={(e) => setMoveStage(e.target.value as ClientStage)}
                 className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
               >
-                {state.categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}{c.isArchive ? " (arxiv)" : ""}</option>
+                {(["new", "no_answer", "talked", "sold"] as ClientStage[]).map((st) => (
+                  <option key={st} value={st}>{STAGE_LABELS[st]}</option>
                 ))}
               </select>
               <button
-                onClick={handleMove}
-                disabled={moveTo === client.categoryId}
+                onClick={handleMoveStage}
+                disabled={moveStage === client.stage}
                 className="px-3 py-2 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Ko'chirish
