@@ -21,7 +21,7 @@ export const Route = createFileRoute("/director/clients")({
 function DirectorClients() {
   const { state, update } = useAppState();
   const [activeCat, setActiveCat] = useState(state.categories[0]?.id ?? "");
-  const [saleTab, setSaleTab] = useState<"unsold" | "sold">("unsold");
+  const [stage, setStage] = useState<ClientStage>("new");
   const [openClient, setOpenClient] = useState<Client | null>(null);
   const [showAddCat, setShowAddCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -32,15 +32,13 @@ function DirectorClients() {
     () => state.clients.filter((c) => c.categoryId === currentCat?.id),
     [state.clients, currentCat]
   );
-  const filtered = useMemo(
-    () =>
-      saleTab === "sold"
-        ? inCat.filter((c) => c.sale && c.sale.status !== "none")
-        : inCat.filter((c) => !c.sale || c.sale.status === "none"),
-    [inCat, saleTab]
-  );
-  const soldCount = inCat.filter((c) => c.sale && c.sale.status !== "none").length;
-  const unsoldCount = inCat.length - soldCount;
+  const filtered = useMemo(() => inCat.filter((c) => c.stage === stage), [inCat, stage]);
+  const counts: Record<ClientStage, number> = {
+    new: inCat.filter((c) => c.stage === "new").length,
+    no_answer: inCat.filter((c) => c.stage === "no_answer").length,
+    talked: inCat.filter((c) => c.stage === "talked").length,
+    sold: inCat.filter((c) => c.stage === "sold").length,
+  };
 
   return (
     <div className="p-6 md:p-10">
