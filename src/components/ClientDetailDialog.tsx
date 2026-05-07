@@ -33,7 +33,7 @@ export function ClientDetailDialog({
   enableCallActions = false,
 }: Props) {
   const [noteText, setNoteText] = useState("");
-  const [moveTo, setMoveTo] = useState(client.categoryId);
+  const [moveStage, setMoveStage] = useState<ClientStage>(client.stage);
   const [reminderDate, setReminderDate] = useState("");
 
   // Sale state
