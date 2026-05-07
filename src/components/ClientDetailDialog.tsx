@@ -107,6 +107,7 @@ export function ClientDetailDialog({
     update((s) =>
       updateClient(s, client.id, {
         notes: newNotes,
+        stage: didAnswer ? "talked" : "no_answer",
         call: reminderDate ? { remindAt: new Date(reminderDate).toISOString() } : {},
       })
     );
