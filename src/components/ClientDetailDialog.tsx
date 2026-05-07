@@ -524,24 +524,27 @@ export function ClientDetailDialog({
             </div>
           </section>
 
-          {/* Move to category */}
+          {/* Move between stages within this category */}
           <section className="border-t border-border pt-5">
             <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-              <ArrowRightLeft className="w-4 h-4" /> Bo'limga ko'chirish
+              <ArrowRightLeft className="w-4 h-4" /> Holatga ko'chirish
             </h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              Mijozni shu bo'lim ichidagi bosqichlardan biriga ko'chirish
+            </p>
             <div className="flex gap-2">
               <select
-                value={moveTo}
-                onChange={(e) => setMoveTo(e.target.value)}
+                value={moveStage}
+                onChange={(e) => setMoveStage(e.target.value as ClientStage)}
                 className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
               >
-                {state.categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}{c.isArchive ? " (arxiv)" : ""}</option>
+                {(["new", "no_answer", "talked", "sold"] as ClientStage[]).map((st) => (
+                  <option key={st} value={st}>{STAGE_LABELS[st]}</option>
                 ))}
               </select>
               <button
-                onClick={handleMove}
-                disabled={moveTo === client.categoryId}
+                onClick={handleMoveStage}
+                disabled={moveStage === client.stage}
                 className="px-3 py-2 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Ko'chirish
