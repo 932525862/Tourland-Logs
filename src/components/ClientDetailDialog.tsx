@@ -131,6 +131,7 @@ export function ClientDetailDialog({
     };
     update((s) =>
       updateClient(s, client.id, {
+        stage: "sold",
         sale: {
           status: "full",
           totalAmount: amt,
