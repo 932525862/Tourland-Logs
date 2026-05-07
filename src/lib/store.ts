@@ -45,6 +45,10 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState;
     const parsed = JSON.parse(raw);
+    const clients = (parsed.clients ?? []).map((c: Client) => ({
+      ...c,
+      stage: c.stage ?? (c.sale && c.sale.status !== "none" ? "sold" : "new"),
+    }));
     return {
       ...defaultState,
       ...parsed,
@@ -52,7 +56,7 @@ export function loadState(): AppState {
       categories: parsed.categories ?? defaultState.categories,
       employees: parsed.employees ?? defaultState.employees,
       forms: parsed.forms ?? [],
-      clients: parsed.clients ?? [],
+      clients,
       tasks: parsed.tasks ?? [],
     };
   } catch {
