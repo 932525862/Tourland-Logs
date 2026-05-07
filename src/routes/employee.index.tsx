@@ -6,7 +6,14 @@ import { AddClientDialog } from "@/components/AddClientDialog";
 import { ClientRow } from "./director.clients";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import type { Client } from "@/lib/types";
+import type { Client, ClientStage } from "@/lib/types";
+
+const STAGES: { id: ClientStage; label: string }[] = [
+  { id: "new", label: "Yangi" },
+  { id: "no_answer", label: "Ko'tarmadi" },
+  { id: "talked", label: "Gaplashildi" },
+  { id: "sold", label: "Sotildi" },
+];
 
 export const Route = createFileRoute("/employee/")({
   component: EmployeeClients,
