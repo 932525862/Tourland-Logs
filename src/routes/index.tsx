@@ -1,77 +1,95 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Briefcase, UserCog } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { useAppState, useSession, saveSession } from "@/lib/store";
+import { Briefcase } from "lucide-react";
+import { toast } from "sonner";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "CRM tizimi — Kirish" },
-      { name: "description", content: "Korxona uchun CRM tizimi. Direktor va hodim kabinetlari." },
+      { name: "description", content: "CRM tizimiga kirish" },
     ],
   }),
-  component: RoleSelectPage,
+  component: LoginPage,
 });
 
-function RoleSelectPage() {
+function LoginPage() {
+  const { state } = useAppState();
+  const session = useSession();
   const navigate = useNavigate();
+  const [login, setLogin] = useState("");
+  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (session?.role === "director") navigate({ to: "/director" });
+    else if (session?.role === "employee") navigate({ to: "/employee" });
+  }, [session, navigate]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (login === state.director.login && password === state.director.password) {
+      saveSession({ role: "director" });
+      toast.success("Xush kelibsiz, " + state.director.name);
+      navigate({ to: "/director" });
+      return;
+    }
+    const emp = state.employees.find((x) => x.login === login && x.password === password);
+    if (emp) {
+      saveSession({ role: "employee", employeeId: emp.id });
+      toast.success(`Xush kelibsiz, ${emp.firstName}`);
+      navigate({ to: "/employee" });
+      return;
+    }
+    toast.error("Login yoki parol noto'g'ri");
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--gradient-soft)] px-4 py-12">
-      <div className="w-full max-w-4xl">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[var(--gradient-primary)] text-primary-foreground mb-6 shadow-[var(--shadow-glow)]">
-            <Briefcase className="w-8 h-8" />
+      <div className="w-full max-w-md">
+        <div className="bg-card rounded-2xl border border-border p-8 shadow-[var(--shadow-lg)]">
+          <div className="w-14 h-14 rounded-xl bg-[var(--gradient-primary)] flex items-center justify-center text-primary-foreground mb-5 mx-auto shadow-[var(--shadow-md)]">
+            <Briefcase className="w-7 h-7" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold text-center text-foreground">
             CRM tizimiga xush kelibsiz
           </h1>
-          <p className="mt-3 text-muted-foreground text-lg">
-            Davom etish uchun rolni tanlang
+          <p className="text-center text-sm text-muted-foreground mt-1 mb-6">
+            Login va parolni kiriting
           </p>
-        </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <button
-            onClick={() => navigate({ to: "/login/director" })}
-            className="group relative overflow-hidden rounded-2xl bg-card border border-border p-8 text-left transition-all hover:border-primary hover:shadow-[var(--shadow-lg)] hover:-translate-y-1"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary-soft rounded-full blur-3xl opacity-50 group-hover:opacity-80 transition-opacity" />
-            <div className="relative">
-              <div className="w-14 h-14 rounded-xl bg-[var(--gradient-primary)] flex items-center justify-center text-primary-foreground mb-5 shadow-[var(--shadow-md)]">
-                <UserCog className="w-7 h-7" />
-              </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Direktor</h2>
-              <p className="text-muted-foreground">
-                Hodimlarni boshqarish, formalar yaratish, mijozlar bo'limini nazorat qilish
-              </p>
-              <div className="mt-6 inline-flex items-center text-primary font-medium group-hover:gap-2 gap-1 transition-all">
-                Kirish <span aria-hidden>→</span>
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1.5">Login</label>
+              <input
+                type="text"
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                placeholder="Login"
+                required
+              />
             </div>
-          </button>
-
-          <button
-            onClick={() => navigate({ to: "/login/employee" })}
-            className="group relative overflow-hidden rounded-2xl bg-card border border-border p-8 text-left transition-all hover:border-primary hover:shadow-[var(--shadow-lg)] hover:-translate-y-1"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-accent rounded-full blur-3xl opacity-50 group-hover:opacity-80 transition-opacity" />
-            <div className="relative">
-              <div className="w-14 h-14 rounded-xl bg-foreground flex items-center justify-center text-background mb-5 shadow-[var(--shadow-md)]">
-                <Briefcase className="w-7 h-7" />
-              </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Hodim</h2>
-              <p className="text-muted-foreground">
-                Mijozlar bilan ishlash, qo'ng'iroqlar, eslatmalar va arxiv
-              </p>
-              <div className="mt-6 inline-flex items-center text-primary font-medium group-hover:gap-2 gap-1 transition-all">
-                Kirish <span aria-hidden>→</span>
-              </div>
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1.5">Parol</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                placeholder="••••••••"
+                required
+              />
             </div>
-          </button>
+            <button
+              type="submit"
+              className="w-full py-2.5 rounded-lg bg-[var(--gradient-primary)] text-primary-foreground font-medium shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-glow)] transition-all"
+            >
+              Kirish
+            </button>
+          </form>
         </div>
-
-        <p className="text-center text-xs text-muted-foreground mt-10">
-          Demo rejim — barcha ma'lumotlar brauzeringizda saqlanadi
-        </p>
       </div>
     </div>
   );

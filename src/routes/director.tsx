@@ -15,7 +15,7 @@ function DirectorLayout() {
 
   useEffect(() => {
     if (!session || session.role !== "director") {
-      navigate({ to: "/login/director" });
+      navigate({ to: "/" });
     }
   }, [session, navigate]);
 
