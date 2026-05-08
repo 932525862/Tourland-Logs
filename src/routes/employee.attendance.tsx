@@ -99,20 +99,20 @@ function EmployeeAttendance() {
             Bu oydagi jami: <span className="font-semibold text-foreground">{monthTotal.toFixed(1)} soat</span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button
             onClick={() => setOpenIn(true)}
             disabled={!!todayRec}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--gradient-primary)] text-primary-foreground font-medium shadow-[var(--shadow-md)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-success text-success-foreground font-semibold text-base shadow-[var(--shadow-md)] hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
           >
-            <LogIn className="w-4 h-4" /> {todayRec ? "Keldim ✓" : "Keldim"}
+            <LogIn className="w-5 h-5" /> {todayRec ? "Keldim ✓" : "Keldim"}
           </button>
           <button
             onClick={() => setOpenOut(true)}
             disabled={!todayRec || checkedOutToday}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-input text-foreground hover:bg-secondary font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-destructive text-destructive-foreground font-semibold text-base shadow-[var(--shadow-md)] hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
           >
-            <LogOut className="w-4 h-4" /> {checkedOutToday ? "Ketdim ✓" : "Ketdim"}
+            <LogOut className="w-5 h-5" /> {checkedOutToday ? "Ketdim ✓" : "Ketdim"}
           </button>
         </div>
       </header>
