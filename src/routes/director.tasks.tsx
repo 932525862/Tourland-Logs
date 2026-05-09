@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useAppState, addTask, updateTask, deleteTask } from "@/lib/store";
 import { Plus, ListChecks, Check, Clock, CheckCheck, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { playNotificationSound } from "@/lib/notify";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +59,8 @@ function DirectorTasks() {
   useEffect(() => {
     const unseen = (state.tasks ?? []).filter((t) => t.status === "done" && !t.seenByDirector);
     if (unseen.length) {
+      playNotificationSound();
+      toast.info(`${unseen.length} ta topshiriq tugatildi, tasdiqlash kerak`);
       update((s) => ({
         ...s,
         tasks: s.tasks.map((t) =>
