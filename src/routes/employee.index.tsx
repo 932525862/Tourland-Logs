@@ -6,6 +6,10 @@ import { AddClientDialog } from "@/components/AddClientDialog";
 import { ClientRow } from "./director.clients";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { sendTelegramMessage } from "@/lib/telegram.functions";
+import { playNotificationSound } from "@/lib/notify";
+import { updateClient } from "@/lib/store";
 import type { Client, ClientStage } from "@/lib/types";
 
 const STAGES: { id: ClientStage; label: string }[] = [
