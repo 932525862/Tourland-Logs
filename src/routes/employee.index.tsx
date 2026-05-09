@@ -49,6 +49,8 @@ function EmployeeClients() {
     ? state.employees.find((e) => e.id === session.employeeId)
     : null;
 
+  const sendTg = useServerFn(sendTelegramMessage);
+
   // Reminder check every minute
   useEffect(() => {
     const check = () => {
@@ -58,6 +60,7 @@ function EmployeeClients() {
         if (c.call.remindAt) {
           const t = new Date(c.call.remindAt).getTime();
           if (t <= now && t > now - 65 * 1000) {
+            playNotificationSound();
             toast.warning(`Eslatma: ${name} bilan qayta bog'lanish vaqti keldi`, {
               duration: 10000,
               action: { label: "Ochish", onClick: () => setOpenClient(c) },
@@ -65,12 +68,39 @@ function EmployeeClients() {
           }
         }
         if (c.sale?.status === "partial" && c.sale.nextPaymentAt) {
-          const t = new Date(c.sale.nextPaymentAt).getTime();
-          if (t <= now && t > now - 65 * 1000) {
+          const due = new Date(c.sale.nextPaymentAt).getTime();
+          if (due <= now && due > now - 65 * 1000) {
+            playNotificationSound();
             toast.warning(`To'lovni eslat: ${name}`, {
               duration: 10000,
               action: { label: "Ochish", onClick: () => setOpenClient(c) },
             });
+          }
+          const oneHourBefore = due - 60 * 60 * 1000;
+          if (
+            c.telegramChatId &&
+            !c.sale.telegramReminderSentAt &&
+            oneHourBefore <= now &&
+            oneHourBefore > now - 5 * 60 * 1000
+          ) {
+            const dueStr = new Date(c.sale.nextPaymentAt).toLocaleString("uz-UZ");
+            const text = `🔔 <b>To'lov eslatmasi</b>\n\nHurmatli ${name}, 1 soatdan so'ng (${dueStr}) to'lov muddati keladi.\nIltimos, to'lovni o'z vaqtida amalga oshiring. Rahmat!`;
+            sendTg({ data: { chatId: c.telegramChatId, text } })
+              .then(() => {
+                update((s) => {
+                  const cur = s.clients.find((x) => x.id === c.id);
+                  if (!cur?.sale) return s;
+                  return updateClient(s, c.id, {
+                    sale: { ...cur.sale, telegramReminderSentAt: new Date().toISOString() },
+                  });
+                });
+                playNotificationSound();
+                toast.success(`${name}ga Telegram eslatma yuborildi`);
+              })
+              .catch((e) => {
+                console.error(e);
+                toast.error(`${name}ga Telegram yuborilmadi`);
+              });
           }
         }
       });
@@ -78,7 +108,7 @@ function EmployeeClients() {
     check();
     const id = setInterval(check, 60_000);
     return () => clearInterval(id);
-  }, [state.clients]);
+  }, [state.clients, sendTg, update]);
 
   if (!me) return null;
 
