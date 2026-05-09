@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useAppState, useSession, updateTask } from "@/lib/store";
 import { Clock, Check, CheckCheck, ListChecks, X } from "lucide-react";
 import { toast } from "sonner";
+import { playNotificationSound } from "@/lib/notify";
 import {
   Dialog,
   DialogContent,
@@ -50,10 +51,12 @@ function EmployeeTasks() {
       if (t.employeeId !== myId) return;
       if (t.status === "new" && !t.seenByEmployee && !notifiedRef.current.has(t.id)) {
         notifiedRef.current.add(t.id);
+        playNotificationSound();
         toast.info(`Yangi topshiriq: ${t.title}`);
       }
       if (t.status === "approved" && !t.seenByEmployee && !notifiedRef.current.has("ap-" + t.id)) {
         notifiedRef.current.add("ap-" + t.id);
+        playNotificationSound();
         toast.success(`Topshiriq tasdiqlandi: ${t.title}`);
       }
     });
