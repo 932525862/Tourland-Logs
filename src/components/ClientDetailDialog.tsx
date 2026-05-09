@@ -39,6 +39,68 @@ export function ClientDetailDialog({
   const [moveStage, setMoveStage] = useState<ClientStage>(client.stage);
   const [reminderDate, setReminderDate] = useState("");
 
+  const fetchBotUsers = useServerFn(getBotUsers);
+  const sendTg = useServerFn(sendTelegramMessage);
+  const [botUsers, setBotUsers] = useState<BotUser[]>([]);
+  const [tgLoading, setTgLoading] = useState(false);
+  const [tgMsg, setTgMsg] = useState("");
+
+  const loadBotUsers = async () => {
+    setTgLoading(true);
+    try {
+      const r = await fetchBotUsers();
+      setBotUsers(r.users);
+      if (r.users.length === 0) {
+        toast.info("Hech kim botga /start yubormagan. Mijoz avval botga /start yuborishi kerak.");
+      }
+    } catch (e) {
+      toast.error("Telegram foydalanuvchilarini olib bo'lmadi");
+      console.error(e);
+    } finally {
+      setTgLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBotUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleAssignTelegram = (chatIdStr: string) => {
+    if (!chatIdStr) {
+      update((s) => updateClient(s, client.id, { telegramChatId: undefined, telegramUsername: undefined }));
+      return;
+    }
+    const u = botUsers.find((b) => String(b.chatId) === chatIdStr);
+    if (!u) return;
+    update((s) =>
+      updateClient(s, client.id, {
+        telegramChatId: u.chatId,
+        telegramUsername: u.username || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim(),
+      })
+    );
+    toast.success("Telegram biriktirildi");
+  };
+
+  const handleSendTelegramNow = async () => {
+    if (!client.telegramChatId) {
+      toast.error("Avval mijozning Telegramini biriktiring");
+      return;
+    }
+    if (!tgMsg.trim()) {
+      toast.error("Xabar matnini kiriting");
+      return;
+    }
+    try {
+      await sendTg({ data: { chatId: client.telegramChatId, text: tgMsg.trim() } });
+      toast.success("Telegramga yuborildi");
+      setTgMsg("");
+    } catch (e) {
+      toast.error("Yuborib bo'lmadi");
+      console.error(e);
+    }
+  };
+
   // Sale state
   const sale: SaleInfo = client.sale ?? { status: "none", payments: [] };
   const totalPaid = sale.payments.reduce((s, p) => s + p.amount, 0);
