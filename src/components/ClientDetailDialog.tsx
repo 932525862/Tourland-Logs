@@ -1,8 +1,11 @@
-import { useState } from "react";
-import { X, Phone, MessageSquare, Bell, ArrowRightLeft, Trash2, ShoppingCart, CheckCircle2, Wallet } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Phone, MessageSquare, Bell, ArrowRightLeft, Trash2, ShoppingCart, CheckCircle2, Wallet, Send, RefreshCw } from "lucide-react";
 import type { Client, AppState, PaymentEntry, SaleInfo, ClientStage } from "@/lib/types";
 import { updateClient, uid } from "@/lib/store";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { getBotUsers, sendTelegramMessage } from "@/lib/telegram.functions";
+import type { BotUser } from "@/lib/telegram.functions";
 
 const STAGE_LABELS: Record<ClientStage, string> = {
   new: "Yangi",
