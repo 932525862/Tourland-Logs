@@ -74,6 +74,7 @@ export interface SaleInfo {
   completedAt?: string; // when fully paid
   completedByName?: string;
   completedByRole?: Role;
+  telegramReminderSentAt?: string; // when 1h-before reminder was sent
 }
 
 export type ClientStage = "new" | "no_answer" | "talked" | "sold";
@@ -88,6 +89,8 @@ export interface Client {
   notes: ClientNote[];
   call: ClientCallStatus;
   sale?: SaleInfo;
+  telegramChatId?: number;
+  telegramUsername?: string;
   createdAt: string;
 }
 
