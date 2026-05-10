@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  director
+  employee
+}
+
+enum ClientStage {
+  new
+  no_answer
+  talked
+  sold
+}
+
+enum SaleStatus {
+  none
+  partial
+  full
+}
+
+enum TaskStatus {
+  new
+  in_progress
+  done
+  approved
+}
+
+enum FieldType {
+  text
+  phone
+  select
+  textarea
+}
+
+model Director {
+  id        String   @id @default(cuid())
+  name      String
+  login     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Employee {
+  id          String       @id @default(cuid())
+  firstName   String
+  lastName    String
+  phone       String
+  login       String       @unique
+  password    String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  attendance  Attendance[]
+  tasks       Task[]
+  notes       ClientNote[]
+  payments    Payment[]
+  callsActive Client[]     @relation("CallActive")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  isArchive Boolean  @default(false)
+  createdAt DateTime @default(now())
+  clients   Client[]
+}
+
+model FormTemplate {
+  id               String        @id @default(cuid())
+  title            String
+  targetCategoryId String
+  fields           FormField[]
+  clients          Client[]
+  createdAt        DateTime      @default(now())
+}
+
+model FormField {
+  id       String    @id @default(cuid())
+  formId   String
+  type     FieldType
+  label    String
+  required Boolean   @default(false)
+  options  String[]
+  order    Int       @default(0)
+  form     FormTemplate @relation(fields: [formId], references: [id], onDelete: Cascade)
+}
+
+model Client {
+  id                String       @id @default(cuid())
+  formId            String
+  formTitle         String
+  categoryId        String
+  stage             ClientStage  @default(new)
+  data              Json         @default("{}")
+  telegramChatId    BigInt?
+  telegramUsername  String?
+  // Call status
+  inCallByEmployeeId String?
+  inCallStartedAt   DateTime?
+  remindAt          DateTime?
+  // Sale info (denormalized for hot path)
+  saleStatus        SaleStatus   @default(none)
+  saleTotalAmount   Float?
+  nextPaymentAt     DateTime?
+  soldAt            DateTime?
+  completedAt       DateTime?
+  completedByName   String?
+  completedByRole   Role?
+  telegramReminderSentAt DateTime?
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  category          Category     @relation(fields: [categoryId], references: [id])
+  form              FormTemplate @relation(fields: [formId], references: [id])
+  callBy            Employee?    @relation("CallActive", fields: [inCallByEmployeeId], references: [id])
+  notes             ClientNote[]
+  payments          Payment[]
+
+  @@index([categoryId])
+  @@index([stage])
+  @@index([nextPaymentAt])
+}
+
+model ClientNote {
+  id         String   @id @default(cuid())
+  clientId   String
+  text       String
+  authorName String
+  authorRole Role
+  authorEmpId String?
+  createdAt  DateTime @default(now())
+
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  author     Employee? @relation(fields: [authorEmpId], references: [id])
+
+  @@index([clientId])
+}
+
+model Payment {
+  id         String   @id @default(cuid())
+  clientId   String
+  amount     Float
+  authorName String
+  authorRole Role
+  authorEmpId String?
+  createdAt  DateTime @default(now())
+
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  author     Employee? @relation(fields: [authorEmpId], references: [id])
+
+  @@index([clientId])
+}
+
+model Attendance {
+  id             String    @id @default(cuid())
+  employeeId     String
+  employeeName   String
+  date           String
+  checkInAt      DateTime
+  checkOutAt     DateTime?
+  photo          String?
+  checkOutPhoto  String?
+
+  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, date])
+}
+
+model Task {
+  id              String     @id @default(cuid())
+  title           String
+  description     String
+  employeeId      String
+  status          TaskStatus @default(new)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  approvedAt      DateTime?
+  seenByEmployee  Boolean    @default(false)
+  seenByDirector  Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  employee        Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+
+model TelegramSubscriber {
+  chatId    BigInt   @id
+  username  String?
+  firstName String?
+  lastName  String?
+  createdAt DateTime @default(now())
+}
