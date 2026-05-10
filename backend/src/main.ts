@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+// Make BigInt JSON-serializable globally
+(BigInt.prototype as any).toJSON = function () { return Number(this); };
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import helmet from 'helmet';
