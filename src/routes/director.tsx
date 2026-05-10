@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { CrmSidebar } from "@/components/CrmSidebar";
 import { useSession, useAppState } from "@/lib/store";
-import { User, Users, FileText, UserPlus, ClipboardCheck, ListChecks } from "lucide-react";
+import { User, Users, FileText, UserPlus, ClipboardCheck, ListChecks, BarChart3 } from "lucide-react";
 
 export const Route = createFileRoute("/director")({
   component: DirectorLayout,
@@ -38,6 +38,7 @@ function DirectorLayout() {
           { to: "/director/forms", label: "Formalar", icon: FileText },
           { to: "/director/attendance", label: "Davomat", icon: ClipboardCheck },
           { to: "/director/tasks", label: "Topshiriqlar", icon: ListChecks, badge: taskBadge },
+          { to: "/director/stats", label: "Statistika", icon: BarChart3 },
         ]}
       />
       <main className="flex-1 min-w-0">
