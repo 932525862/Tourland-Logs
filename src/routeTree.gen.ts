@@ -19,6 +19,7 @@ import { Route as EmployeeTasksRouteImport } from './routes/employee.tasks'
 import { Route as EmployeeAttendanceRouteImport } from './routes/employee.attendance'
 import { Route as EmployeeArchiveRouteImport } from './routes/employee.archive'
 import { Route as DirectorTasksRouteImport } from './routes/director.tasks'
+import { Route as DirectorStatsRouteImport } from './routes/director.stats'
 import { Route as DirectorFormsRouteImport } from './routes/director.forms'
 import { Route as DirectorEmployeesRouteImport } from './routes/director.employees'
 import { Route as DirectorClientsRouteImport } from './routes/director.clients'
@@ -74,6 +75,11 @@ const DirectorTasksRoute = DirectorTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => DirectorRoute,
 } as any)
+const DirectorStatsRoute = DirectorStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => DirectorRoute,
+} as any)
 const DirectorFormsRoute = DirectorFormsRouteImport.update({
   id: '/forms',
   path: '/forms',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/director/clients': typeof DirectorClientsRoute
   '/director/employees': typeof DirectorEmployeesRoute
   '/director/forms': typeof DirectorFormsRoute
+  '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/director/clients': typeof DirectorClientsRoute
   '/director/employees': typeof DirectorEmployeesRoute
   '/director/forms': typeof DirectorFormsRoute
+  '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/director/clients': typeof DirectorClientsRoute
   '/director/employees': typeof DirectorEmployeesRoute
   '/director/forms': typeof DirectorFormsRoute
+  '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/director/clients'
     | '/director/employees'
     | '/director/forms'
+    | '/director/stats'
     | '/director/tasks'
     | '/employee/archive'
     | '/employee/attendance'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/director/clients'
     | '/director/employees'
     | '/director/forms'
+    | '/director/stats'
     | '/director/tasks'
     | '/employee/archive'
     | '/employee/attendance'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/director/clients'
     | '/director/employees'
     | '/director/forms'
+    | '/director/stats'
     | '/director/tasks'
     | '/employee/archive'
     | '/employee/attendance'
@@ -270,6 +282,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DirectorTasksRouteImport
       parentRoute: typeof DirectorRoute
     }
+    '/director/stats': {
+      id: '/director/stats'
+      path: '/stats'
+      fullPath: '/director/stats'
+      preLoaderRoute: typeof DirectorStatsRouteImport
+      parentRoute: typeof DirectorRoute
+    }
     '/director/forms': {
       id: '/director/forms'
       path: '/forms'
@@ -306,6 +325,7 @@ interface DirectorRouteChildren {
   DirectorClientsRoute: typeof DirectorClientsRoute
   DirectorEmployeesRoute: typeof DirectorEmployeesRoute
   DirectorFormsRoute: typeof DirectorFormsRoute
+  DirectorStatsRoute: typeof DirectorStatsRoute
   DirectorTasksRoute: typeof DirectorTasksRoute
   DirectorIndexRoute: typeof DirectorIndexRoute
 }
@@ -315,6 +335,7 @@ const DirectorRouteChildren: DirectorRouteChildren = {
   DirectorClientsRoute: DirectorClientsRoute,
   DirectorEmployeesRoute: DirectorEmployeesRoute,
   DirectorFormsRoute: DirectorFormsRoute,
+  DirectorStatsRoute: DirectorStatsRoute,
   DirectorTasksRoute: DirectorTasksRoute,
   DirectorIndexRoute: DirectorIndexRoute,
 }
