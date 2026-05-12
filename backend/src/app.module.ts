@@ -19,6 +19,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { PublicModule } from './modules/public/public.module';
+import { HealthModule } from './modules/health/health.module';
 
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -35,6 +36,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
       },
     }),
     PrismaModule,
+    HealthModule,
     RealtimeModule,
     JobsModule,
     AuthModule,

@@ -4,14 +4,15 @@
   "description": "Agency CRM - NestJS backend (Postgres, Redis, BullMQ, WebSocket, Telegram)",
   "private": true,
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && tsc-alias -p tsconfig.json",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
-    "prisma:seed": "ts-node prisma/seed.ts",
+    "prisma:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
     "lint": "eslint \"src/**/*.ts\" --fix"
   },
   "dependencies": {
@@ -51,6 +52,8 @@
     "@types/node-telegram-bot-api": "^0.64.7",
     "@types/passport-jwt": "^4.0.1",
     "prisma": "^5.20.0",
+    "tsc-alias": "^1.8.10",
+    "tsconfig-paths": "^4.2.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.2"
   },
