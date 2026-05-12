@@ -36,6 +36,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
       },
     }),
     PrismaModule,
+    HealthModule,
     RealtimeModule,
     JobsModule,
     AuthModule,
