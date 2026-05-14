@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { X, Phone, MessageSquare, Bell, ArrowRightLeft, Trash2, ShoppingCart, CheckCircle2, Wallet, Send, RefreshCw } from "lucide-react";
 import type { Client, AppState, PaymentEntry, SaleInfo, ClientStage } from "@/lib/types";
-import { updateClient, uid } from "@/lib/store";
 import { toast } from "sonner";
-import { useServerFn } from "@tanstack/react-start";
-import { getBotUsers, sendTelegramMessage } from "@/lib/telegram.functions";
-import type { BotUser } from "@/lib/telegram.functions";
+import { API } from "@/lib/api/client";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 const STAGE_LABELS: Record<ClientStage, string> = {
   new: "Yangi",
@@ -17,8 +15,8 @@ const STAGE_LABELS: Record<ClientStage, string> = {
 interface Props {
   client: Client;
   state: AppState;
-  update: (fn: (s: AppState) => AppState) => void;
   onClose: () => void;
+  onRefresh: () => void;
   viewerRole: "director" | "employee";
   viewerName: string;
   viewerId?: string;
@@ -27,9 +25,8 @@ interface Props {
 
 export function ClientDetailDialog({
   client,
-  state,
-  update,
   onClose,
+  onRefresh,
   viewerRole,
   viewerName,
   viewerId,
@@ -38,68 +35,8 @@ export function ClientDetailDialog({
   const [noteText, setNoteText] = useState("");
   const [moveStage, setMoveStage] = useState<ClientStage>(client.stage);
   const [reminderDate, setReminderDate] = useState("");
-
-  const fetchBotUsers = useServerFn(getBotUsers);
-  const sendTg = useServerFn(sendTelegramMessage);
-  const [botUsers, setBotUsers] = useState<BotUser[]>([]);
-  const [tgLoading, setTgLoading] = useState(false);
-  const [tgMsg, setTgMsg] = useState("");
-
-  const loadBotUsers = async () => {
-    setTgLoading(true);
-    try {
-      const r = await fetchBotUsers();
-      setBotUsers(r.users);
-      if (r.users.length === 0) {
-        toast.info("Hech kim botga /start yubormagan. Mijoz avval botga /start yuborishi kerak.");
-      }
-    } catch (e) {
-      toast.error("Telegram foydalanuvchilarini olib bo'lmadi");
-      console.error(e);
-    } finally {
-      setTgLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadBotUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleAssignTelegram = (chatIdStr: string) => {
-    if (!chatIdStr) {
-      update((s) => updateClient(s, client.id, { telegramChatId: undefined, telegramUsername: undefined }));
-      return;
-    }
-    const u = botUsers.find((b) => String(b.chatId) === chatIdStr);
-    if (!u) return;
-    update((s) =>
-      updateClient(s, client.id, {
-        telegramChatId: u.chatId,
-        telegramUsername: u.username || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim(),
-      })
-    );
-    toast.success("Telegram biriktirildi");
-  };
-
-  const handleSendTelegramNow = async () => {
-    if (!client.telegramChatId) {
-      toast.error("Avval mijozning Telegramini biriktiring");
-      return;
-    }
-    if (!tgMsg.trim()) {
-      toast.error("Xabar matnini kiriting");
-      return;
-    }
-    try {
-      await sendTg({ data: { chatId: client.telegramChatId, text: tgMsg.trim() } });
-      toast.success("Telegramga yuborildi");
-      setTgMsg("");
-    } catch (e) {
-      toast.error("Yuborib bo'lmadi");
-      console.error(e);
-    }
-  };
+  const [loading, setLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Sale state
   const sale: SaleInfo = client.sale ?? { status: "none", payments: [] };
@@ -114,107 +51,59 @@ export function ClientDetailDialog({
   const [partialNextDate, setPartialNextDate] = useState("");
   const [extraAmount, setExtraAmount] = useState("");
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!noteText.trim()) return;
-    update((s) =>
-      updateClient(s, client.id, {
-        notes: [
-          ...client.notes,
-          {
-            id: uid("note"),
-            text: noteText.trim(),
-            authorName: viewerName,
-            authorRole: viewerRole,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      })
-    );
-    setNoteText("");
-    toast.success("Izoh qo'shildi");
+    setLoading(true);
+    try {
+      await API.addNote(client.id, noteText.trim());
+      setNoteText("");
+      toast.success("Izoh qo'shildi");
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleMoveStage = () => {
+  const handleMoveStage = async () => {
     if (moveStage === client.stage) return;
-    update((s) => updateClient(s, client.id, { stage: moveStage }));
-    toast.success(`"${STAGE_LABELS[moveStage]}" bo'limiga ko'chirildi`);
-  };
-
-  const handleStartCall = () => {
-    if (!viewerId) return;
-    update((s) =>
-      updateClient(s, client.id, {
-        call: {
-          inCallByEmployeeId: viewerId,
-          inCallByName: viewerName,
-          startedAt: new Date().toISOString(),
-        },
-      })
-    );
-    toast.success("Qo'ng'iroq boshlandi. Boshqa hodimlarga ko'rsatildi.");
-  };
-
-  const handleEndCall = (didAnswer: boolean) => {
-    if (!didAnswer && !noteText.trim() && !reminderDate) {
-      toast.error("Izoh yoki eslatma vaqtini kiriting");
-      return;
+    setLoading(true);
+    try {
+      await API.updateClient(client.id, { stage: moveStage });
+      toast.success(`"${STAGE_LABELS[moveStage]}" bosqichiga ko'chirildi`);
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
     }
-    const newNotes = [...client.notes];
-    if (noteText.trim()) {
-      newNotes.push({
-        id: uid("note"),
-        text: didAnswer ? noteText.trim() : `[Ko'tarmadi] ${noteText.trim()}`,
-        authorName: viewerName,
-        authorRole: viewerRole,
-        createdAt: new Date().toISOString(),
-      });
-    }
-    update((s) =>
-      updateClient(s, client.id, {
-        notes: newNotes,
-        stage: didAnswer ? "talked" : "no_answer",
-        call: reminderDate ? { remindAt: new Date(reminderDate).toISOString() } : {},
-      })
-    );
-    setNoteText("");
-    setReminderDate("");
-    toast.success(reminderDate ? "Eslatma o'rnatildi" : "Qo'ng'iroq tugatildi");
   };
 
-  const handleFullPurchase = () => {
+  const handleFullPurchase = async () => {
     const amt = parseFloat(fullAmount);
     if (!amt || amt <= 0) {
       toast.error("To'lov summasini kiriting");
       return;
     }
-    const payment: PaymentEntry = {
-      id: uid("pay"),
-      amount: amt,
-      authorName: viewerName,
-      authorRole: viewerRole,
-      createdAt: new Date().toISOString(),
-    };
-    update((s) =>
-      updateClient(s, client.id, {
-        stage: "sold",
-        sale: {
-          status: "full",
-          totalAmount: amt,
-          payments: [payment],
-          soldAt: new Date().toISOString(),
-          completedAt: new Date().toISOString(),
-          completedByName: viewerName,
-          completedByRole: viewerRole,
-        },
-      })
-    );
-    toast.success("Sotildi (to'liq)");
-    setShowPurchase(false);
-    setPurchaseMode("choose");
-    setFullAmount("");
+    setLoading(true);
+    try {
+      await API.setSale(client.id, {
+        status: "full",
+        totalAmount: amt,
+        paidAmount: amt
+      });
+      toast.success("Sotildi (to'liq)");
+      setShowPurchase(false);
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePartialPurchase = () => {
+  const handlePartialPurchase = async () => {
     const total = parseFloat(partialTotal);
     const paid = parseFloat(partialPaid);
     if (!total || total <= 0 || !paid || paid <= 0) {
@@ -229,80 +118,78 @@ export function ClientDetailDialog({
       toast.error("Keyingi to'lov sanasini kiriting");
       return;
     }
-    const payment: PaymentEntry = {
-      id: uid("pay"),
-      amount: paid,
-      authorName: viewerName,
-      authorRole: viewerRole,
-      createdAt: new Date().toISOString(),
-    };
-    update((s) =>
-      updateClient(s, client.id, {
-        stage: "sold",
-        sale: {
-          status: "partial",
-          totalAmount: total,
-          payments: [payment],
-          nextPaymentAt: new Date(partialNextDate).toISOString(),
-          soldAt: new Date().toISOString(),
-        },
-      })
-    );
-    toast.success("Sotildi (bir qismi)");
-    setShowPurchase(false);
-    setPurchaseMode("choose");
-    setPartialTotal("");
-    setPartialPaid("");
-    setPartialNextDate("");
+    setLoading(true);
+    try {
+      await API.setSale(client.id, {
+        status: "partial",
+        totalAmount: total,
+        paidAmount: paid,
+        nextPaymentAt: new Date(partialNextDate).toISOString()
+      });
+      toast.success("Sotildi (bir qismi)");
+      setShowPurchase(false);
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddPayment = () => {
+  const handleAddPayment = async () => {
     const amt = parseFloat(extraAmount);
     if (!amt || amt <= 0) {
       toast.error("Summa kiriting");
       return;
     }
-    const payment: PaymentEntry = {
-      id: uid("pay"),
-      amount: amt,
-      authorName: viewerName,
-      authorRole: viewerRole,
-      createdAt: new Date().toISOString(),
-    };
-    update((s) =>
-      updateClient(s, client.id, {
-        sale: { ...sale, payments: [...sale.payments, payment] },
-      })
-    );
-    setExtraAmount("");
-    toast.success("To'lov qo'shildi");
+    setLoading(true);
+    try {
+      await API.addPayment(client.id, amt);
+      setExtraAmount("");
+      toast.success("To'lov qo'shildi");
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCompletePayment = () => {
-    update((s) =>
-      updateClient(s, client.id, {
-        sale: {
-          ...sale,
-          status: "full",
-          completedAt: new Date().toISOString(),
-          completedByName: viewerName,
-          completedByRole: viewerRole,
-          nextPaymentAt: undefined,
-        },
-      })
-    );
-    toast.success("To'lov yakunlandi");
+  const handleCompletePayment = async () => {
+    setLoading(true);
+    try {
+      await API.setSale(client.id, { status: "full" });
+      toast.success("To'lov yakunlandi");
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const inCallByOther = client.call.inCallByEmployeeId && client.call.inCallByEmployeeId !== viewerId;
+  const handleDelete = async () => {
+    setLoading(true);
+    try {
+      await API.deleteClient(client.id);
+      toast.success("Mijoz o'chirildi");
+      onRefresh();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-card rounded-2xl border border-border shadow-[var(--shadow-lg)] w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-card rounded-2xl border border-border shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-foreground truncate flex items-center gap-2">
-              {client.data["Ism familya"] || client.data["Ism"] || "Mijoz"}
+              {client.data?.["Ism familya"] || client.name || "Mijoz"}
               {sale.status === "partial" && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-medium">
                   To'liq emas
@@ -314,7 +201,7 @@ export function ClientDetailDialog({
                 </span>
               )}
             </h2>
-            <p className="text-xs text-muted-foreground">Forma: {client.formTitle}</p>
+            <p className="text-xs text-muted-foreground">Bo'lim: {client.formTitle || "—"}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
             <X className="w-4 h-4" />
@@ -322,37 +209,42 @@ export function ClientDetailDialog({
         </div>
 
         <div className="p-5 space-y-6">
-          {inCallByOther && (
-            <div className="rounded-lg bg-warning/15 border border-warning/30 p-3 text-sm text-foreground">
-              <strong>{client.call.inCallByName}</strong> ushbu mijoz bilan bog'lanmoqda
-            </div>
-          )}
-
-          {/* Form data */}
+          {/* Form data / Details */}
           <section>
-            <h3 className="text-sm font-semibold text-foreground mb-2">Formada qoldirilgan ma'lumotlar</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Mijoz ma'lumotlari</h3>
             <div className="bg-secondary/50 rounded-xl p-4 space-y-2">
-              {Object.entries(client.data).map(([key, value]) => (
-                <div key={key} className="grid grid-cols-3 gap-2 text-sm">
-                  <span className="text-muted-foreground">{key}</span>
-                  <span className="col-span-2 text-foreground font-medium break-words">{value || "—"}</span>
-                </div>
-              ))}
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <span className="text-muted-foreground">Ism familya</span>
+                <span className="col-span-2 text-foreground font-medium">{client.name}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <span className="text-muted-foreground">Tel raqam</span>
+                <span className="col-span-2 text-foreground font-medium">{client.phone}</span>
+              </div>
+              {Object.entries(client.data || {}).map(([key, value]) => {
+                if (key === "Ism familya" || key === "Tel raqam") return null;
+                return (
+                  <div key={key} className="grid grid-cols-3 gap-2 text-sm">
+                    <span className="text-muted-foreground">{key}</span>
+                    <span className="col-span-2 text-foreground font-medium break-words">{value || "—"}</span>
+                  </div>
+                );
+              })}
             </div>
           </section>
 
           {/* Sale section */}
           <section className="rounded-xl border border-border p-4 space-y-3">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <ShoppingCart className="w-4 h-4" /> Sotuv
+              <ShoppingCart className="w-4 h-4" /> Sotov
             </h3>
 
             {sale.status === "none" && !showPurchase && (
               <button
                 onClick={() => setShowPurchase(true)}
-                className="w-full py-2.5 rounded-lg bg-[var(--gradient-primary)] text-primary-foreground font-medium shadow-[var(--shadow-md)]"
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium shadow-md"
               >
-                Sotib oldi
+                Sotuvni rasmiylashtirish
               </button>
             )}
 
@@ -362,13 +254,13 @@ export function ClientDetailDialog({
                   onClick={() => setPurchaseMode("full")}
                   className="py-3 rounded-lg bg-success text-success-foreground font-medium"
                 >
-                  To'liq amalga oshirdi
+                  To'liq to'lov
                 </button>
                 <button
                   onClick={() => setPurchaseMode("partial")}
                   className="py-3 rounded-lg bg-warning text-warning-foreground font-medium"
                 >
-                  Bir qismi
+                  Bo'lib to'lash
                 </button>
                 <button
                   onClick={() => { setShowPurchase(false); setPurchaseMode("choose"); }}
@@ -387,10 +279,10 @@ export function ClientDetailDialog({
                   value={fullAmount}
                   onChange={(e) => setFullAmount(e.target.value)}
                   placeholder="0"
-                  className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-input bg-background"
                 />
                 <div className="flex gap-2">
-                  <button onClick={handleFullPurchase} className="flex-1 py-2 rounded-lg bg-success text-success-foreground text-sm font-medium">
+                  <button onClick={handleFullPurchase} disabled={loading} className="flex-1 py-2 rounded-lg bg-success text-white text-sm font-medium">
                     Tasdiqlash
                   </button>
                   <button onClick={() => setPurchaseMode("choose")} className="px-3 py-2 rounded-lg border border-border text-sm">
@@ -402,20 +294,22 @@ export function ClientDetailDialog({
 
             {sale.status === "none" && purchaseMode === "partial" && (
               <div className="space-y-2">
-                <div>
-                  <label className="text-xs text-muted-foreground">To'liq summa</label>
-                  <input type="number" value={partialTotal} onChange={(e) => setPartialTotal(e.target.value)} placeholder="0" className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">To'langan summa</label>
-                  <input type="number" value={partialPaid} onChange={(e) => setPartialPaid(e.target.value)} placeholder="0" className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground">To'liq summa</label>
+                    <input type="number" value={partialTotal} onChange={(e) => setPartialTotal(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">To'langan summa</label>
+                    <input type="number" value={partialPaid} onChange={(e) => setPartialPaid(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Keyingi to'lov sanasi</label>
                   <input type="datetime-local" value={partialNextDate} onChange={(e) => setPartialNextDate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={handlePartialPurchase} className="flex-1 py-2 rounded-lg bg-warning text-warning-foreground text-sm font-medium">
+                  <button onClick={handlePartialPurchase} disabled={loading} className="flex-1 py-2 rounded-lg bg-warning text-white text-sm font-medium">
                     Tasdiqlash
                   </button>
                   <button onClick={() => setPurchaseMode("choose")} className="px-3 py-2 rounded-lg border border-border text-sm">
@@ -427,34 +321,34 @@ export function ClientDetailDialog({
 
             {sale.status !== "none" && (
               <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-2 text-sm bg-secondary/40 rounded-lg p-3">
+                <div className="grid grid-cols-3 gap-2 text-sm bg-secondary/40 rounded-lg p-3 text-center">
                   <div>
-                    <div className="text-xs text-muted-foreground">Jami</div>
-                    <div className="font-semibold text-foreground">{sale.totalAmount?.toLocaleString("uz-UZ")}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase">Jami</div>
+                    <div className="font-bold text-foreground">{sale.totalAmount?.toLocaleString()}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-muted-foreground">To'langan</div>
-                    <div className="font-semibold text-success">{totalPaid.toLocaleString("uz-UZ")}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase">To'langan</div>
+                    <div className="font-bold text-success">{totalPaid.toLocaleString()}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-muted-foreground">Qoldiq</div>
-                    <div className="font-semibold text-destructive">{remaining.toLocaleString("uz-UZ")}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase">Qoldiq</div>
+                    <div className="font-bold text-destructive">{remaining.toLocaleString()}</div>
                   </div>
                 </div>
 
-                {sale.nextPaymentAt && sale.status === "partial" && (
-                  <div className="flex items-center gap-2 text-sm bg-warning/15 text-foreground rounded-lg p-2">
-                    <Bell className="w-4 h-4" /> Keyingi to'lov: {new Date(sale.nextPaymentAt).toLocaleString("uz-UZ")}
+                {sale.status === "partial" && sale.nextPaymentAt && (
+                  <div className="flex items-center gap-2 text-xs bg-warning/10 text-warning-foreground rounded-lg p-2 border border-warning/20">
+                    <Bell className="w-3.5 h-3.5" /> Keyingi to'lov: {new Date(sale.nextPaymentAt).toLocaleString("uz-UZ")}
                   </div>
                 )}
 
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">To'lovlar tarixi</h4>
-                  <div className="space-y-1.5">
+                  <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">To'lovlar tarixi</h4>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                     {sale.payments.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between text-sm bg-secondary/30 rounded-lg p-2">
-                        <span className="font-medium text-foreground">{p.amount.toLocaleString("uz-UZ")}</span>
-                        <span className="text-xs text-muted-foreground">{p.authorName} • {new Date(p.createdAt).toLocaleString("uz-UZ")}</span>
+                      <div key={p.id} className="flex items-center justify-between text-xs bg-secondary/30 rounded-lg p-2">
+                        <span className="font-bold text-foreground">{p.amount.toLocaleString()}</span>
+                        <span className="text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("uz-UZ")}</span>
                       </div>
                     ))}
                   </div>
@@ -462,189 +356,53 @@ export function ClientDetailDialog({
 
                 {sale.status === "partial" && (
                   <div className="space-y-2 border-t border-border pt-3">
-                    <label className="text-xs text-muted-foreground">Yangi to'lov qo'shish</label>
+                    <label className="text-[11px] font-bold text-muted-foreground uppercase">Yangi to'lov</label>
                     <div className="flex gap-2">
-                      <input type="number" value={extraAmount} onChange={(e) => setExtraAmount(e.target.value)} placeholder="Summa" className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm" />
-                      <button onClick={handleAddPayment} className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium">
+                      <input type="number" value={extraAmount} onChange={(e) => setExtraAmount(e.target.value)} placeholder="0" className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                      <button onClick={handleAddPayment} disabled={loading} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium">
                         <Wallet className="w-4 h-4" />
                       </button>
                     </div>
-                    <button onClick={handleCompletePayment} className="w-full py-2 rounded-lg bg-success text-success-foreground text-sm font-medium">
-                      To'lab bo'lindi
+                    <button onClick={handleCompletePayment} disabled={loading} className="w-full py-2 rounded-lg bg-success text-white text-sm font-medium">
+                      To'liq to'landi
                     </button>
                   </div>
                 )}
-
-                {sale.status === "full" && sale.completedByName && (
-                  <div className="text-xs text-muted-foreground border-t border-border pt-2">
-                    To'lovni yakunlagan: <strong className="text-foreground">{sale.completedByName}</strong>
-                    {sale.completedAt && <> • {new Date(sale.completedAt).toLocaleString("uz-UZ")}</>}
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-
-          {/* Call actions for employee */}
-          {enableCallActions && viewerRole === "employee" && (
-            <section className="rounded-xl border border-border p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Phone className="w-4 h-4" /> Qo'ng'iroq
-              </h3>
-              {!client.call.inCallByEmployeeId ? (
-                <button
-                  onClick={handleStartCall}
-                  className="w-full py-2.5 rounded-lg bg-success text-success-foreground font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                >
-                  <Phone className="w-4 h-4" /> Qo'ng'iroq qilinyapti
-                </button>
-              ) : client.call.inCallByEmployeeId === viewerId ? (
-                <div className="space-y-3">
-                  <div className="text-sm text-muted-foreground">
-                    Siz hozir bu mijoz bilan bog'lanmoqdasiz. Yakunlang:
-                  </div>
-                  <textarea
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    placeholder="Izoh (mijoz nima dedi, holati...)"
-                    rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                  />
-                  <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Eslatma vaqti (ko'tarmagan bo'lsa)</label>
-                    <input
-                      type="datetime-local"
-                      value={reminderDate}
-                      onChange={(e) => setReminderDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEndCall(true)}
-                      className="flex-1 py-2 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90"
-                    >
-                      Gaplashildi
-                    </button>
-                    <button
-                      onClick={() => handleEndCall(false)}
-                      className="flex-1 py-2 rounded-lg bg-secondary text-foreground text-sm font-medium hover:bg-secondary/70"
-                    >
-                      Ko'tarmadi
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  Boshqa hodim ({client.call.inCallByName}) bog'lanmoqda
-                </div>
-              )}
-
-              {client.call.remindAt && (
-                <div className="flex items-center gap-2 text-sm text-warning-foreground bg-warning/15 rounded-lg p-3">
-                  <Bell className="w-4 h-4" />
-                  Eslatma: {new Date(client.call.remindAt).toLocaleString("uz-UZ")}
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* Telegram */}
-          <section className="rounded-xl border border-border p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Send className="w-4 h-4" /> Telegram
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Mijoz avval botga <code className="px-1 rounded bg-secondary">/start</code> yuborishi kerak. Keyin uni ro'yxatdan tanlang.
-            </p>
-            <div className="flex gap-2">
-              <select
-                value={client.telegramChatId ? String(client.telegramChatId) : ""}
-                onChange={(e) => handleAssignTelegram(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
-              >
-                <option value="">— Telegram foydalanuvchini tanlang —</option>
-                {client.telegramChatId && !botUsers.find((u) => u.chatId === client.telegramChatId) && (
-                  <option value={String(client.telegramChatId)}>
-                    {client.telegramUsername ?? `chat ${client.telegramChatId}`} (saqlangan)
-                  </option>
-                )}
-                {botUsers.map((u) => (
-                  <option key={u.chatId} value={String(u.chatId)}>
-                    {(u.username ? "@" + u.username : "") + " " + (u.firstName ?? "") + " " + (u.lastName ?? "")} — {u.chatId}
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={loadBotUsers}
-                disabled={tgLoading}
-                className="px-3 py-2 rounded-lg border border-border text-sm inline-flex items-center gap-1 hover:bg-secondary"
-                title="Yangilash"
-              >
-                <RefreshCw className={`w-4 h-4 ${tgLoading ? "animate-spin" : ""}`} />
-              </button>
-            </div>
-            {client.telegramChatId && (
-              <div className="flex gap-2">
-                <input
-                  value={tgMsg}
-                  onChange={(e) => setTgMsg(e.target.value)}
-                  placeholder="Telegramga xabar matni..."
-                  className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
-                />
-                <button
-                  onClick={handleSendTelegramNow}
-                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-1"
-                >
-                  <Send className="w-4 h-4" /> Yuborish
-                </button>
-              </div>
-            )}
-            {sale.status === "partial" && sale.nextPaymentAt && (
-              <div className="text-xs text-muted-foreground">
-                {client.telegramChatId
-                  ? `Avtomatik eslatma yuboriladi: ${new Date(new Date(sale.nextPaymentAt).getTime() - 60 * 60 * 1000).toLocaleString("uz-UZ")} (to'lovdan 1 soat oldin)`
-                  : "To'lovdan 1 soat oldin avtomatik Telegram eslatma uchun foydalanuvchini biriktiring."}
-                {sale.telegramReminderSentAt && " ✓ yuborilgan"}
               </div>
             )}
           </section>
 
           {/* Notes */}
           <section>
-            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" /> Izohlar ({client.notes.length})
-            </h3>
-            {!enableCallActions && (
-              <div className="flex gap-2 mb-3">
-                <input
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Yangi izoh..."
-                  className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                />
-                <button
-                  onClick={handleAddNote}
-                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover"
-                >
-                  Qo'shish
-                </button>
-              </div>
-            )}
-            <div className="space-y-2">
-              {client.notes.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">Izoh yo'q</p>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" /> Izohlar ({client.notes?.length || 0})
+              </h3>
+            </div>
+            <div className="flex gap-2 mb-3">
+              <input
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Yangi izoh..."
+                className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <button
+                onClick={handleAddNote}
+                disabled={loading}
+                className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover"
+              >
+                Qo'shish
+              </button>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {(!client.notes || client.notes.length === 0) ? (
+                <p className="text-xs text-muted-foreground italic text-center py-4">Izohlar yo'q</p>
               ) : (
                 [...client.notes].reverse().map((n) => (
-                  <div key={n.id} className="rounded-lg bg-secondary/40 border border-border p-3">
-                    <p className="text-sm text-foreground">{n.text}</p>
-                    <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                      <span>
-                        {n.authorName}{" "}
-                        <span className="px-1.5 py-0.5 rounded bg-primary-soft text-primary ml-1">
-                          {n.authorRole === "director" ? "direktor" : "hodim"}
-                        </span>
-                      </span>
+                  <div key={n.id} className="rounded-xl bg-secondary/30 border border-border/50 p-3">
+                    <p className="text-sm text-foreground leading-relaxed">{n.text}</p>
+                    <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
+                      <span className="font-medium text-primary">{n.authorName}</span>
                       <span>{new Date(n.createdAt).toLocaleString("uz-UZ")}</span>
                     </div>
                   </div>
@@ -653,19 +411,16 @@ export function ClientDetailDialog({
             </div>
           </section>
 
-          {/* Move between stages within this category */}
+          {/* Status management */}
           <section className="border-t border-border pt-5">
-            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-              <ArrowRightLeft className="w-4 h-4" /> Holatga ko'chirish
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <ArrowRightLeft className="w-4 h-4" /> Holatni o'zgartirish
             </h3>
-            <p className="text-xs text-muted-foreground mb-2">
-              Mijozni shu bo'lim ichidagi bosqichlardan biriga ko'chirish
-            </p>
             <div className="flex gap-2">
               <select
                 value={moveStage}
                 onChange={(e) => setMoveStage(e.target.value as ClientStage)}
-                className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {(["new", "no_answer", "talked", "sold"] as ClientStage[]).map((st) => (
                   <option key={st} value={st}>{STAGE_LABELS[st]}</option>
@@ -673,32 +428,36 @@ export function ClientDetailDialog({
               </select>
               <button
                 onClick={handleMoveStage}
-                disabled={moveStage === client.stage}
-                className="px-3 py-2 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={loading || moveStage === client.stage}
+                className="px-4 py-2 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 disabled:opacity-40"
               >
-                Ko'chirish
+                O'zgartirish
               </button>
             </div>
           </section>
 
-          {viewerRole === "director" && (
-            <section className="border-t border-border pt-5">
+            <section className="border-t border-border pt-5 flex justify-center">
               <button
-                onClick={() => {
-                  if (confirm("Mijozni o'chirishni tasdiqlaysizmi?")) {
-                    update((s) => ({ ...s, clients: s.clients.filter((c) => c.id !== client.id) }));
-                    toast.success("Mijoz o'chirildi");
-                    onClose();
-                  }
-                }}
-                className="inline-flex items-center gap-2 text-sm text-destructive hover:underline"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={loading}
+                className="inline-flex items-center gap-2 text-xs text-destructive hover:underline font-medium"
               >
-                <Trash2 className="w-4 h-4" /> Mijozni o'chirish
+                <Trash2 className="w-3.5 h-3.5" /> Mijozni o'chirib tashlash
               </button>
             </section>
-          )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Mijozni o'chirish"
+        description="Ushbu mijozni o'chirishni tasdiqlaysizmi? Bu harakatni ortga qaytarib bo'lmaydi."
+        confirmLabel="O'chirish"
+        tone="destructive"
+        loading={loading}
+      />
     </div>
   );
 }

@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useAppState } from "@/lib/store";
-import { FilePlus, Pencil, Trash2, X, ExternalLink, Plus, Minus, MoveUp, MoveDown } from "lucide-react";
+import { FilePlus, Pencil, Trash2, X, ExternalLink, Plus, Minus, MoveUp, MoveDown, ClipboardCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import type { FormTemplate } from "@/lib/types";
 
-export const Route = createFileRoute("/director/forms")({
+export const Route = createFileRoute("/employee/forms")({
   component: FormsPage,
 });
 
@@ -21,6 +21,7 @@ function FormsPage() {
   const [confirmingDelete, setConfirmingDelete] = useState<FormTemplate | null>(null);
 
   const fetchForms = async () => {
+    setLoading(true);
     try {
       const list = await API.forms();
       setForms(list);
@@ -62,17 +63,27 @@ function FormsPage() {
 
   return (
     <div className="p-6 md:p-10">
-      <header className="flex items-start justify-between mb-10 flex-wrap gap-6">
+      <header className="flex items-start justify-between mb-10 flex-wrap gap-6 text-balance">
         <div>
-          <h1 className="text-4xl font-black text-foreground tracking-tight">Formalar</h1>
-          <p className="text-muted-foreground mt-1.5 font-medium">Lidlar yig'ish uchuun ochiq formalar</p>
+          <h1 className="text-4xl font-black text-foreground tracking-tight flex items-center gap-3 text-balance">
+             <ClipboardCheck className="w-10 h-10 text-primary" /> Formalar
+          </h1>
+          <p className="text-muted-foreground mt-1.5 font-medium">Lidlar yig'ish uchun ochiq formalar va ularning sozlamalari</p>
         </div>
-        <button
-          onClick={() => { setEditing(null); setShowDialog(true); }}
-          className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
-        >
-          <FilePlus className="w-5 h-5" /> Yangi forma
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={fetchForms}
+            className="p-3 rounded-2xl border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary/30 hover:shadow-sm transition-all"
+          >
+            <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={() => { setEditing(null); setShowDialog(true); }}
+            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            <FilePlus className="w-5 h-5" /> Yangi forma
+          </button>
+        </div>
       </header>
 
       {forms.length === 0 ? (
@@ -90,15 +101,17 @@ function FormsPage() {
           </button>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {forms.map((form) => (
             <div
               key={form.id}
-              className="group bg-card border border-border rounded-[32px] p-6 hover:shadow-glow transition-all relative overflow-hidden"
+              className="group bg-card border border-border rounded-[28px] p-6 hover:shadow-glow hover:border-primary/30 transition-all relative overflow-hidden flex flex-col h-full"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-primary-soft flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-sm">
-                  <FilePlus className="w-6 h-6" />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
+              
+              <div className="flex items-start justify-between mb-6 relative z-10">
+                <div className="w-14 h-14 rounded-[20px] bg-primary-soft flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-sm">
+                  <ClipboardCheck className="w-7 h-7" />
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <a
@@ -127,13 +140,23 @@ function FormsPage() {
                 </div>
               </div>
               
-              <h3 className="text-xl font-bold text-foreground mb-2 truncate group-hover:text-primary transition-colors">{form.title}</h3>
-              <p className="text-sm text-muted-foreground font-medium mb-5">
-                {form.fields.length} ta maydon &bull; {state.categories.find(c => c.id === form.targetCategoryId)?.name || "Noma'lum bo'lim"}
-              </p>
+              <h3 className="text-xl font-bold text-foreground mb-4 truncate group-hover:text-primary transition-colors relative z-10">{form.title}</h3>
               
-              <div className="flex items-center justify-between mt-auto">
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest bg-secondary px-2.5 py-1 rounded-full">
+              <div className="space-y-3 relative z-10 mb-6">
+                 <div className="bg-secondary/40 p-3 rounded-2xl border border-border/50">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Bo'lim (Target)</p>
+                    <p className="text-sm font-bold text-foreground truncate">
+                       {state.categories.find(c => c.id === form.targetCategoryId)?.name || "Noma'lum"}
+                    </p>
+                 </div>
+                 <div className="bg-secondary/40 p-3 rounded-2xl border border-border/50">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Maydonlar</p>
+                    <p className="text-sm font-bold text-foreground">{form.fields.length} ta maydon</p>
+                 </div>
+              </div>
+              
+              <div className="flex items-center justify-between mt-auto relative z-10">
+                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest bg-secondary px-2.5 py-1 rounded-full">
                   {new Date(form.createdAt).toLocaleDateString("uz-UZ")}
                 </span>
                 <button
@@ -143,7 +166,7 @@ function FormsPage() {
                   }}
                   className="text-[10px] text-primary hover:underline font-black uppercase tracking-widest"
                 >
-                  Havolani nusxalash
+                  Nusxalash
                 </button>
               </div>
             </div>
@@ -179,7 +202,7 @@ function FormsPage() {
         onClose={() => setConfirmingDelete(null)}
         onConfirm={handleDelete}
         title="Formani o'chirish"
-        description={`"${confirmingDelete?.title}" formasini o'chirishga aminmisiz? Bu ushbu forma orqali yuborilgan lidlarga ta'sir qilmaydi, lekin yangi lidlar yuborib bo'lmaydi.`}
+        description={`"${confirmingDelete?.title}" formasini o'chirishga aminmisiz? Bu mijozlarga ta'sir qilmaydi.`}
         confirmLabel="O'chirish"
         tone="destructive"
         loading={actionLoading}
@@ -235,7 +258,7 @@ function FormEditDialog({
     <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-card rounded-[32px] border border-border shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between p-6 border-b border-border bg-secondary/10">
-          <h2 className="text-xl font-bold text-foreground">
+          <h2 className="text-xl font-bold text-foreground text-balance">
             {form ? "Formani tahrirlash" : "Yangi forma yaratish"}
           </h2>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary transition-colors">
@@ -243,7 +266,7 @@ function FormEditDialog({
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
              <div className="space-y-1.5">
                 <label className="text-sm font-bold text-foreground/70 ml-1">Forma nomi</label>
                 <input
@@ -293,7 +316,7 @@ function FormEditDialog({
                   <input
                     value={field.label}
                     onChange={e => updateField(idx, { label: e.target.value })}
-                    placeholder="Maydon nomi (Masalan: Ism familya)"
+                    placeholder="Maydon nomi"
                     className="flex-1 px-3 py-2 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/20 outline-none text-sm font-medium"
                   />
                   <select
@@ -303,13 +326,13 @@ function FormEditDialog({
                   >
                     <option value="text">Matn</option>
                     <option value="phone">Tel raqam</option>
-                    <option value="select">Tanlov (Select)</option>
-                    <option value="textarea">Uzoq matn</option>
+                    <option value="select">Select</option>
+                    <option value="textarea">Textarea</option>
                   </select>
                   <button 
                     type="button" 
                     onClick={() => removeField(idx)}
-                    className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all"
+                    className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all outline-none"
                   >
                     <Minus className="w-4 h-4" />
                   </button>

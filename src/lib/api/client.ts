@@ -1,5 +1,6 @@
 // Lightweight REST + WebSocket client for the NestJS backend.
 // Reads VITE_API_URL (e.g. https://api.example.com). Falls back to same origin /api.
+import { Role } from "../types";
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "";
 const TOKEN_KEY = "agency_crm_token";
@@ -47,41 +48,154 @@ export async function api<T = unknown>(
 export const API = {
   // auth
   login: (login: string, password: string) =>
-    api<{ token: string; user: { sub: string; role: "director" | "employee"; name: string; login: string } }>(
+    api<{ accessToken: string }>(
       "/auth/login",
-      { method: "POST", json: { login, password } },
+      { method: "POST", json: { phoneNumber: login, password } },
     ),
-  me: () => api<{ user: { sub: string; role: "director" | "employee"; name: string; login: string } }>("/auth/me"),
+  me: () => api<any>("/users/me").then(u => {
+    // CRM returns user info directly, map it to frontend expectations
+    return {
+      user: {
+        sub: u.id,
+        role: u.role.toLowerCase() as Role,
+        name: `${u.firstName} ${u.lastName}`.trim(),
+        login: u.phoneNumber
+      }
+    };
+  }),
+  updateProfile: (data: { firstName?: string; lastName?: string; phoneNumber?: string }) =>
+    api("/users/profile", { method: "PATCH", json: data }),
+  changePassword: (data: any) =>
+    api("/users/director/change-password", { method: "PATCH", json: data }),
+  activateUser: (id: string) => api(`/users/${id}/activate`, { method: "POST" }),
+  deactivateUser: (id: string) => api(`/users/${id}/deactivate`, { method: "POST" }),
 
-  // employees
-  employees: () => api<any[]>("/employees"),
-  createEmployee: (data: any) => api("/employees", { method: "POST", json: data }),
-  updateEmployee: (id: string, data: any) => api(`/employees/${id}`, { method: "PATCH", json: data }),
-  deleteEmployee: (id: string) => api(`/employees/${id}`, { method: "DELETE" }),
+  // employees -> /users/employees
+  employees: () => api<any[]>("/users/employees").then(list => list.map(e => ({
+    ...e,
+    phone: e.phoneNumber,
+    login: e.phoneNumber,
+    isActive: e.isActive
+  }))),
 
-  // categories
-  categories: () => api<any[]>("/categories"),
-  createCategory: (data: any) => api("/categories", { method: "POST", json: data }),
-  deleteCategory: (id: string) => api(`/categories/${id}`, { method: "DELETE" }),
+  // categories -> /departments
+  categories: () => api<any[]>("/departments").then(list => list.map(c => ({
+    id: c.id,
+    name: c.name,
+    isArchive: c.isArchive
+  }))),
+
+  // forms -> /forms
+  forms: () => api<any[]>("/forms").then(list => list.map(f => ({
+    id: f.id,
+    title: f.title,
+    targetCategoryId: f.targetDepartmentId,
+    fields: f.fields,
+    createdAt: f.createdAt
+  }))),
+  createForm: (data: any) => api("/forms", {
+    method: "POST",
+    json: {
+      title: data.title,
+      targetDepartmentId: data.targetCategoryId,
+      fields: data.fields
+    }
+  }),
+  updateForm: (id: string, data: any) => api(`/forms/${id}`, {
+    method: "PATCH",
+    json: {
+      title: data.title,
+      targetDepartmentId: data.targetCategoryId,
+      fields: data.fields
+    }
+  }),
+  deleteForm: (id: string) => api(`/forms/${id}`, { method: "DELETE" }),
+  createEmployee: (data: any) => {
+    return api("/users/employees", { 
+      method: "POST", 
+      json: { 
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phoneNumber: data.phoneNumber || data.phone,
+        password: data.password
+      } 
+    });
+  },
+  updateEmployee: (id: string, data: any) => {
+    return api(`/users/employees/${id}`, { 
+      method: "PATCH", 
+      json: { 
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phoneNumber: data.phoneNumber || data.phone,
+        password: data.password
+      } 
+    });
+  },
+  deleteEmployee: (id: string) => api(`/users/${id}/deactivate`, { method: "POST" }),
+
+  createCategory: (data: any) => api("/departments", { method: "POST", json: data }),
+  updateCategory: (id: string, name: string) => api(`/departments/${id}`, { method: "PATCH", json: { name } }),
+  toggleArchiveCategory: (id: string) => api(`/departments/${id}/archive`, { method: "PATCH" }),
+  deleteCategory: (id: string) => api(`/departments/${id}`, { method: "DELETE" }),
 
   // forms
-  forms: () => api<any[]>("/forms"),
   publicForm: (id: string) => api<any>(`/forms/public/${id}`),
-  createForm: (data: any) => api("/forms", { method: "POST", json: data }),
-  updateForm: (id: string, data: any) => api(`/forms/${id}`, { method: "PATCH", json: data }),
-  deleteForm: (id: string) => api(`/forms/${id}`, { method: "DELETE" }),
 
   // clients
   clients: (q: { categoryId?: string; stage?: string } = {}) => {
-    const sp = new URLSearchParams(q as Record<string, string>).toString();
-    return api<any[]>(`/clients${sp ? `?${sp}` : ""}`);
+    const params: any = {};
+    if (q.categoryId) params.departmentId = q.categoryId;
+    if (q.stage) params.stage = q.stage;
+    const sp = new URLSearchParams(params).toString();
+    return api<any[]>(`/clients${sp ? `?${sp}` : ""}`).then(list => list.map(c => ({
+      ...c,
+      name: c.fullName,
+      phone: c.phoneNumber,
+      categoryId: c.departmentId,
+      sale: {
+        status: c.saleStatus.toLowerCase(),
+        totalAmount: c.saleTotalAmount,
+        payments: c.payments || [],
+        nextPaymentAt: c.nextPaymentAt,
+        soldAt: c.soldAt
+      }
+    })));
   },
-  client: (id: string) => api<any>(`/clients/${id}`),
-  createClient: (data: any) => api("/clients", { method: "POST", json: data }),
-  updateClient: (id: string, data: any) => api(`/clients/${id}`, { method: "PATCH", json: data }),
+  client: (id: string) => api<any>(`/clients/${id}`).then(c => ({
+    ...c,
+    name: c.fullName,
+    phone: c.phoneNumber,
+    categoryId: c.departmentId,
+    sale: {
+      status: c.saleStatus.toLowerCase(),
+      totalAmount: c.saleTotalAmount,
+      payments: c.payments || [],
+      nextPaymentAt: c.nextPaymentAt,
+      soldAt: c.soldAt
+    }
+  })),
+  createClient: (data: any) => api("/clients", { 
+    method: "POST", 
+    json: { 
+      fullName: data.name || data.fullName,
+      phoneNumber: data.phone || data.phoneNumber,
+      departmentId: data.categoryId || data.departmentId,
+      description: data.description || ""
+    } 
+  }),
+  updateClient: (id: string, data: any) => api(`/clients/${id}`, { 
+    method: "PATCH", 
+    json: {
+      fullName: data.name || data.fullName,
+      phoneNumber: data.phone || data.phoneNumber,
+      departmentId: data.categoryId || data.departmentId,
+      ...data
+    }
+  }),
   deleteClient: (id: string) => api(`/clients/${id}`, { method: "DELETE" }),
-  callStart: (id: string) => api(`/clients/${id}/call/start`, { method: "POST" }),
-  callEnd: (id: string, remindAt?: string) => api(`/clients/${id}/call/end`, { method: "POST", json: { remindAt } }),
+  callStart: (id: string) => Promise.resolve(), // Not supported in current CRM backend
+  callEnd: (id: string, remindAt?: string) => Promise.resolve(), // Not supported in current CRM backend
   addNote: (id: string, text: string) => api(`/clients/${id}/notes`, { method: "POST", json: { text } }),
   addPayment: (id: string, amount: number) => api(`/clients/${id}/payments`, { method: "POST", json: { amount } }),
   setSale: (id: string, data: any) => api(`/clients/${id}/sale`, { method: "PATCH", json: data }),
@@ -89,31 +203,72 @@ export const API = {
   // attendance
   attendance: (q: { employeeId?: string; date?: string } = {}) => {
     const sp = new URLSearchParams(q as Record<string, string>).toString();
-    return api<any[]>(`/attendance${sp ? `?${sp}` : ""}`);
+    return api<any[]>(`/attendance${sp ? `?${sp}` : ""}`).then(list => list.map(a => ({
+      ...a,
+      employeeName: a.employee ? `${a.employee.firstName} ${a.employee.lastName}`.trim() : "Unknown",
+      photo: a.checkInPhoto || a.photo, // Map backend checkInPhoto to frontend photo
+      checkOutPhoto: a.checkOutPhoto,
+    })));
+  },
+  myAttendance: () => {
+    return api<any[]>("/attendance/my").then(list => list.map(a => ({
+      ...a,
+      employeeName: a.employee ? `${a.employee.firstName} ${a.employee.lastName}`.trim() : "Unknown",
+      photo: a.checkInPhoto || a.photo,
+      checkOutPhoto: a.checkOutPhoto,
+    })));
   },
   checkIn: (photo?: string) => api("/attendance/check-in", { method: "POST", json: { photo } }),
   checkOut: (id: string, photo?: string) =>
-    api(`/attendance/${id}/check-out`, { method: "PATCH", json: { photo } }),
+    api(`/attendance/check-out`, { method: "POST", json: { photo } }), // CRM backend automatically handles the persistent session for the current user
 
   // tasks
-  tasks: () => api<any[]>("/tasks"),
-  createTask: (data: any) => api("/tasks", { method: "POST", json: data }),
-  updateTask: (id: string, data: any) => api(`/tasks/${id}`, { method: "PATCH", json: data }),
-  taskSeen: (id: string) => api(`/tasks/${id}/seen`, { method: "PATCH" }),
-  deleteTask: (id: string) => api(`/tasks/${id}`, { method: "DELETE" }),
+  tasks: () => {
+    const mapTask = (t: any) => ({
+      id: t.id,
+      title: t.template?.title || "Untitled",
+      description: t.template?.description || "",
+      employeeId: t.assignedTo,
+      createdAt: t.createdAt,
+      status: t.status.toLowerCase(),
+      // Mapped placeholders for missing CRM fields
+      seenByEmployee: true,
+      seenByDirector: true,
+    });
+    return api<any[]>("/tasks/employee/me")
+      .then(list => list.map(mapTask))
+      .catch(() => api<any[]>("/tasks/director/dashboard").then(list => list.map(mapTask)));
+  },
+  createTask: (data: any) => api("/tasks/template", { 
+    method: "POST", 
+    json: {
+      ...data,
+      assignedTo: data.employeeId,
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default 1 week
+      notifyAt: "09:00" // Default
+    } 
+  }),
+  updateTask: (id: string, data: any) => api(`/tasks/${id}/status`, { 
+    method: "PATCH", 
+    json: { status: data.status.toUpperCase() } 
+  }), 
+  taskSeen: (id: string) => Promise.resolve(), // TODO: Not supported in current CRM backend
+  deleteTask: (id: string) => Promise.resolve(), // TODO: Not supported in current CRM backend
 
-  // stats
-  statsOverview: (employeeId?: string) =>
-    api<any>(`/stats/overview${employeeId ? `?employeeId=${employeeId}` : ""}`),
-  statsSales: (employeeId?: string) =>
-    api<any[]>(`/stats/sales${employeeId ? `?employeeId=${employeeId}` : ""}`),
+  // archive (activity logs)
+  directorArchive: () => api<any[]>("/archive/director"),
+  employeeArchive: () => api<any[]>("/archive/employee"),
 
-  // telegram
-  tgSubscribers: () => api<any[]>("/telegram/subscribers"),
-  tgSend: (chatId: number, text: string) =>
-    api("/telegram/send", { method: "POST", json: { chatId, text } }),
+  // stats - Not supported in current CRM backend
+  statsOverview: (employeeId?: string) => Promise.resolve({}),
+  statsSales: (employeeId?: string) => Promise.resolve([]),
+
+  // telegram - Not supported in current CRM backend
+  tgSubscribers: () => Promise.resolve([]),
+  tgSend: (chatId: number, text: string) => Promise.resolve(),
 
   // public
   publicSubmit: (formId: string, data: Record<string, string>) =>
-    api("/public/submit", { method: "POST", json: { formId, data } }),
+    api(`/forms/submit/${formId}`, { method: "POST", json: data }),
 };

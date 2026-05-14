@@ -13,6 +13,7 @@ export interface Employee {
   phone: string;
   login: string;
   password: string;
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -81,6 +82,8 @@ export type ClientStage = "new" | "no_answer" | "talked" | "sold";
 
 export interface Client {
   id: string;
+  name: string;
+  phone: string;
   formId: string;
   formTitle: string;
   categoryId: string;

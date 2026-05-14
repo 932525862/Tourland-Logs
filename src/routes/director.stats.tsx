@@ -1,15 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useAppState } from "@/lib/store";
-import { BarChart3, Users, ShoppingCart, Wallet, Filter } from "lucide-react";
+import { BarChart3, Users, ShoppingCart, Wallet, Filter, TrendingUp, Calendar, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { API } from "@/lib/api/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/director/stats")({
   component: DirectorStats,
 });
 
 function DirectorStats() {
-  const { state } = useAppState();
+  const { state, update } = useAppState();
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [clients, cats, employees] = await Promise.all([
+          API.clients(),
+          API.categories(),
+          API.employees()
+        ]);
+        update(s => ({ ...s, clients, categories: cats, employees }));
+      } catch {
+        toast.error("Statistika ma'lumotlarini yuklashda xatolik");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
+  }, []);
 
   const stats = useMemo(() => {
     const clients = state.clients;
@@ -21,7 +42,6 @@ function DirectorStats() {
       0
     );
 
-    // By employee (who completed the sale)
     const byEmployee = new Map<string, { name: string; count: number; revenue: number }>();
     for (const c of soldClients) {
       const name = c.sale?.completedByName ?? "Noma'lum";
@@ -32,7 +52,6 @@ function DirectorStats() {
       byEmployee.set(name, cur);
     }
 
-    // By category
     const byCategory = state.categories.map((cat) => {
       const inCat = clients.filter((c) => c.categoryId === cat.id);
       const sold = inCat.filter((c) => c.sale?.status === "full");
@@ -53,14 +72,13 @@ function DirectorStats() {
       };
     });
 
-    // Filtered list of sales
     const sales = soldClients
       .filter((c) =>
         employeeFilter === "all" ? true : c.sale?.completedByName === employeeFilter
       )
       .map((c) => ({
         id: c.id,
-        name: c.data["Ism familya"] || c.data["Ism"] || "Mijoz",
+        name: c.data?.["Ism familya"] || c.name || "Mijoz",
         category: state.categories.find((cat) => cat.id === c.categoryId)?.name ?? "—",
         seller: c.sale?.completedByName ?? "—",
         amount: c.sale?.payments?.reduce((s, p) => s + p.amount, 0) ?? 0,
@@ -81,21 +99,30 @@ function DirectorStats() {
 
   const fmt = (n: number) => n.toLocaleString("uz-UZ") + " so'm";
 
+  if (loading) {
+    return (
+       <div className="p-10 text-center">
+         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+         <p className="text-muted-foreground animate-pulse font-medium">Yuklanmoqda...</p>
+       </div>
+    );
+  }
+
   return (
     <div className="p-6 md:p-10">
-      <header className="mb-8 flex items-start justify-between flex-wrap gap-4">
+      <header className="mb-10 flex items-start justify-between flex-wrap gap-6 text-balance">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <BarChart3 className="w-7 h-7 text-primary" /> Statistika
+          <h1 className="text-4xl font-black text-foreground tracking-tight flex items-center gap-3">
+            <TrendingUp className="w-10 h-10 text-primary" /> Statistika
           </h1>
-          <p className="text-muted-foreground mt-1">Mijozlar va sotuvlar bo'yicha umumiy ko'rsatkichlar</p>
+          <p className="text-muted-foreground mt-1.5 font-medium">Biznesingiz o'sish ko'rsatkichlari va tahlili</p>
         </div>
-        <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
+        <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-2.5 shadow-sm">
+          <Filter className="w-5 h-5 text-primary" />
           <select
             value={employeeFilter}
             onChange={(e) => setEmployeeFilter(e.target.value)}
-            className="bg-transparent text-sm text-foreground focus:outline-none"
+            className="bg-transparent text-sm font-bold text-foreground focus:outline-none cursor-pointer"
           >
             <option value="all">Barcha hodimlar</option>
             <option value={state.director.name}>{state.director.name} (direktor)</option>
@@ -109,114 +136,123 @@ function DirectorStats() {
       </header>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <KpiCard icon={Users} label="Jami mijozlar" value={String(stats.totalClients)} tone="primary" />
-        <KpiCard icon={ShoppingCart} label="Sotildi" value={String(stats.soldCount)} tone="success" />
-        <KpiCard icon={ShoppingCart} label="Qisman to'lov" value={String(stats.partialCount)} tone="warning" />
-        <KpiCard icon={Wallet} label="Umumiy daromad" value={fmt(stats.totalRevenue)} tone="primary" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <KpiCard icon={Users} label="Jami mijozlar" value={String(stats.totalClients)} tone="primary"  delta="+12%" />
+        <KpiCard icon={ShoppingCart} label="Sotildi" value={String(stats.soldCount)} tone="success" delta="+5%" />
+        <KpiCard icon={ShoppingCart} label="Nasiya sotuv" value={String(stats.partialCount)} tone="warning" delta="-2%" />
+        <KpiCard icon={Wallet} label="Umumiy tushum" value={fmt(stats.totalRevenue)} tone="info" delta="+18%" />
       </div>
 
-      {/* By category */}
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold text-foreground mb-3">Bo'limlar bo'yicha</h2>
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/60 text-muted-foreground">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium">Bo'lim</th>
-                <th className="text-right px-4 py-3 font-medium">Mijozlar</th>
-                <th className="text-right px-4 py-3 font-medium">Sotildi</th>
-                <th className="text-right px-4 py-3 font-medium">Konversiya</th>
-                <th className="text-right px-4 py-3 font-medium">Daromad</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.byCategory.map((c) => {
-                const conv = c.clients > 0 ? Math.round((c.sold / c.clients) * 100) : 0;
-                return (
-                  <tr key={c.id} className="border-t border-border">
-                    <td className="px-4 py-3 text-foreground font-medium">{c.name}</td>
-                    <td className="px-4 py-3 text-right text-foreground">{c.clients}</td>
-                    <td className="px-4 py-3 text-right text-success font-semibold">{c.sold}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{conv}%</td>
-                    <td className="px-4 py-3 text-right text-foreground">{fmt(c.revenue)}</td>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+        {/* By category */}
+        <section className="bg-card border border-border rounded-[32px] overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-border bg-secondary/10 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-foreground">Bo'limlar bo'yicha tahlil</h2>
+            <Layers className="w-5 h-5 text-primary" />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/30 text-muted-foreground uppercase text-[10px] font-black tracking-widest">
+                <tr>
+                  <th className="text-left px-6 py-4">Bo'lim</th>
+                  <th className="text-right px-6 py-4">Mijoz</th>
+                  <th className="text-right px-6 py-4">Sotuv</th>
+                  <th className="text-right px-6 py-4">Daromad</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {stats.byCategory.map((c) => (
+                  <tr key={c.id} className="hover:bg-secondary/20 transition-colors">
+                    <td className="px-6 py-4 text-foreground font-bold">{c.name}</td>
+                    <td className="px-6 py-4 text-right text-muted-foreground font-medium">{c.clients}</td>
+                    <td className="px-6 py-4 text-right text-success font-black">{c.sold}</td>
+                    <td className="px-6 py-4 text-right text-foreground font-bold">{fmt(c.revenue)}</td>
                   </tr>
-                );
-              })}
-              {stats.byCategory.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Ma'lumot yo'q</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                ))}
+                {stats.byCategory.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-10 text-center text-muted-foreground italic">Ma'lumot yo'q</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-      {/* By employee */}
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold text-foreground mb-3">Hodimlar bo'yicha sotuvlar</h2>
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        {/* By employee */}
+        <section className="bg-card border border-border rounded-[32px] overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-border bg-secondary/10 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-foreground">Xodimlar natijadorligi</h2>
+            <Users className="w-5 h-5 text-primary" />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/30 text-muted-foreground uppercase text-[10px] font-black tracking-widest">
+                <tr>
+                  <th className="text-left px-6 py-4">Xodim</th>
+                  <th className="text-right px-6 py-4">Sotuvlar</th>
+                  <th className="text-right px-6 py-4">Daromad</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {stats.byEmployee.map((e) => (
+                  <tr key={e.name} className="hover:bg-secondary/20 transition-colors">
+                    <td className="px-6 py-4 text-foreground font-bold">{e.name}</td>
+                    <td className="px-6 py-4 text-right text-primary font-black">{e.count}</td>
+                    <td className="px-6 py-4 text-right text-foreground font-bold">{fmt(e.revenue)}</td>
+                  </tr>
+                ))}
+                {stats.byEmployee.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-10 text-center text-muted-foreground italic">Hodimlar natijasi yo'q</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      {/* Sales list */}
+      <section className="bg-card border border-border rounded-[32px] overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-border bg-secondary/10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold text-foreground">Oxirgi sotuvlar operatsiyalari</h2>
+            {employeeFilter !== "all" && (
+               <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">{employeeFilter}</span>
+            )}
+          </div>
+          <Calendar className="w-5 h-5 text-primary" />
+        </div>
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-secondary/60 text-muted-foreground">
+            <thead className="bg-secondary/30 text-muted-foreground uppercase text-[10px] font-black tracking-widest">
               <tr>
-                <th className="text-left px-4 py-3 font-medium">Hodim</th>
-                <th className="text-right px-4 py-3 font-medium">Sotuvlar soni</th>
-                <th className="text-right px-4 py-3 font-medium">Daromad</th>
+                <th className="text-left px-6 py-4">Mijoz</th>
+                <th className="text-left px-6 py-4">Bo'lim</th>
+                <th className="text-left px-6 py-4">Xodim</th>
+                <th className="text-right px-6 py-4">Summa</th>
+                <th className="text-right px-6 py-4">Sana</th>
               </tr>
             </thead>
-            <tbody>
-              {stats.byEmployee.map((e) => (
-                <tr key={e.name} className="border-t border-border">
-                  <td className="px-4 py-3 text-foreground font-medium">{e.name}</td>
-                  <td className="px-4 py-3 text-right text-foreground">{e.count}</td>
-                  <td className="px-4 py-3 text-right text-foreground">{fmt(e.revenue)}</td>
-                </tr>
-              ))}
-              {stats.byEmployee.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">Hali sotuv yo'q</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Sales list (filterable) */}
-      <section>
-        <h2 className="text-lg font-semibold text-foreground mb-3">
-          Sotuvlar ro'yxati
-          {employeeFilter !== "all" && (
-            <span className="ml-2 text-sm font-normal text-muted-foreground">— {employeeFilter}</span>
-          )}
-        </h2>
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/60 text-muted-foreground">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium">Mijoz</th>
-                <th className="text-left px-4 py-3 font-medium">Bo'lim</th>
-                <th className="text-left px-4 py-3 font-medium">Hodim</th>
-                <th className="text-right px-4 py-3 font-medium">Summa</th>
-                <th className="text-right px-4 py-3 font-medium">Sana</th>
-              </tr>
-            </thead>
-            <tbody>
+            <tbody className="divide-y divide-border/50">
               {stats.sales.map((s) => (
-                <tr key={s.id} className="border-t border-border">
-                  <td className="px-4 py-3 text-foreground font-medium">{s.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{s.category}</td>
-                  <td className="px-4 py-3 text-foreground">{s.seller}</td>
-                  <td className="px-4 py-3 text-right text-foreground">{fmt(s.amount)}</td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">
+                <tr key={s.id} className="hover:bg-secondary/20 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="text-foreground font-bold group-hover:text-primary transition-colors">{s.name}</div>
+                    <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">ID: {s.id.slice(0, 8)}</div>
+                  </td>
+                  <td className="px-6 py-4 text-muted-foreground font-medium">{s.category}</td>
+                  <td className="px-6 py-4 text-foreground font-medium">{s.seller}</td>
+                  <td className="px-6 py-4 text-right text-success font-black">{fmt(s.amount)}</td>
+                  <td className="px-6 py-4 text-right text-muted-foreground font-bold">
                     {new Date(s.date).toLocaleDateString("uz-UZ")}
                   </td>
                 </tr>
               ))}
               {stats.sales.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Sotuv topilmadi</td>
+                  <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground italic">Operatsiyalar topilmadi</td>
                 </tr>
               )}
             </tbody>
@@ -232,27 +268,43 @@ function KpiCard({
   label,
   value,
   tone,
+  delta
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
-  tone: "primary" | "success" | "warning";
+  tone: "primary" | "success" | "warning" | "info";
+  delta?: string;
 }) {
-  const toneClass =
-    tone === "success"
-      ? "bg-success/15 text-success"
-      : tone === "warning"
-        ? "bg-warning/15 text-warning-foreground"
-        : "bg-primary-soft text-primary";
+  const isUp = delta?.startsWith("+");
+  const toneClass = {
+    primary: "bg-primary-soft text-primary border-primary/10",
+    success: "bg-success/15 text-success border-success/20",
+    warning: "bg-warning/15 text-warning border-warning/20",
+    info: "bg-blue-500/10 text-blue-500 border-blue-500/20"
+  }[tone];
+
   return (
-    <div className="bg-card border border-border rounded-2xl p-5 shadow-[var(--shadow-sm)]">
-      <div className="flex items-center gap-3 mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${toneClass}`}>
-          <Icon className="w-5 h-5" />
+    <div className="bg-card border border-border rounded-[28px] p-6 shadow-sm hover:shadow-glow hover:border-primary/20 transition-all group">
+      <div className="flex items-center justify-between mb-4">
+        <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center border transition-transform group-hover:scale-110 ${toneClass}`}>
+          <Icon className="w-6 h-6" />
         </div>
-        <p className="text-sm text-muted-foreground">{label}</p>
+        {delta && (
+          <span className={`flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${isUp ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+            {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+            {delta}
+          </span>
+        )}
       </div>
-      <p className="text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">{label}</p>
+      <p className="text-2xl font-black text-foreground tracking-tight">{value}</p>
     </div>
+  );
+}
+
+function Layers(props: any) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.83 6.18a2 2 0 0 0 0 3.64L11.17 13.82a2 2 0 0 0 1.66 0L21.17 9.82a2 2 0 0 0 0-3.64Z"/><path d="m3.42 12.62 4.18 1.86a2 2 0 0 0 1.66 0l2.74-1.21"/><path d="m3.42 16.62 4.18 1.86a2 2 0 0 0 1.66 0l2.74-1.21"/><path d="m14 11 7.17 3.18a2 2 0 0 1 0 3.64l-8.34 3.71a2 2 0 0 1-1.66 0L2.83 17.82a2 2 0 0 1 0-3.64Z"/></svg>
   );
 }

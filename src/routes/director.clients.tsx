@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { useAppState, addCategory, deleteCategory } from "@/lib/store";
+import { useState, useMemo, useEffect } from "react";
+import { useAppState } from "@/lib/store";
 import { ClientDetailDialog } from "@/components/ClientDetailDialog";
 import { AddClientDialog } from "@/components/AddClientDialog";
-import { FolderPlus, User as UserIcon, Bell, UserPlus } from "lucide-react";
+import { ClientCard } from "@/components/ClientCard";
+import { UserPlus, Search, RefreshCw, Layers } from "lucide-react";
 import { toast } from "sonner";
 import type { Client, ClientStage } from "@/lib/types";
+import { API } from "@/lib/api/client";
 
 const STAGES: { id: ClientStage; label: string }[] = [
   { id: "new", label: "Yangi" },
@@ -20,119 +22,155 @@ export const Route = createFileRoute("/director/clients")({
 
 function DirectorClients() {
   const { state, update } = useAppState();
-  const [activeCat, setActiveCat] = useState(state.categories[0]?.id ?? "");
+  const [activeCat, setActiveCat] = useState("");
   const [stage, setStage] = useState<ClientStage>("new");
   const [openClient, setOpenClient] = useState<Client | null>(null);
-  const [showAddCat, setShowAddCat] = useState(false);
-  const [newCatName, setNewCatName] = useState("");
   const [showAddClient, setShowAddClient] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
-  const currentCat = state.categories.find((c) => c.id === activeCat) ?? state.categories[0];
-  const inCat = useMemo(
-    () => state.clients.filter((c) => c.categoryId === currentCat?.id),
-    [state.clients, currentCat]
-  );
-  const filtered = useMemo(() => inCat.filter((c) => c.stage === stage), [inCat, stage]);
-  const counts: Record<ClientStage, number> = {
-    new: inCat.filter((c) => c.stage === "new").length,
-    no_answer: inCat.filter((c) => c.stage === "no_answer").length,
-    talked: inCat.filter((c) => c.stage === "talked").length,
-    sold: inCat.filter((c) => c.stage === "sold").length,
+  const fetchAll = async () => {
+    setLoading(true);
+    try {
+      const [cats, clients] = await Promise.all([
+        API.categories(),
+        API.clients()
+      ]);
+      update(s => ({ ...s, categories: cats, clients }));
+      if (!activeCat && cats.length > 0) {
+        setActiveCat(cats[0].id);
+      }
+    } catch (err) {
+      toast.error("Ma'lumotlarni yuklashda xatolik");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchAll();
+  }, []);
+
+  const visibleCats = state.categories.filter(c => !c.isArchive);
+  const currentCat = visibleCats.find((c) => c.id === activeCat) || visibleCats[0];
+  
+  const filtered = useMemo(() => {
+    return state.clients.filter((c) => {
+      const matchesCat = c.categoryId === currentCat?.id;
+      const matchesStage = c.stage === stage;
+      const matchesSearch = !search || 
+        (c.name || "").toLowerCase().includes(search.toLowerCase()) || 
+        (c.phone || "").includes(search);
+      return matchesCat && matchesStage && matchesSearch;
+    });
+  }, [state.clients, currentCat, stage, search]);
+
+  const counts = useMemo(() => {
+    const inCat = state.clients.filter(c => c.categoryId === currentCat?.id);
+    return {
+      new: inCat.filter((c) => c.stage === "new").length,
+      no_answer: inCat.filter((c) => c.stage === "no_answer").length,
+      talked: inCat.filter((c) => c.stage === "talked").length,
+      sold: inCat.filter((c) => c.stage === "sold").length,
+    };
+  }, [state.clients, currentCat]);
 
   return (
     <div className="p-6 md:p-10">
-      <header className="mb-8 flex items-start justify-between flex-wrap gap-4">
+      <header className="mb-10 flex items-start justify-between flex-wrap gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Mijozlar</h1>
-          <p className="text-muted-foreground mt-1">Bo'limlar bo'yicha mijozlar ro'yxati</p>
+          <h1 className="text-4xl font-black text-foreground tracking-tight">Mijozlar</h1>
+          <p className="text-muted-foreground mt-1.5 font-medium">Lidlar oqimi va sotuv operatsiyalari</p>
         </div>
-        <button
-          onClick={() => setShowAddClient(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--gradient-primary)] text-primary-foreground font-medium shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-glow)] transition-all"
-        >
-          <UserPlus className="w-4 h-4" /> Yangi mijoz
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={fetchAll}
+            className="p-3 rounded-2xl border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary/30 hover:shadow-sm transition-all"
+          >
+            <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={() => setShowAddClient(true)}
+            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            <UserPlus className="w-5 h-5" /> Yangi mijoz
+          </button>
+        </div>
       </header>
 
-      <div className="flex flex-wrap gap-2 mb-6 items-center">
-        {state.categories.map((cat) => {
-          const count = state.clients.filter((c) => c.categoryId === cat.id).length;
-          const active = cat.id === currentCat?.id;
-          return (
-            <div key={cat.id} className="group relative">
-              <button
-                onClick={() => setActiveCat(cat.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  active
-                    ? "bg-[var(--gradient-primary)] text-primary-foreground shadow-[var(--shadow-md)]"
-                    : "bg-card border border-border text-foreground hover:border-primary"
-                }`}
-              >
-                {cat.name}
-                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs ${active ? "bg-white/20" : "bg-secondary"}`}>
-                  {count}
-                </span>
-              </button>
-              {!cat.isArchive && state.categories.filter((c) => !c.isArchive).length > 1 && (
-                <button
-                  onClick={() => {
-                    if (confirm(`"${cat.name}" bo'limini o'chirasizmi? Mijozlar boshqa bo'limga ko'chiriladi.`)) {
-                      update((s) => deleteCategory(s, cat.id));
-                      if (activeCat === cat.id) setActiveCat(state.categories[0]?.id ?? "");
-                      toast.success("Bo'lim o'chirildi");
-                    }
-                  }}
-                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs"
-                  aria-label="O'chirish"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          );
-        })}
-        <button
-          onClick={() => setShowAddCat(true)}
-          className="px-3 py-2 rounded-full text-sm font-medium border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary transition-colors inline-flex items-center gap-1.5"
-        >
-          <FolderPlus className="w-4 h-4" /> Bo'lim qo'shish
-        </button>
+      {/* Search & Tabs */}
+      <div className="flex flex-col xl:flex-row gap-6 mb-10">
+        <div className="flex-1 relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Mijoz ismi yoki tel raqami orqali qidirish..."
+            className="w-full pl-12 pr-4 py-4 rounded-[20px] border border-border bg-card focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/30 transition-all font-medium text-lg"
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar bg-secondary/30 p-2 rounded-[24px] border border-border/50">
+          {visibleCats.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCat(cat.id)}
+              className={`px-6 py-3 rounded-[18px] text-sm font-bold whitespace-nowrap transition-all ${
+                cat.id === currentCat?.id
+                  ? "bg-card text-primary shadow-md scale-[1.02]"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              }`}
+            >
+              {cat.name}
+            </button>
+          ))}
+          {visibleCats.length === 0 && <p className="px-4 py-2 text-xs text-muted-foreground italic">Bo'limlar mavjud emas</p>}
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-1 mb-6 p-1 bg-secondary/60 rounded-lg w-fit">
+      {/* Stage selector */}
+      <div className="flex flex-wrap gap-1.5 mb-10 p-1.5 bg-secondary/50 rounded-[22px] w-fit border border-border/40">
         {STAGES.map((s) => (
           <button
             key={s.id}
             onClick={() => setStage(s.id)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              stage === s.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            className={`px-6 py-2.5 rounded-[16px] text-sm font-black uppercase tracking-widest transition-all ${
+              stage === s.id 
+                ? "bg-card text-foreground shadow-sm scale-[1.02]" 
+                : "text-muted-foreground hover:text-foreground hover:bg-card/30"
             }`}
           >
-            {s.label} <span className="ml-1 text-xs opacity-70">{counts[s.id]}</span>
+            {s.label} <span className="ml-2 text-[10px] opacity-40 bg-secondary px-2 py-0.5 rounded-full">{counts[s.id]}</span>
           </button>
         ))}
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="bg-card border border-dashed border-border rounded-2xl p-12 text-center">
-          <p className="text-muted-foreground">
-            Bu bo'limda mijoz yo'q. Forma orqali yangi mijozlar avtomatik qo'shiladi.
-          </p>
+      {loading && state.clients.length === 0 ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[1,2,3,4,5,6,7,8].map(i => (
+            <div key={i} className="h-44 rounded-[28px] bg-secondary/40 animate-pulse border border-border/50" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-card border border-dashed border-border rounded-[40px] p-24 text-center">
+          <div className="w-24 h-24 bg-secondary rounded-[32px] flex items-center justify-center mx-auto mb-6 text-muted-foreground/30">
+            <Layers className="w-12 h-12" />
+          </div>
+          <h3 className="text-xl font-bold text-foreground mb-2">Mijozlar topilmadi</h3>
+          <p className="text-muted-foreground max-w-sm mx-auto">Siz tanlagan filtrlar bo'yicha hech qanday mijoz aniqlanmadi.</p>
         </div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((c) => (
-            <ClientRow key={c.id} client={c} onClick={() => setOpenClient(c)} />
+            <ClientCard key={c.id} client={c} onClick={() => setOpenClient(c)} />
           ))}
         </div>
       )}
 
       {openClient && (
         <ClientDetailDialog
-          client={state.clients.find((c) => c.id === openClient.id) ?? openClient}
+          client={openClient}
           state={state}
-          update={update}
+          onRefresh={fetchAll}
           onClose={() => setOpenClient(null)}
           viewerRole="director"
           viewerName={state.director.name}
@@ -142,92 +180,11 @@ function DirectorClients() {
       {showAddClient && (
         <AddClientDialog
           state={state}
-          update={update}
           defaultCategoryId={currentCat?.id}
+          onCreated={fetchAll}
           onClose={() => setShowAddClient(false)}
         />
       )}
-
-      {showAddCat && (
-        <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card rounded-2xl border border-border shadow-[var(--shadow-lg)] w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Yangi bo'lim</h2>
-            <input
-              autoFocus
-              value={newCatName}
-              onChange={(e) => setNewCatName(e.target.value)}
-              placeholder="Masalan: Xitoy sayohati"
-              className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring mb-4"
-            />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowAddCat(false)} className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors">
-                Bekor qilish
-              </button>
-              <button
-                onClick={() => {
-                  if (!newCatName.trim()) return;
-                  update((s) => addCategory(s, newCatName.trim()));
-                  toast.success("Bo'lim qo'shildi");
-                  setNewCatName("");
-                  setShowAddCat(false);
-                }}
-                className="px-4 py-2 rounded-lg bg-[var(--gradient-primary)] text-primary-foreground font-medium shadow-[var(--shadow-md)]"
-              >
-                Qo'shish
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  );
-}
-
-export function ClientRow({ client, onClick }: { client: Client; onClick: () => void }) {
-  const name = client.data["Ism familya"] || client.data["Ism"] || "Mijoz";
-  const phone = client.data["Tel raqam"] || client.data["Telefon"] || "";
-  return (
-    <button
-      onClick={onClick}
-      className="text-left bg-card border border-border rounded-xl p-4 hover:shadow-[var(--shadow-md)] hover:border-primary/40 transition-all flex items-center gap-4"
-    >
-      <div className="w-11 h-11 rounded-full bg-primary-soft flex items-center justify-center text-primary shrink-0">
-        <UserIcon className="w-5 h-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-foreground truncate flex items-center gap-2">
-          {client.sale?.status === "partial" && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-bold uppercase tracking-wide">
-              To'liq emas
-            </span>
-          )}
-          {client.sale?.status === "full" && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/15 text-success font-bold uppercase tracking-wide">
-              Sotildi
-            </span>
-          )}
-          <span className="truncate">{name}</span>
-        </p>
-        <p className="text-xs text-muted-foreground truncate">
-          {phone && <>📞 {phone} • </>}
-          {client.formTitle}
-        </p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {client.call.inCallByEmployeeId && (
-          <span className="text-xs px-2 py-1 rounded-full bg-success/15 text-success">
-            Bog'lanmoqda
-          </span>
-        )}
-        {client.call.remindAt && (
-          <span className="text-xs px-2 py-1 rounded-full bg-warning/15 text-warning-foreground inline-flex items-center gap-1">
-            <Bell className="w-3 h-3" /> eslatma
-          </span>
-        )}
-        <span className="text-xs text-muted-foreground hidden sm:inline">
-          {new Date(client.createdAt).toLocaleDateString("uz-UZ")}
-        </span>
-      </div>
-    </button>
   );
 }

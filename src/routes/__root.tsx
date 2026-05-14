@@ -1,5 +1,8 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
+import { useEffect } from "react";
+import { useSession, saveSession, useAppState } from "@/lib/store";
+import { API, getToken, setToken } from "@/lib/api/client";
 
 import appCss from "../styles.css?url";
 
@@ -70,6 +73,36 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const session = useSession();
+  const { update } = useAppState();
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      API.me()
+        .then(({ user }) => {
+          const sessionData: any = { role: user.role };
+          if (user.role === "employee") sessionData.employeeId = user.sub;
+          saveSession(sessionData);
+
+          if (user.role === "director") {
+            update((s: any) => ({
+              ...s,
+              director: { ...s.director, name: user.name, login: user.login },
+            }));
+          } else {
+            API.employees().then((employees: any[]) =>
+              update((s: any) => ({ ...s, employees }))
+            );
+          }
+        })
+        .catch(() => {
+          setToken(null);
+          saveSession(null);
+        });
+    }
+  }, [update]);
+
   return (
     <>
       <Outlet />

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAppState, useSession, saveSession } from "@/lib/store";
+import { API, setToken } from "@/lib/api/client";
 import { Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect } from "react";
@@ -21,28 +22,41 @@ function LoginPage() {
   const navigate = useNavigate();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"director" | "employee">("director");
 
   useEffect(() => {
     if (session?.role === "director") navigate({ to: "/director" });
     else if (session?.role === "employee") navigate({ to: "/employee" });
   }, [session, navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login === state.director.login && password === state.director.password) {
-      saveSession({ role: "director" });
-      toast.success("Xush kelibsiz, " + state.director.name);
-      navigate({ to: "/director" });
-      return;
+    try {
+      // 1. Login
+      const { accessToken } = await API.login(login, password);
+      setToken(accessToken);
+
+      // 2. Get Profile
+      const { user } = await API.me();
+
+      // Check if role matches selected role (optional security)
+      if (user.role !== role) {
+        throw new Error("Ruxsat berilmagan: Tanlangan rol mos kelmadi");
+      }
+      
+      // 3. Save Session
+      const sessionData: any = { role: user.role };
+      if (user.role === "employee") sessionData.employeeId = user.sub;
+      saveSession(sessionData);
+
+      toast.success(`Xush kelibsiz, ${user.name}`);
+      
+      if (user.role === "director") navigate({ to: "/director" });
+      else navigate({ to: "/employee" });
+    } catch (err: any) {
+      toast.error(err.message || "Login yoki parol noto'g'ri");
+      setToken(null);
     }
-    const emp = state.employees.find((x) => x.login === login && x.password === password);
-    if (emp) {
-      saveSession({ role: "employee", employeeId: emp.id });
-      toast.success(`Xush kelibsiz, ${emp.firstName}`);
-      navigate({ to: "/employee" });
-      return;
-    }
-    toast.error("Login yoki parol noto'g'ri");
   };
 
   return (
@@ -56,18 +70,37 @@ function LoginPage() {
             CRM tizimiga xush kelibsiz
           </h1>
           <p className="text-center text-sm text-muted-foreground mt-1 mb-6">
-            Login va parolni kiriting
+            Rolingizni tanlang va tizimga kiring
           </p>
+
+          <div className="flex gap-2 p-1 bg-secondary rounded-xl mb-6">
+            <button
+              onClick={() => setRole("director")}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                role === "director" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Direktor
+            </button>
+            <button
+              onClick={() => setRole("employee")}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                role === "employee" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Hodim
+            </button>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground block mb-1.5">Login</label>
+              <label className="text-sm font-medium text-foreground block mb-1.5">Telefon raqam</label>
               <input
                 type="text"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-                placeholder="Login"
+                placeholder="+998901234567"
                 required
               />
             </div>
@@ -84,7 +117,7 @@ function LoginPage() {
             </div>
             <button
               type="submit"
-              className="w-full py-2.5 rounded-lg bg-[var(--gradient-primary)] text-primary-foreground font-medium shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-glow)] transition-all"
+              className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold shadow-lg hover:bg-primary-hover transition-all"
             >
               Kirish
             </button>

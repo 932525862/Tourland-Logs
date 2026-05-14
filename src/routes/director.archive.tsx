@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useAppState, useSession } from "@/lib/store";
-import { Archive, RefreshCw, Clock, Tag, Search } from "lucide-react";
+import { Archive, RefreshCw, Clock, User, Tag, Search } from "lucide-react";
 import { API } from "@/lib/api/client";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import "dayjs/locale/uz-latn";
 
-export const Route = createFileRoute("/employee/archive")({
-  component: EmployeeArchive,
+export const Route = createFileRoute("/director/archive")({
+  component: DirectorArchive,
 });
 
 interface ActivityLog {
@@ -23,7 +23,7 @@ interface ActivityLog {
   createdAt: string;
 }
 
-function EmployeeArchive() {
+function DirectorArchive() {
   const session = useSession();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,7 @@ function EmployeeArchive() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const data = await API.employeeArchive();
+      const data = await API.directorArchive();
       setLogs(data);
     } catch {
       toast.error("Arxiv ma'lumotlarini yuklashda xatolik");
@@ -48,7 +48,9 @@ function EmployeeArchive() {
   const filteredLogs = logs.filter(
     (l) =>
       l.action?.toLowerCase().includes(search.toLowerCase()) ||
-      l.entityType?.toLowerCase().includes(search.toLowerCase()),
+      l.entityType?.toLowerCase().includes(search.toLowerCase()) ||
+      l.performedBy?.firstName?.toLowerCase().includes(search.toLowerCase()) ||
+      l.performedBy?.lastName?.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -56,10 +58,10 @@ function EmployeeArchive() {
       <header className="mb-10 flex items-start justify-between flex-wrap gap-6">
         <div>
           <h1 className="text-4xl font-black text-foreground tracking-tight flex items-center gap-3">
-            <Archive className="w-10 h-10 text-primary" /> Mening Arxivim
+            <Archive className="w-10 h-10 text-primary" /> Arxiv
           </h1>
           <p className="text-muted-foreground mt-1.5 font-medium">
-            Barcha bajargan harakatlaringiz tarixi
+            Tizimdagi barcha harakatlar tarixi
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -98,7 +100,7 @@ function EmployeeArchive() {
           </div>
           <h3 className="text-xl font-bold text-foreground mb-2">Harakatlar topilmadi</h3>
           <p className="text-muted-foreground max-w-sm mx-auto">
-            Sizda hozircha hech qanday arxiv harakatlari yo'q.
+            Arxivda hozircha hech qanday ma'lumot yo'q.
           </p>
         </div>
       ) : (
@@ -125,11 +127,12 @@ function EmployeeArchive() {
                 </p>
               </div>
               <div className="hidden sm:flex flex-col items-end gap-1 shrink-0">
-                <div className="text-[10px] font-medium text-foreground">
-                  {dayjs(log.createdAt).locale("uz-latn").format("DD MMM, HH:mm")}
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                  <User className="w-3 h-3 text-muted-foreground" />
+                  {log.performedBy?.firstName} {log.performedBy?.lastName}
                 </div>
-                <div className="text-[9px] text-muted-foreground uppercase tracking-widest">
-                  Muvaffaqiyatli
+                <div className="text-[10px] text-muted-foreground">
+                  {dayjs(log.createdAt).locale("uz-latn").format("DD MMM, HH:mm")}
                 </div>
               </div>
             </div>

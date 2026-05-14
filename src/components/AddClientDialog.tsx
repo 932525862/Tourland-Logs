@@ -1,18 +1,17 @@
 import { useState } from "react";
-import { X, UserPlus } from "lucide-react";
+import { X, UserPlus, User, Phone, MessageSquare, Layers } from "lucide-react";
 import type { AppState, ClientCategory } from "@/lib/types";
-import { addClient } from "@/lib/store";
 import { toast } from "sonner";
+import { API } from "@/lib/api/client";
 
 interface Props {
   state: AppState;
-  update: (fn: (s: AppState) => AppState) => void;
   defaultCategoryId?: string;
   onClose: () => void;
   onCreated?: () => void;
 }
 
-export function AddClientDialog({ state, update, defaultCategoryId, onClose, onCreated }: Props) {
+export function AddClientDialog({ state, defaultCategoryId, onClose, onCreated }: Props) {
   const visibleCats: ClientCategory[] = state.categories.filter((c) => !c.isArchive);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -22,100 +21,116 @@ export function AddClientDialog({ state, update, defaultCategoryId, onClose, onC
       ? defaultCategoryId
       : visibleCats[0]?.id ?? ""
   );
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error("Ism familyani kiriting");
+    if (!name.trim() || !phone.trim() || !categoryId) {
+      toast.error("Iltimos, barcha majburiy maydonlarni to'ldiring");
       return;
     }
-    if (!phone.trim()) {
-      toast.error("Tel raqamni kiriting");
-      return;
-    }
-    if (!categoryId) {
-      toast.error("Bo'limni tanlang");
-      return;
-    }
-    const data: Record<string, string> = {
-      "Ism familya": name.trim(),
-      "Tel raqam": phone.trim(),
-    };
-    if (note.trim()) data["Izoh"] = note.trim();
-
-    update((s) =>
-      addClient(s, {
-        formId: "manual",
-        formTitle: "Qo'lda qo'shilgan",
+    
+    setLoading(true);
+    try {
+      await API.createClient({
+        name: name.trim(),
+        phone: phone.trim(),
         categoryId,
-        data,
-      })
-    );
-    toast.success("Mijoz qo'shildi");
-    onCreated?.();
-    onClose();
+        description: note.trim()
+      });
+      toast.success("Yangi mijoz muvaffaqiyatli qo'shildi");
+      onCreated?.();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-card rounded-2xl border border-border shadow-[var(--shadow-lg)] w-full max-w-md">
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-primary" /> Yangi mijoz qo'shish
+    <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-card rounded-[32px] border border-border shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+        <div className="flex items-center justify-between p-6 border-b border-border bg-secondary/10">
+          <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-soft flex items-center justify-center text-primary">
+              <UserPlus className="w-6 h-6" />
+            </div>
+            Yangi mijoz qo'shish
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary transition-colors">
+            <X className="w-5 h-5" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Ism familya</label>
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <div className="space-y-1.5 text-balance">
+            <label className="text-sm font-bold text-foreground/70 ml-1 flex items-center gap-2">
+              <User className="w-3.5 h-3.5 text-primary" /> Ism familya
+            </label>
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Masalan: Ali Valiyev"
-              className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
             />
           </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Tel raqam</label>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-foreground/70 ml-1 flex items-center gap-2">
+              <Phone className="w-3.5 h-3.5 text-primary" /> Tel raqam
+            </label>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+998 90 123 45 67"
-              className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
             />
           </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Izoh (ixtiyoriy)</label>
+
+          <div className="space-y-1.5 text-balance">
+            <label className="text-sm font-bold text-foreground/70 ml-1 flex items-center gap-2">
+              <MessageSquare className="w-3.5 h-3.5 text-primary" /> Izoh (ixtiyoriy)
+            </label>
             <textarea
-              rows={3}
+              rows={2}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Mijoz haqida qo'shimcha ma'lumot..."
-              className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium resize-none"
             />
           </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Bo'lim</label>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-foreground/70 ml-1 flex items-center gap-2">
+              <Layers className="w-3.5 h-3.5 text-primary" /> Bo'lim
+            </label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-black uppercase tracking-widest text-xs"
             >
               {visibleCats.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors">
+
+          <div className="flex gap-3 pt-4">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="flex-1 py-3 rounded-xl border border-border font-bold text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+            >
               Bekor qilish
             </button>
-            <button type="submit" className="px-4 py-2 rounded-lg bg-[var(--gradient-primary)] text-primary-foreground font-medium shadow-[var(--shadow-md)]">
-              Qo'shish
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {loading ? "Yuklanmoqda..." : "Yuborish"}
             </button>
           </div>
         </form>
