@@ -108,21 +108,23 @@ export interface AttendanceRecord {
   checkOutPhoto?: string; // dataURL (check-out)
 }
 
-export type TaskStatus = "new" | "in_progress" | "done" | "approved";
+export type TaskStatus = "new" | "in_progress" | "done" | "approved" | "rejected";
 
 export interface Task {
   id: string;
   title: string;
   description: string;
-  employeeId: string;
-  createdAt: string;
+  assignedTo: string; // ID of employee
+  notifyAt: string;
+  startDate: string;
+  endDate: string;
   status: TaskStatus;
+  createdAt: string;
   startedAt?: string;
   completedAt?: string;
   approvedAt?: string;
-  // notification flags
-  seenByEmployee?: boolean; // true after employee opened tasks page
-  seenByDirector?: boolean; // true after director opened tasks page (for "done" notif)
+  seenByEmployee?: boolean;
+  seenByDirector?: boolean;
 }
 
 export interface AppState {

@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo, useEffect, useRef } from "react";
-import { useAppState, useSession, updateTask } from "@/lib/store";
+import { useState, useMemo, useEffect } from "react";
+import { useSession } from "@/lib/store";
 import { Clock, Check, CheckCheck, ListChecks, X, Calendar, AlertCircle, Play, Send } from "lucide-react";
 import { toast } from "sonner";
 import { playNotificationSound } from "@/lib/notify";
+import { API } from "@/lib/api/client";
 import {
   Dialog,
   DialogContent,
@@ -18,10 +19,11 @@ export const Route = createFileRoute("/employee/tasks")({
 
 function statusBadge(s: TaskStatus) {
   const map: Record<TaskStatus, { label: string; cls: string; Icon: any }> = {
-    new: { label: "Yangi", cls: "bg-secondary text-foreground border-border", Icon: ListChecks },
-    in_progress: { label: "Bajarilmoqda", cls: "bg-amber-100 text-amber-700 border-amber-200", Icon: Clock },
-    done: { label: "Tugatildi", cls: "bg-blue-100 text-blue-700 border-blue-200", Icon: Check },
-    approved: { label: "Tasdiqlandi", cls: "bg-emerald-100 text-emerald-700 border-emerald-200", Icon: CheckCheck },
+    new: { label: "Todo", cls: "bg-blue-100 text-blue-700 border-blue-200", Icon: ListChecks },
+    in_progress: { label: "Jarayonda", cls: "bg-amber-100 text-amber-700 border-amber-200", Icon: Clock },
+    done: { label: "Kutilmoqda", cls: "bg-purple-100 text-purple-700 border-purple-200", Icon: Check },
+    approved: { label: "Bajarildi", cls: "bg-emerald-100 text-emerald-700 border-emerald-200", Icon: CheckCheck },
+    rejected: { label: "Rad etildi", cls: "bg-destructive/10 text-destructive border-destructive/20", Icon: X },
   };
   const v = map[s] || map.new;
   return (
@@ -37,76 +39,75 @@ const tabs: { id: "active" | "done"; label: string }[] = [
 ];
 
 function EmployeeTasks() {
-  const { state, update } = useAppState();
-  const session = useSession();
-  const myId = session?.role === "employee" ? session.employeeId : "";
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"active" | "done">("active");
   const [view, setView] = useState<Task | null>(null);
-  const notifiedRef = useRef<Set<string>>(new Set());
 
-  // Notify on new tasks (toast)
+  const fetchTasks = async () => {
+    try {
+      const data = await API.tasks("employee");
+      setTasks(data);
+    } catch (err: any) {
+      toast.error("Topshiriqlarni yuklashda xatolik: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    (state.tasks ?? []).forEach((t) => {
-      if (t.employeeId !== myId) return;
-      if (t.status === "new" && !t.seenByEmployee && !notifiedRef.current.has(t.id)) {
-        notifiedRef.current.add(t.id);
-        playNotificationSound();
-        toast.info(`Yangi topshiriq: ${t.title}`);
-      }
-      if (t.status === "approved" && !t.seenByEmployee && !notifiedRef.current.has("ap-" + t.id)) {
-        notifiedRef.current.add("ap-" + t.id);
-        playNotificationSound();
-        toast.success(`Topshiriq tasdiqlandi: ${t.title}`);
+    fetchTasks();
+
+    const unsub = API.initSocket((event, data) => {
+      console.log("WS Event in EmployeeTasks:", event, data);
+      if (event === "taskCreated" || event === "taskStatusChanged" || event === "taskVerified" || event === "taskIncomplete") {
+        fetchTasks();
+        if (event === "taskCreated") {
+          playNotificationSound();
+          toast.info("Sizga yangi topshiriq biriktirildi");
+        } else if (event === "taskVerified") {
+          playNotificationSound();
+          toast.success("Topshiriq tasdiqlandi!");
+        } else if (event === "taskStatusChanged" && data.newStatus === "REJECTED") {
+          playNotificationSound();
+          toast.error("Topshiriq rad etildi");
+        }
       }
     });
-  }, [state.tasks, myId]);
 
-  // Mark all as seen when this page opens
-  useEffect(() => {
-    const has = (state.tasks ?? []).some((t) => t.employeeId === myId && !t.seenByEmployee);
-    if (has) {
-      update((s) => ({
-        ...s,
-        tasks: s.tasks.map((t) =>
-          t.employeeId === myId && !t.seenByEmployee ? { ...t, seenByEmployee: true } : t
-        ),
-      }));
-    }
+    return () => {
+      unsub?.();
+    };
   }, []);
 
-  const myTasks = useMemo(
-    () => (state.tasks ?? []).filter((t) => t.employeeId === myId),
-    [state.tasks, myId]
-  );
   const list = useMemo(
     () =>
       tab === "done"
-        ? myTasks.filter((t) => t.status === "approved").sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-        : myTasks.filter((t) => t.status !== "approved").sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)),
-    [myTasks, tab]
+        ? tasks.filter((t) => t.status === "approved").sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+        : tasks.filter((t) => t.status !== "approved").sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)),
+    [tasks, tab]
   );
 
-  const start = (t: Task) => {
-    update((s) =>
-      updateTask(s, t.id, {
-        status: "in_progress",
-        startedAt: t.startedAt ?? new Date().toISOString(),
-      })
-    );
-    toast.success("Topshiriq boshlandi");
-    setView({ ...t, status: "in_progress" });
+  const start = async (t: Task) => {
+    try {
+      await API.updateTask(t.id, { status: "IN_PROGRESS" });
+      toast.success("Topshiriq boshlandi");
+      fetchTasks();
+      setView({ ...t, status: "in_progress" });
+    } catch (err: any) {
+      toast.error("Xatolik: " + err.message);
+    }
   };
 
-  const finish = (t: Task) => {
-    update((s) =>
-      updateTask(s, t.id, {
-        status: "done",
-        completedAt: new Date().toISOString(),
-        seenByDirector: false,
-      })
-    );
-    toast.success("Direktorga tasdiqlash uchun yuborildi");
-    setView(null);
+  const finish = async (t: Task) => {
+    try {
+      await API.updateTask(t.id, { status: "PENDING" });
+      toast.success("Direktorga tasdiqlash uchun yuborildi");
+      fetchTasks();
+      setView(null);
+    } catch (err: any) {
+      toast.error("Xatolik: " + err.message);
+    }
   };
 
   return (
@@ -134,7 +135,13 @@ function EmployeeTasks() {
         ))}
       </div>
 
-      {list.length === 0 ? (
+      {loading ? (
+        <div className="grid gap-6">
+          {[1,2,3].map(i => (
+            <div key={i} className="h-24 bg-card/50 animate-pulse rounded-[28px] border border-border/50" />
+          ))}
+        </div>
+      ) : list.length === 0 ? (
         <div className="bg-card border border-dashed border-border rounded-[40px] p-24 text-center">
            <div className="w-24 h-24 bg-secondary rounded-[32px] flex items-center justify-center mx-auto mb-6 text-muted-foreground/30">
              <AlertCircle className="w-12 h-12" />
@@ -202,27 +209,27 @@ function EmployeeTasks() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-border/50">
-                   <div className="flex items-center gap-3">
-                      <Calendar className="w-5 h-5 text-primary" />
-                      <div>
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Berilgan vaqt</p>
-                        <p className="text-xs font-bold text-foreground">{new Date(view.createdAt).toLocaleString("uz-UZ")}</p>
-                      </div>
-                   </div>
-                   {view.startedAt && (
-                     <div className="flex items-center gap-3">
-                        <Clock className="w-5 h-5 text-amber-500" />
-                        <div>
-                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Boshlandi</p>
-                          <p className="text-xs font-bold text-foreground">{new Date(view.startedAt).toLocaleString("uz-UZ")}</p>
-                        </div>
-                     </div>
-                   )}
+                    <div className="flex items-center gap-3">
+                       <Calendar className="w-5 h-5 text-primary" />
+                       <div>
+                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Muddat</p>
+                         <p className="text-xs font-bold text-foreground">
+                           {view.startDate} — {view.endDate}
+                         </p>
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                       <Clock className="w-5 h-5 text-primary" />
+                       <div>
+                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Eslatma</p>
+                         <p className="text-xs font-bold text-foreground">{view.notifyAt}</p>
+                       </div>
+                    </div>
                 </div>
               </div>
 
               <div className="p-8 flex gap-4">
-                {(view.status === "new") && (
+                {(view.status === "new" || view.status === "rejected") && (
                   <button
                     onClick={() => start(view)}
                     className="flex-1 inline-flex items-center justify-center gap-2.5 py-4 rounded-2xl bg-amber-500 text-white font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"

@@ -11,7 +11,6 @@ export const Route = createFileRoute("/employee")({
 
 function EmployeeLayout() {
   const session = useSession();
-  const { state } = useAppState();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,52 +19,34 @@ function EmployeeLayout() {
     }
   }, [session, navigate]);
 
-  const me =
-    session?.role === "employee"
-      ? state.employees.find((e) => e.id === session.employeeId)
-      : null;
-
-  useEffect(() => {
-    if (session?.role === "employee" && !state.employees.find((e) => e.id === session.employeeId)) {
-      navigate({ to: "/" });
-    }
-  }, [state.employees, session, navigate]);
-
   if (!session || session.role !== "employee") return null;
-
-  const myEmpId = session.role === "employee" ? session.employeeId : "";
-  const taskBadge = (state.tasks ?? []).filter(
-    (t) => t.employeeId === myEmpId && !t.seenByEmployee
-  ).length;
 
   const navItems = [
     { to: "/employee", label: "Mijozlar", icon: Users },
     { to: "/employee/departments", label: "Bo'limlar", icon: Layers },
     { to: "/employee/forms", label: "Formalar", icon: ClipboardCheck },
-    { to: "/employee/tasks", label: "Topshiriqlar", icon: ListChecks, badge: taskBadge },
+    { to: "/employee/tasks", label: "Topshiriqlar", icon: ListChecks },
     { to: "/employee/attendance", label: "Davomat", icon: ClipboardCheck },
     { to: "/employee/archive", label: "Arxiv", icon: Archive },
   ];
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
-      <MobileNav title={me ? `${me.firstName} ${me.lastName}` : "Hodim"} subtitle="Hodim kabineti" items={navItems} />
+      <MobileNav title={session.name} subtitle="Hodim kabineti" items={navItems} />
       <CrmSidebar
-        title={me ? `${me.firstName} ${me.lastName}` : "Hodim"}
+        title={session.name}
         subtitle="Hodim kabineti"
         items={navItems}
         footer={
-          me && (
-            <div className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-secondary/30 border border-border/50">
-              <div className="w-10 h-10 rounded-xl bg-primary-soft flex items-center justify-center text-primary shrink-0 shadow-sm">
-                <UserIcon className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground truncate">{me.firstName} {me.lastName}</p>
-                <p className="text-[10px] text-muted-foreground font-medium truncate uppercase tracking-widest">{me.phone}</p>
-              </div>
+          <div className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-secondary/30 border border-border/50">
+            <div className="w-10 h-10 rounded-xl bg-primary-soft flex items-center justify-center text-primary shrink-0 shadow-sm">
+              <UserIcon className="w-5 h-5" />
             </div>
-          )
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-foreground truncate">{session.name}</p>
+              <p className="text-[10px] text-muted-foreground font-medium truncate uppercase tracking-widest leading-none mt-1">Onlayn</p>
+            </div>
+          </div>
         }
       />
       <main className="flex-1 min-w-0 pb-10 md:pb-0">

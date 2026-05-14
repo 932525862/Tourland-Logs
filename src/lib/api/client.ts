@@ -1,9 +1,13 @@
 // Lightweight REST + WebSocket client for the NestJS backend.
 // Reads VITE_API_URL (e.g. https://api.example.com). Falls back to same origin /api.
-import { Role } from "../types";
+import { Role, TaskStatus } from "../types";
+import { io, Socket } from "socket.io-client";
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "";
 const TOKEN_KEY = "agency_crm_token";
+
+let socket: Socket | null = null;
+const listeners = new Set<(event: string, data: any) => void>();
 
 export function apiBase() {
   return API_URL ? `${API_URL}/api` : "/api";
@@ -206,7 +210,7 @@ export const API = {
     return api<any[]>(`/attendance${sp ? `?${sp}` : ""}`).then(list => list.map(a => ({
       ...a,
       employeeName: a.employee ? `${a.employee.firstName} ${a.employee.lastName}`.trim() : "Unknown",
-      photo: a.checkInPhoto || a.photo, // Map backend checkInPhoto to frontend photo
+      photo: a.checkInPhoto || a.photo,
       checkOutPhoto: a.checkOutPhoto,
     })));
   },
@@ -220,39 +224,53 @@ export const API = {
   },
   checkIn: (photo?: string) => api("/attendance/check-in", { method: "POST", json: { photo } }),
   checkOut: (id: string, photo?: string) =>
-    api(`/attendance/check-out`, { method: "POST", json: { photo } }), // CRM backend automatically handles the persistent session for the current user
+    api(`/attendance/check-out`, { method: "POST", json: { photo } }),
 
-  // tasks
-  tasks: () => {
-    const mapTask = (t: any) => ({
-      id: t.id,
-      title: t.template?.title || "Untitled",
-      description: t.template?.description || "",
-      employeeId: t.assignedTo,
-      createdAt: t.createdAt,
-      status: t.status.toLowerCase(),
-      // Mapped placeholders for missing CRM fields
-      seenByEmployee: true,
-      seenByDirector: true,
-    });
-    return api<any[]>("/tasks/employee/me")
-      .then(list => list.map(mapTask))
-      .catch(() => api<any[]>("/tasks/director/dashboard").then(list => list.map(mapTask)));
+  tasks: (role: Role) => {
+    const mapTask = (t: any) => {
+      const template = t.template || t;
+      const rawStatus = (t.status || "TODO").toUpperCase();
+      
+      return {
+        id: t.id,
+        title: template.title || "Untitled",
+        description: template.description || "",
+        assignedTo: t.assignedTo,
+        notifyAt: template.notifyAt || "9:00 AM",
+        startDate: template.startDate || "",
+        endDate: template.endDate || "",
+        status: (rawStatus === "TODO" 
+          ? "new" 
+          : rawStatus === "PENDING"
+            ? "done"
+            : rawStatus === "DONE"
+              ? "approved"
+              : rawStatus.toLowerCase()) as TaskStatus,
+        createdAt: t.createdAt,
+        seenByEmployee: true,
+        seenByDirector: true,
+      };
+    };
+    const path = role === "director" ? "/tasks/director/dashboard" : "/tasks/employee/me";
+    return api<any[]>(path).then(list => (Array.isArray(list) ? list.map(mapTask) : []));
   },
-  createTask: (data: any) => api("/tasks/template", { 
+  createTask: (data: { 
+    title: string; 
+    description: string; 
+    assignedTo: string; 
+    notifyAt: string; 
+    startDate: string; 
+    endDate: string 
+  }) => api("/tasks/template", { 
     method: "POST", 
-    json: {
-      ...data,
-      assignedTo: data.employeeId,
-      startDate: new Date().toISOString(),
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default 1 week
-      notifyAt: "09:00" // Default
-    } 
+    json: data 
   }),
-  updateTask: (id: string, data: any) => api(`/tasks/${id}/status`, { 
+  updateTask: (id: string, data: { status: string }) => api(`/tasks/${id}/status`, { 
     method: "PATCH", 
-    json: { status: data.status.toUpperCase() } 
+    json: { status: data.status.toLowerCase() } 
   }), 
+  verifyTask: (id: string) => api(`/tasks/${id}/verify`, { method: "PATCH" }),
+  rejectTask: (id: string) => api(`/tasks/${id}/reject`, { method: "PATCH" }),
   taskSeen: (id: string) => Promise.resolve(), // TODO: Not supported in current CRM backend
   deleteTask: (id: string) => Promise.resolve(), // TODO: Not supported in current CRM backend
 
@@ -271,4 +289,37 @@ export const API = {
   // public
   publicSubmit: (formId: string, data: Record<string, string>) =>
     api(`/forms/submit/${formId}`, { method: "POST", json: data }),
+
+  // WebSocket
+  initSocket: (onEvent: (event: string, data: any) => void) => {
+    listeners.add(onEvent);
+    if (socket) return () => { listeners.delete(onEvent); };
+
+    const token = getToken();
+    const url = API_URL || window.location.origin;
+    socket = io(url, {
+      auth: { token },
+      transports: ["websocket"]
+    });
+
+    const notify = (ev: string, data: any) => {
+      listeners.forEach(l => l(ev, data));
+    };
+
+    socket.on("connect", () => console.log("WS connected"));
+    socket.on("taskCreated", (data) => notify("taskCreated", data));
+    socket.on("taskStatusChanged", (data) => notify("taskStatusChanged", data));
+    socket.on("taskVerified", (data) => notify("taskVerified", data));
+    socket.on("taskIncomplete", (data) => notify("taskIncomplete", data));
+
+    return () => {
+      listeners.delete(onEvent);
+    };
+  },
+  disconnectSocket: () => {
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+    }
+  }
 };

@@ -31,9 +31,7 @@ function EmployeeClients() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const me = session?.role === "employee"
-    ? state.employees.find((e) => e.id === session.employeeId)
-    : null;
+  const meName = session?.name || "Hodim";
 
   const fetchAll = async () => {
     setLoading(true);
@@ -54,7 +52,7 @@ function EmployeeClients() {
   };
 
   useEffect(() => {
-    if (session?.role === "employee" && session.employeeId) fetchAll();
+    if (session?.role === "employee") fetchAll();
   }, [session]);
 
   // Reminder Logic
@@ -114,7 +112,7 @@ function EmployeeClients() {
     };
   }, [state.clients, currentCat]);
 
-  if (!me) return null;
+  if (!session || session.role !== "employee") return null;
 
   return (
     <div className="p-6 md:p-10">
@@ -214,8 +212,7 @@ function EmployeeClients() {
           onRefresh={fetchAll}
           onClose={() => setOpenClient(null)}
           viewerRole="employee"
-          viewerName={`${me.firstName} ${me.lastName}`}
-          viewerId={me.id}
+          viewerName={meName}
           enableCallActions
         />
       )}

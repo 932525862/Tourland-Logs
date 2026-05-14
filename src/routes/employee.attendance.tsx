@@ -41,7 +41,7 @@ function EmployeeAttendance() {
     setLoading(true);
     try {
       const list = await API.myAttendance();
-      update(s => ({ ...s, attendance: list }));
+      update((s) => ({ ...s, attendance: list }));
     } catch {
       toast.error("Davomat ma'lumotlarini yuklashda xatolik");
     } finally {
@@ -53,20 +53,14 @@ function EmployeeAttendance() {
     fetchAttendance();
   }, [session]);
 
-  const me = session?.role === "employee" ? state.employees.find((e) => e.id === session.employeeId) : null;
-  
   const myRecords = useMemo(
-    () => (state.attendance ?? [])
-      .filter((a) => String(a.employeeId) === String(me?.id))
-      .sort((a, b) => +new Date(b.date) - +new Date(a.date)),
-    [state.attendance, me?.id]
+    () => (state.attendance ?? []).sort((a, b) => +new Date(b.date) - +new Date(a.date)),
+    [state.attendance]
   );
-  
+
   const today = todayStr();
-  // An active record is one from today that doesn't have a check-out time
-  const activeRec = myRecords.find(r => r.date === today && !r.checkOutAt);
-  // Also check if they already finished today
-  const finishedToday = myRecords.some(r => r.date === today && r.checkOutAt);
+  const activeRec = myRecords.find((r) => r.date === today && !r.checkOutAt);
+  const finishedToday = myRecords.some((r) => r.date === today && r.checkOutAt);
   const canCheckIn = !activeRec && !finishedToday;
 
   const monthTotal = useMemo(() => {
@@ -98,8 +92,6 @@ function EmployeeAttendance() {
       toast.error(err.message || "Xatolik yuz berdi");
     }
   };
-
-  if (!me) return null;
 
   return (
     <div className="p-6 md:p-10">
@@ -173,7 +165,7 @@ function EmployeeAttendance() {
               </div>
               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Sizning profilingiz</p>
            </div>
-           <p className="text-xl font-black text-foreground truncate relative z-10">{me.firstName} {me.lastName}</p>
+           <p className="text-xl font-black text-foreground truncate relative z-10">{session?.name || "Hodim"}</p>
         </div>
       </div>
 

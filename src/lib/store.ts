@@ -27,6 +27,7 @@ const defaultState: AppState = {
       login: "aziz",
       password: "12345",
       createdAt: new Date().toISOString(),
+      isActive: true,
     },
   ],
   forms: [],
@@ -71,15 +72,21 @@ export function saveState(state: AppState) {
 }
 
 export type Session =
-  | { role: "director" }
-  | { role: "employee"; employeeId: string }
+  | { role: "director"; name: string }
+  | { role: "employee"; name: string }
   | null;
 
 export function loadSession(): Session {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Migration: if old session had employeeId but no name, or just missing name
+    if (parsed && !parsed.name) {
+       parsed.name = parsed.role === "director" ? "Direktor" : "Hodim";
+    }
+    return parsed;
   } catch {
     return null;
   }

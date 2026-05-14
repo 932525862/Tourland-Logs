@@ -45,9 +45,7 @@ function LoginPage() {
       }
       
       // 3. Save Session
-      const sessionData: any = { role: user.role };
-      if (user.role === "employee") sessionData.employeeId = user.sub;
-      saveSession(sessionData);
+      saveSession({ role: user.role, name: user.name });
 
       toast.success(`Xush kelibsiz, ${user.name}`);
       
