@@ -16,6 +16,7 @@ import { Route as EmployeeIndexRouteImport } from './routes/employee.index'
 import { Route as DirectorIndexRouteImport } from './routes/director.index'
 import { Route as FFormIdRouteImport } from './routes/f.$formId'
 import { Route as EmployeeTasksRouteImport } from './routes/employee.tasks'
+import { Route as EmployeeProfileRouteImport } from './routes/employee.profile'
 import { Route as EmployeeFormsRouteImport } from './routes/employee.forms'
 import { Route as EmployeeDepartmentsRouteImport } from './routes/employee.departments'
 import { Route as EmployeeAttendanceRouteImport } from './routes/employee.attendance'
@@ -62,6 +63,11 @@ const FFormIdRoute = FFormIdRouteImport.update({
 const EmployeeTasksRoute = EmployeeTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => EmployeeRoute,
+} as any)
+const EmployeeProfileRoute = EmployeeProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => EmployeeRoute,
 } as any)
 const EmployeeFormsRoute = EmployeeFormsRouteImport.update({
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
   '/employee/forms': typeof EmployeeFormsRoute
+  '/employee/profile': typeof EmployeeProfileRoute
   '/employee/tasks': typeof EmployeeTasksRoute
   '/f/$formId': typeof FFormIdRoute
   '/director/': typeof DirectorIndexRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
   '/employee/forms': typeof EmployeeFormsRoute
+  '/employee/profile': typeof EmployeeProfileRoute
   '/employee/tasks': typeof EmployeeTasksRoute
   '/f/$formId': typeof FFormIdRoute
   '/director': typeof DirectorIndexRoute
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
   '/employee/forms': typeof EmployeeFormsRoute
+  '/employee/profile': typeof EmployeeProfileRoute
   '/employee/tasks': typeof EmployeeTasksRoute
   '/f/$formId': typeof FFormIdRoute
   '/director/': typeof DirectorIndexRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/employee/attendance'
     | '/employee/departments'
     | '/employee/forms'
+    | '/employee/profile'
     | '/employee/tasks'
     | '/f/$formId'
     | '/director/'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/employee/attendance'
     | '/employee/departments'
     | '/employee/forms'
+    | '/employee/profile'
     | '/employee/tasks'
     | '/f/$formId'
     | '/director'
@@ -245,6 +256,7 @@ export interface FileRouteTypes {
     | '/employee/attendance'
     | '/employee/departments'
     | '/employee/forms'
+    | '/employee/profile'
     | '/employee/tasks'
     | '/f/$formId'
     | '/director/'
@@ -307,6 +319,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks'
       fullPath: '/employee/tasks'
       preLoaderRoute: typeof EmployeeTasksRouteImport
+      parentRoute: typeof EmployeeRoute
+    }
+    '/employee/profile': {
+      id: '/employee/profile'
+      path: '/profile'
+      fullPath: '/employee/profile'
+      preLoaderRoute: typeof EmployeeProfileRouteImport
       parentRoute: typeof EmployeeRoute
     }
     '/employee/forms': {
@@ -429,6 +448,7 @@ interface EmployeeRouteChildren {
   EmployeeAttendanceRoute: typeof EmployeeAttendanceRoute
   EmployeeDepartmentsRoute: typeof EmployeeDepartmentsRoute
   EmployeeFormsRoute: typeof EmployeeFormsRoute
+  EmployeeProfileRoute: typeof EmployeeProfileRoute
   EmployeeTasksRoute: typeof EmployeeTasksRoute
   EmployeeIndexRoute: typeof EmployeeIndexRoute
 }
@@ -438,6 +458,7 @@ const EmployeeRouteChildren: EmployeeRouteChildren = {
   EmployeeAttendanceRoute: EmployeeAttendanceRoute,
   EmployeeDepartmentsRoute: EmployeeDepartmentsRoute,
   EmployeeFormsRoute: EmployeeFormsRoute,
+  EmployeeProfileRoute: EmployeeProfileRoute,
   EmployeeTasksRoute: EmployeeTasksRoute,
   EmployeeIndexRoute: EmployeeIndexRoute,
 }

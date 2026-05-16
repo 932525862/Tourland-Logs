@@ -13,10 +13,9 @@ export const Route = createFileRoute("/employee/archive")({
 
 interface ActivityLog {
   id: string;
-  action: string;
-  entityType: string;
+  actionType: string;
   details?: any;
-  performedBy?: {
+  user?: {
     firstName: string;
     lastName: string;
   };
@@ -45,10 +44,34 @@ function EmployeeArchive() {
     fetchLogs();
   }, []);
 
+  const formatLogAction = (actionType: string) => {
+    switch (actionType) {
+      case "TASK_CREATED": return "Vazifa yaratildi";
+      case "TASK_STATUS_CHANGED": return "Vazifa holati o'zgardi";
+      case "TASK_VERIFIED": return "Vazifa tasdiqlandi";
+      case "TASK_REJECTED": return "Vazifa rad etildi";
+      case "TASK_INCOMPLETE": return "Vazifa yakunlanmadi";
+      case "PROFILE_UPDATED": return "Profil yangilandi";
+      default: return actionType.replace(/_/g, " ");
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "todo": return "bg-secondary text-secondary-foreground";
+      case "in_progress": return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+      case "pending": return "bg-amber-500/10 text-amber-500 border-amber-500/20";
+      case "done": return "bg-success/15 text-success border-success/20";
+      case "rejected": return "bg-destructive/15 text-destructive border-destructive/20";
+      case "incomplete": return "bg-destructive/10 text-destructive grayscale opacity-70";
+      default: return "bg-muted text-muted-foreground";
+    }
+  };
+
   const filteredLogs = logs.filter(
     (l) =>
-      l.action?.toLowerCase().includes(search.toLowerCase()) ||
-      l.entityType?.toLowerCase().includes(search.toLowerCase()),
+      l.actionType?.toLowerCase().includes(search.toLowerCase()) ||
+      l.details?.title?.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -112,17 +135,43 @@ function EmployeeArchive() {
                 <Clock className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-bold text-foreground capitalize">
-                    {log.action.replace(/_/g, " ")}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-bold text-foreground">
+                    {formatLogAction(log.actionType)}
                   </span>
-                  <span className="text-[10px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                    {log.entityType}
-                  </span>
+                  {log.details?.taskId && (
+                    <span className="text-[10px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                      Vazifa
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground truncate">
-                  {log.details ? JSON.stringify(log.details) : "Tafsilotlar yo'q"}
-                </p>
+
+                {log.details?.title && (
+                  <p className="text-sm font-medium text-foreground/80 mb-1">
+                    "{log.details.title}"
+                  </p>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {log.details?.oldStatus && (
+                    <>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusColor(log.details.oldStatus)}`}>
+                        {log.details.oldStatus}
+                      </span>
+                      <span className="text-muted-foreground">→</span>
+                    </>
+                  )}
+                  {log.details?.newStatus && (
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusColor(log.details.newStatus)}`}>
+                      {log.details.newStatus}
+                    </span>
+                  )}
+                  {log.details?.status && !log.details?.newStatus && (
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusColor(log.details.status)}`}>
+                      {log.details.status}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="hidden sm:flex flex-col items-end gap-1 shrink-0">
                 <div className="text-[10px] font-medium text-foreground">

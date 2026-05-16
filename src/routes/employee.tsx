@@ -28,6 +28,7 @@ function EmployeeLayout() {
     { to: "/employee/tasks", label: "Topshiriqlar", icon: ListChecks },
     { to: "/employee/attendance", label: "Davomat", icon: ClipboardCheck },
     { to: "/employee/archive", label: "Arxiv", icon: Archive },
+    { to: "/employee/profile", label: "Profil", icon: UserIcon },
   ];
 
   return (

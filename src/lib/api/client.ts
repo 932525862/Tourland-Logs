@@ -117,7 +117,7 @@ export const API = {
   createEmployee: (data: any) => {
     return api("/users/employees", { 
       method: "POST", 
-      json: { 
+      json: {
         firstName: data.firstName,
         lastName: data.lastName,
         phoneNumber: data.phoneNumber || data.phone,
@@ -132,7 +132,8 @@ export const API = {
         firstName: data.firstName,
         lastName: data.lastName,
         phoneNumber: data.phoneNumber || data.phone,
-        password: data.password
+        password: data.password,
+        isActive: data.isActive
       } 
     });
   },
@@ -287,8 +288,8 @@ export const API = {
   tgSend: (chatId: number, text: string) => Promise.resolve(),
 
   // public
-  publicSubmit: (formId: string, data: Record<string, string>) =>
-    api(`/forms/submit/${formId}`, { method: "POST", json: data }),
+  publicSubmit: (formId: string, data: Record<string, any>) =>
+    api(`/forms/submit/${formId}`, { method: "POST", json: { data } }),
 
   // WebSocket
   initSocket: (onEvent: (event: string, data: any) => void) => {

@@ -14,7 +14,7 @@ function PublicForm() {
   const { formId } = Route.useParams();
   const [form, setForm] = useState<FormTemplate | null>(null);
   const [loading, setLoading] = useState(true);
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, any>>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,9 +30,12 @@ function PublicForm() {
     if (!form) return;
 
     for (const f of form.fields) {
-      if (f.required && !values[f.label]?.trim()) {
-        toast.error(`"${f.label}" maydonini to'ldiring`);
-        return;
+      if (f.required) {
+        const val = values[f.label];
+        if (Array.isArray(val) ? val.length === 0 : !val?.trim()) {
+          toast.error(`"${f.label}" maydonini to'ldiring`);
+          return;
+        }
       }
     }
 
@@ -93,31 +96,101 @@ function PublicForm() {
           <h1 className="text-2xl font-bold text-foreground">{form.title}</h1>
           <p className="text-sm text-muted-foreground mt-1 mb-6">Quyidagi formani to'ldiring</p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {form.fields.map((field) => (
               <div key={field.id}>
-                <label className="text-sm font-medium text-foreground block mb-1.5">
+                <label className="text-sm font-bold text-foreground block mb-2">
                   {field.label}
                   {field.required && <span className="text-destructive ml-1">*</span>}
                 </label>
+                
                 {field.type === "textarea" ? (
                   <textarea
                     rows={4}
                     value={values[field.label] ?? ""}
                     onChange={(e) => setValues((p) => ({ ...p, [field.label]: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
                     disabled={submitting}
                   />
                 ) : field.type === "select" ? (
                   <select
                     value={values[field.label] ?? ""}
                     onChange={(e) => setValues((p) => ({ ...p, [field.label]: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium appearance-none"
                     disabled={submitting}
                   >
                     <option value="">— Tanlang —</option>
                     {(field.options ?? []).map((opt) => (
                       <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : field.type === "radio" ? (
+                  <div className="space-y-2">
+                    {(field.options ?? []).map((opt) => (
+                      <label key={opt} className="flex items-center gap-3 cursor-pointer group">
+                        <div className="relative flex items-center justify-center">
+                          <input
+                            type="radio"
+                            name={field.label}
+                            value={opt}
+                            checked={values[field.label] === opt}
+                            onChange={(e) => setValues((p) => ({ ...p, [field.label]: e.target.value }))}
+                            className="sr-only"
+                            disabled={submitting}
+                          />
+                          <div className={`w-5 h-5 rounded-full border-2 transition-all ${values[field.label] === opt ? 'border-primary bg-primary' : 'border-muted-foreground/30 group-hover:border-primary/50'}`}>
+                             {values[field.label] === opt && <div className="w-2 h-2 bg-white rounded-full mx-auto mt-1" />}
+                          </div>
+                        </div>
+                        <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors">{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : field.type === "checkbox" ? (
+                  <div className="space-y-2">
+                    {(field.options ?? []).map((opt) => {
+                      const currentValues = Array.isArray(values[field.label]) ? values[field.label] : [];
+                      const isChecked = currentValues.includes(opt);
+                      
+                      return (
+                        <label key={opt} className="flex items-center gap-3 cursor-pointer group">
+                          <div className="relative flex items-center justify-center">
+                            <input
+                              type="checkbox"
+                              name={field.label}
+                              value={opt}
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const newValues = e.target.checked
+                                  ? [...currentValues, opt]
+                                  : currentValues.filter((v: string) => v !== opt);
+                                setValues((p) => ({ ...p, [field.label]: newValues }));
+                              }}
+                              className="sr-only"
+                              disabled={submitting}
+                            />
+                            <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${isChecked ? 'border-primary bg-primary' : 'border-muted-foreground/30 group-hover:border-primary/50'}`}>
+                               {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                            </div>
+                          </div>
+                          <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors">{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : field.type === "multi_select" ? (
+                  <select
+                    multiple
+                    value={Array.isArray(values[field.label]) ? values[field.label] : []}
+                    onChange={(e) => {
+                      const options = Array.from(e.target.selectedOptions, option => option.value);
+                      setValues((p) => ({ ...p, [field.label]: options }));
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium custom-scrollbar h-32"
+                    disabled={submitting}
+                  >
+                    {(field.options ?? []).map((opt) => (
+                      <option key={opt} value={opt} className="py-1 px-2 rounded-lg hover:bg-secondary/50">{opt}</option>
                     ))}
                   </select>
                 ) : (
@@ -126,7 +199,7 @@ function PublicForm() {
                     value={values[field.label] ?? ""}
                     onChange={(e) => setValues((p) => ({ ...p, [field.label]: e.target.value }))}
                     placeholder={field.type === "phone" ? "+998 90 123 45 67" : ""}
-                    className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-4 py-3 rounded-xl border border-input bg-background/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
                     disabled={submitting}
                   />
                 )}
@@ -135,7 +208,7 @@ function PublicForm() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3 rounded-lg bg-primary text-white font-medium shadow-md hover:opacity-90 transition-all disabled:opacity-50"
+              className="w-full mt-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {submitting ? "Yuborilmoqda..." : "Yuborish"}
             </button>

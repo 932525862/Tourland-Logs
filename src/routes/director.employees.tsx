@@ -159,7 +159,9 @@ function EmployeesPage() {
                 await API.updateEmployee(editing.id, {
                   firstName: data.firstName,
                   lastName: data.lastName,
-                  phoneNumber: data.phone
+                  phoneNumber: data.phone,
+                  password: data.password ? data.password : undefined,
+                  isActive: data.isActive
                 });
                 toast.success("Hodim ma'lumotlari yangilandi");
               } else {

@@ -17,14 +17,14 @@ export interface Employee {
   createdAt: string;
 }
 
-export type FieldType = "text" | "phone" | "select" | "textarea";
+export type FieldType = "text" | "phone" | "select" | "textarea" | "radio" | "checkbox" | "multi_select";
 
 export interface FormFieldConfig {
   id: string;
   type: FieldType;
   label: string;
   required?: boolean;
-  options?: string[]; // for select
+  options?: string[];
 }
 
 export interface FormTemplate {

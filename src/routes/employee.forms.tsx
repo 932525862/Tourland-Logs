@@ -224,13 +224,18 @@ function FormEditDialog({
 }) {
   const [title, setTitle] = useState(form?.title ?? "");
   const [categoryId, setCategoryId] = useState(form?.targetCategoryId ?? "");
-  const [fields, setFields] = useState<any[]>(form?.fields ?? [
-    { label: "Ism familya", type: "text", required: true },
-    { label: "Tel raqam", type: "phone", required: true }
+  
+  // Transform initial options array to a comma-separated string for editing
+  const [fields, setFields] = useState<any[]>(form?.fields?.map(f => ({
+    ...f,
+    optionsString: f.options?.join(", ") || ""
+  })) ?? [
+    { label: "Ism familya", type: "text", required: true, optionsString: "" },
+    { label: "Tel raqam", type: "phone", required: true, optionsString: "" }
   ]);
   const [loading, setLoading] = useState(false);
 
-  const addField = () => setFields([...fields, { label: "", type: "text", required: true }]);
+  const addField = () => setFields([...fields, { label: "", type: "text", required: true, optionsString: "" }]);
   const updateField = (idx: number, patch: any) => setFields(fields.map((f, i) => i === idx ? { ...f, ...patch } : f));
   const removeField = (idx: number) => setFields(fields.filter((_, i) => i !== idx));
   const moveField = (idx: number, dir: number) => {
@@ -248,7 +253,15 @@ function FormEditDialog({
     }
     setLoading(true);
     try {
-      await onSave({ title: title.trim(), targetCategoryId: categoryId, fields });
+      // Transform optionsString back to array
+      const mappedFields = fields.map(f => {
+        const result = { label: f.label, type: f.type, required: f.required, options: undefined as string[] | undefined };
+        if (["select", "radio", "checkbox", "multi_select"].includes(f.type) && f.optionsString) {
+          result.options = f.optionsString.split(",").map((s: string) => s.trim()).filter(Boolean);
+        }
+        return result;
+      });
+      await onSave({ title: title.trim(), targetCategoryId: categoryId, fields: mappedFields });
     } finally {
       setLoading(false);
     }
@@ -304,38 +317,55 @@ function FormEditDialog({
             
             <div className="space-y-3">
               {fields.map((field, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-secondary/20 p-3 rounded-2xl border border-border/50 group">
-                  <div className="flex flex-col gap-1">
-                     <button type="button" disabled={idx === 0} onClick={() => moveField(idx, -1)} className="p-1 rounded bg-card hover:text-primary disabled:opacity-30">
-                        <MoveUp className="w-3 h-3" />
-                     </button>
-                     <button type="button" disabled={idx === fields.length - 1} onClick={() => moveField(idx, 1)} className="p-1 rounded bg-card hover:text-primary disabled:opacity-30">
-                        <MoveDown className="w-3 h-3" />
-                     </button>
+                <div key={idx} className="flex flex-col gap-2 bg-secondary/20 p-3 rounded-2xl border border-border/50 group">
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-1">
+                       <button type="button" disabled={idx === 0} onClick={() => moveField(idx, -1)} className="p-1 rounded bg-card hover:text-primary disabled:opacity-30">
+                          <MoveUp className="w-3 h-3" />
+                       </button>
+                       <button type="button" disabled={idx === fields.length - 1} onClick={() => moveField(idx, 1)} className="p-1 rounded bg-card hover:text-primary disabled:opacity-30">
+                          <MoveDown className="w-3 h-3" />
+                       </button>
+                    </div>
+                    <input
+                      value={field.label}
+                      onChange={e => updateField(idx, { label: e.target.value })}
+                      placeholder="Maydon nomi"
+                      className="flex-1 px-3 py-2 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/20 outline-none text-sm font-medium"
+                    />
+                    <select
+                      value={field.type}
+                      onChange={e => updateField(idx, { type: e.target.value })}
+                      className="w-32 px-2 py-2 rounded-xl bg-background border border-border text-xs font-medium focus:ring-2 focus:ring-primary/20 outline-none"
+                    >
+                      <option value="text">Matn</option>
+                      <option value="phone">Tel raqam</option>
+                      <option value="select">Select (Ro'yxat)</option>
+                      <option value="textarea">Textarea (Matn)</option>
+                      <option value="radio">Radio</option>
+                      <option value="checkbox">Checkbox</option>
+                      <option value="multi_select">Ko'p tanlovli (Multi-select)</option>
+                    </select>
+                    <button 
+                      type="button" 
+                      onClick={() => removeField(idx)}
+                      className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all outline-none"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
                   </div>
-                  <input
-                    value={field.label}
-                    onChange={e => updateField(idx, { label: e.target.value })}
-                    placeholder="Maydon nomi"
-                    className="flex-1 px-3 py-2 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/20 outline-none text-sm font-medium"
-                  />
-                  <select
-                    value={field.type}
-                    onChange={e => updateField(idx, { type: e.target.value })}
-                    className="px-2 py-2 rounded-xl bg-background border border-border text-xs font-medium focus:ring-2 focus:ring-primary/20 outline-none"
-                  >
-                    <option value="text">Matn</option>
-                    <option value="phone">Tel raqam</option>
-                    <option value="select">Select</option>
-                    <option value="textarea">Textarea</option>
-                  </select>
-                  <button 
-                    type="button" 
-                    onClick={() => removeField(idx)}
-                    className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all outline-none"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
+                  
+                  {/* Options input only visible for relevant types */}
+                  {["select", "radio", "checkbox", "multi_select"].includes(field.type) && (
+                    <div className="ml-8 mt-1">
+                      <input
+                        value={field.optionsString || ""}
+                        onChange={e => updateField(idx, { optionsString: e.target.value })}
+                        placeholder="Variantlarni vergul bilan yozing (Masalan: Erkak, Ayol)"
+                        className="w-full px-3 py-2 rounded-xl bg-background/50 border border-primary/20 focus:ring-2 focus:ring-primary/30 outline-none text-xs font-medium"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

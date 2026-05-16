@@ -45,7 +45,7 @@ function LoginPage() {
       }
       
       // 3. Save Session
-      saveSession({ role: user.role, name: user.name });
+      saveSession({ role: user.role, name: user.name, login: user.login });
 
       toast.success(`Xush kelibsiz, ${user.name}`);
       
