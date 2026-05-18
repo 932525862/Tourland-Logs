@@ -8,6 +8,6 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
   tanstackStart: {
-    appDirectory: "app",
+    appDirectory: "src",
   },
 });
