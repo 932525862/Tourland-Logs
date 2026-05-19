@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/assets/(.*)",
-      "destination": "/assets/$1"
+      "destination": "/client/assets/$1"
     },
     {
       "source": "/favicon.ico",
-      "destination": "/favicon.ico"
+      "destination": "/client/favicon.ico"
     },
     {
       "source": "/(.*)",
