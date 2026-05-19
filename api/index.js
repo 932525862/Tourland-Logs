@@ -57,8 +57,21 @@ export default async function handler(req, res) {
   res.statusCode = response.status || 200;
   res.statusMessage = response.statusText || 'OK';
 
+  // SAFELY HANDLE SET-COOKIE HEADERS
+  if (typeof response.headers.getSetCookie === 'function') {
+    const cookies = response.headers.getSetCookie();
+    if (cookies.length > 0) {
+      res.setHeader('Set-Cookie', cookies); // Node accepts array of strings nicely!
+    }
+  } else {
+    // Fallback for very old node versions
+    const cookieString = response.headers.get('Set-Cookie');
+    if (cookieString) res.setHeader('Set-Cookie', cookieString);
+  }
+
+  // COPY THE REST OF THE HEADERS
   response.headers.forEach((value, key) => {
-    // Skip setting generic edge/cloudflare headers that might conflict or duplicate
+    if (key.toLowerCase() === 'set-cookie') return; // Skip set-cookie as we already mapped it flawlessly!
     res.setHeader(key, value);
   });
 
