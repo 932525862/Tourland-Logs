@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as EmployeeRouteImport } from './routes/employee'
 import { Route as DirectorRouteImport } from './routes/director'
 import { Route as IndexRouteImport } from './routes/index'
@@ -30,6 +31,11 @@ import { Route as DirectorClientsRouteImport } from './routes/director.clients'
 import { Route as DirectorAttendanceRouteImport } from './routes/director.attendance'
 import { Route as DirectorArchiveRouteImport } from './routes/director.archive'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmployeeRoute = EmployeeRouteImport.update({
   id: '/employee',
   path: '/employee',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/director': typeof DirectorRouteWithChildren
   '/employee': typeof EmployeeRouteWithChildren
+  '/login': typeof LoginRoute
   '/director/archive': typeof DirectorArchiveRoute
   '/director/attendance': typeof DirectorAttendanceRoute
   '/director/clients': typeof DirectorClientsRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/director/archive': typeof DirectorArchiveRoute
   '/director/attendance': typeof DirectorAttendanceRoute
   '/director/clients': typeof DirectorClientsRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/director': typeof DirectorRouteWithChildren
   '/employee': typeof EmployeeRouteWithChildren
+  '/login': typeof LoginRoute
   '/director/archive': typeof DirectorArchiveRoute
   '/director/attendance': typeof DirectorAttendanceRoute
   '/director/clients': typeof DirectorClientsRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/'
     | '/director'
     | '/employee'
+    | '/login'
     | '/director/archive'
     | '/director/attendance'
     | '/director/clients'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/director/archive'
     | '/director/attendance'
     | '/director/clients'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/'
     | '/director'
     | '/employee'
+    | '/login'
     | '/director/archive'
     | '/director/attendance'
     | '/director/clients'
@@ -267,11 +279,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DirectorRoute: typeof DirectorRouteWithChildren
   EmployeeRoute: typeof EmployeeRouteWithChildren
+  LoginRoute: typeof LoginRoute
   FFormIdRoute: typeof FFormIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/employee': {
       id: '/employee'
       path: '/employee'
@@ -471,6 +491,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DirectorRoute: DirectorRouteWithChildren,
   EmployeeRoute: EmployeeRouteWithChildren,
+  LoginRoute: LoginRoute,
   FFormIdRoute: FFormIdRoute,
 }
 export const routeTree = rootRouteImport

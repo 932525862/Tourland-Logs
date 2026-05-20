@@ -27,7 +27,7 @@ export function MobileNav({ title, subtitle, items }: MobileNavProps) {
     setToken(null);
     saveSession(null);
     toast.success("Tizimdan chiqdingiz");
-    navigate({ to: "/" });
+    navigate({ to: "/login" });
     setOpen(false);
   };
 

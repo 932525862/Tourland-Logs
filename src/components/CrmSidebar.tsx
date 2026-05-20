@@ -25,7 +25,7 @@ export function CrmSidebar({ title, subtitle, items, footer }: SidebarProps) {
     setToken(null);
     saveSession(null);
     toast.success("Tizimdan chiqdingiz");
-    navigate({ to: "/" });
+    navigate({ to: "/login" });
   };
 
   return (

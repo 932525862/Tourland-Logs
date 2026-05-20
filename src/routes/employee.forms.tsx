@@ -115,7 +115,7 @@ function FormsPage() {
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <a
-                    href={`${window.location.origin}/f/${form.id}`}
+                    href={`/f/${form.id}`}
                     target="_blank"
                     rel="noreferrer"
                     className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-primary transition-all"

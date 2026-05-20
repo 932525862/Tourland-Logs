@@ -64,7 +64,7 @@ function PublicForm() {
         <div className="max-w-md text-center bg-card rounded-2xl border border-border p-8 shadow-lg">
           <h1 className="text-2xl font-bold text-foreground">Forma topilmadi</h1>
           <p className="text-muted-foreground mt-2">Havola noto'g'ri yoki forma arxivlangan bo'lishi mumkin.</p>
-          <Link to="/" className="inline-block mt-6 text-primary hover:underline">Bosh sahifaga</Link>
+          <Link to="/login" className="inline-block mt-6 text-primary hover:underline">Bosh sahifaga</Link>
         </div>
       </div>
     );

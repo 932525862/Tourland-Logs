@@ -17,7 +17,7 @@ function EmployeeProfilePage() {
     setToken(null);
     saveSession(null);
     toast.success("Tizimdan chiqdingiz");
-    navigate({ to: "/" });
+    navigate({ to: "/login" });
   };
 
   if (!session) return null;
