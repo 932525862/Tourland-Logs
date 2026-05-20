@@ -15,7 +15,7 @@ export function apiBase() {
 export function assetUrl(path: string) {
   if (!path) return "";
   if (path.startsWith("data:") || path.startsWith("http")) return path;
-  const base = API_URL || window.location.origin;
+  const base = API_URL || (typeof window !== "undefined" ? window.location.origin : "");
   return `${base}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 export function getToken(): string | null {
@@ -303,7 +303,7 @@ export const API = {
     if (socket) return () => { listeners.delete(onEvent); };
 
     const token = getToken();
-    const url = API_URL || window.location.origin;
+    const url = API_URL || (typeof window !== "undefined" ? window.location.origin : "");
     socket = io(url, {
       auth: { token },
       transports: ["websocket"]

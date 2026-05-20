@@ -15,7 +15,7 @@ function EmployeeLayout() {
 
   useEffect(() => {
     if (!session || session.role !== "employee") {
-      navigate({ to: "/" });
+      navigate({ to: "/login" });
     }
   }, [session, navigate]);
 
