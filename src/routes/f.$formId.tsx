@@ -110,6 +110,7 @@ function PublicForm() {
                     value={values[field.label] ?? ""}
                     onChange={(e) => setValues((p) => ({ ...p, [field.label]: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl border border-input bg-background/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+                    placeholder={`${field.label} haqida batafsil ma'lumot qoldiring...`}
                     disabled={submitting}
                   />
                 ) : field.type === "select" ? (
@@ -119,7 +120,7 @@ function PublicForm() {
                     className="w-full px-4 py-2.5 rounded-xl border border-input bg-background/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium appearance-none"
                     disabled={submitting}
                   >
-                    <option value="">— Tanlang —</option>
+                    <option value="">— {field.label}ni tanlang —</option>
                     {(field.options ?? []).map((opt) => (
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
@@ -198,7 +199,15 @@ function PublicForm() {
                     type={field.type === "phone" ? "tel" : "text"}
                     value={values[field.label] ?? ""}
                     onChange={(e) => setValues((p) => ({ ...p, [field.label]: e.target.value }))}
-                    placeholder={field.type === "phone" ? "+998 90 123 45 67" : ""}
+                    placeholder={
+                      field.type === "phone"
+                        ? `${field.label} (masalan: +998 90 123 45 67)`
+                        : field.label.toLowerCase().includes("ism") || field.label.toLowerCase().includes("familiya")
+                        ? "Ism va familiyangizni kiriting"
+                        : field.label.toLowerCase().includes("email") || field.label.toLowerCase().includes("pochta")
+                        ? "example@mail.com"
+                        : `${field.label}ni kiriting`
+                    }
                     className="w-full px-4 py-3 rounded-xl border border-input bg-background/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
                     disabled={submitting}
                   />
