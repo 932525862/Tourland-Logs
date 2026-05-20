@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "dist/server/server.js"
+    }
+  },
   "rewrites": [
     {
       "source": "/assets/(.*)",
