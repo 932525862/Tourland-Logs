@@ -113,7 +113,7 @@ function FormsPage() {
                 <div className="w-14 h-14 rounded-[20px] bg-primary-soft flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-sm">
                   <ClipboardCheck className="w-7 h-7" />
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 transition-opacity">
                   <a
                     href={`/f/${form.id}`}
                     target="_blank"

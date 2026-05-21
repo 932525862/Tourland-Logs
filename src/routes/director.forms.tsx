@@ -100,7 +100,7 @@ function FormsPage() {
                 <div className="w-12 h-12 rounded-2xl bg-primary-soft flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-sm">
                   <FilePlus className="w-6 h-6" />
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 transition-opacity">
                   <a
                     href={`/f/${form.id}`}
                     target="_blank"

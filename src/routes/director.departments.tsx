@@ -126,7 +126,7 @@ function DepartmentsPage() {
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${dep.isArchive ? 'bg-secondary text-muted-foreground' : 'bg-primary-soft text-primary'}`}>
                 <Folder className="w-6 h-6" />
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 transition-opacity">
                 <button
                   onClick={() => { setEditing(dep); setName(dep.name); setShowDialog(true); }}
                   className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"

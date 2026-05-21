@@ -173,7 +173,7 @@ function EmployeeDepartments() {
                   <Folder className="w-7 h-7" />
                 </div>
                 
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 transition-opacity">
                   <button
                     onClick={() => { setEditing(cat); setName(cat.name); setShowDialog(true); }}
                     className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
