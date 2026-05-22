@@ -221,7 +221,7 @@ function EmployeeTasks() {
       )}
 
       <Dialog open={!!view} onOpenChange={(o) => !o && setView(null)}>
-        <DialogContent className="max-w-xl rounded-[40px] border-border bg-card p-0 overflow-hidden">
+        <DialogContent className="max-w-xl rounded-[40px] border-border bg-card p-0 overflow-hidden max-h-[85vh] overflow-y-auto">
           {view && (
             <div className="flex flex-col">
               <div className="p-8 border-b border-border bg-secondary/10 relative">
@@ -428,7 +428,7 @@ function FinishDialog({
 }: any) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-[32px] max-w-md">
+      <DialogContent className="rounded-[32px] max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black">Topshiriqni tugatish</DialogTitle>
         </DialogHeader>

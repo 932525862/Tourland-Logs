@@ -250,7 +250,7 @@ function DirectorTasks() {
 
       {/* Create dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="rounded-[32px]">
+        <DialogContent className="rounded-[32px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black">Yangi topshiriq</DialogTitle>
           </DialogHeader>
@@ -340,7 +340,7 @@ function DirectorTasks() {
 
       {/* View dialog */}
       <Dialog open={!!view} onOpenChange={(o) => !o && setView(null)}>
-        <DialogContent className="rounded-[40px] max-w-xl">
+        <DialogContent className="rounded-[40px] max-w-xl max-h-[85vh] overflow-y-auto">
           {view && (
             <div className="space-y-6">
               <DialogHeader>
@@ -547,7 +547,7 @@ function TaskHistory({ templateId, currentInstanceId }: { templateId: string, cu
 function RejectDialog({ open, onOpenChange, reason, setReason, onConfirm }: any) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-[32px] max-w-md">
+      <DialogContent className="rounded-[32px] max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black">Topshiriqni rad etish</DialogTitle>
         </DialogHeader>

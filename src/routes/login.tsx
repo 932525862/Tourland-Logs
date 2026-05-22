@@ -31,7 +31,7 @@ function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { accessToken } = await API.login(login.replace("+", ""), password);
+      const { accessToken } = await API.login(login, password);
       setToken(accessToken);
       const { user } = await API.me();
       
