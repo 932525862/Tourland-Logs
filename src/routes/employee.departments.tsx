@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { useAppState } from "@/lib/store";
+import { useAppState, useSession } from "@/lib/store";
 import { FolderPlus, Pencil, Trash2, Archive, ArchiveRestore, X, Folder, Layers, Search, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/employee/departments")({
 
 function EmployeeDepartments() {
   const { state, update } = useAppState();
+  const session = useSession();
   const [departments, setDepartments] = useState<ClientCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -124,12 +125,14 @@ function EmployeeDepartments() {
           >
             <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button
-            onClick={() => { setEditing(null); setName(""); setShowDialog(true); }}
-            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
-          >
-            <FolderPlus className="w-5 h-5" /> Yangi bo'lim
-          </button>
+          {session?.isActive !== false && (
+            <button
+              onClick={() => { setEditing(null); setName(""); setShowDialog(true); }}
+              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <FolderPlus className="w-5 h-5" /> Yangi bo'lim
+            </button>
+          )}
         </div>
       </header>
 
@@ -173,26 +176,28 @@ function EmployeeDepartments() {
                   <Folder className="w-7 h-7" />
                 </div>
                 
-                <div className="flex items-center gap-1 transition-opacity">
-                  <button
-                    onClick={() => { setEditing(cat); setName(cat.name); setShowDialog(true); }}
-                    className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
-                  >
-                    <Pencil className="w-4.5 h-4.5" />
-                  </button>
-                  <button
-                    onClick={() => setConfirmingArchive(cat)}
-                    className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
-                  >
-                    {cat.isArchive ? <ArchiveRestore className="w-4.5 h-4.5" /> : <Archive className="w-4.5 h-4.5" />}
-                  </button>
-                  <button
-                    onClick={() => setConfirmingDelete(cat)}
-                    className="p-2.5 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
-                  >
-                    <Trash2 className="w-4.5 h-4.5" />
-                  </button>
-                </div>
+                {session?.isActive !== false && (
+                  <div className="flex items-center gap-1 transition-opacity">
+                    <button
+                      onClick={() => { setEditing(cat); setName(cat.name); setShowDialog(true); }}
+                      className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
+                    >
+                      <Pencil className="w-4.5 h-4.5" />
+                    </button>
+                    <button
+                      onClick={() => setConfirmingArchive(cat)}
+                      className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
+                    >
+                      {cat.isArchive ? <ArchiveRestore className="w-4.5 h-4.5" /> : <Archive className="w-4.5 h-4.5" />}
+                    </button>
+                    <button
+                      onClick={() => setConfirmingDelete(cat)}
+                      className="p-2.5 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                    >
+                      <Trash2 className="w-4.5 h-4.5" />
+                    </button>
+                  </div>
+                )}
               </div>
               
               <h3 className="text-xl font-bold text-foreground mb-4 truncate group-hover:text-primary transition-colors relative z-10">{cat.name}</h3>

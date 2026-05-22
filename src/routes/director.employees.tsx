@@ -4,6 +4,7 @@ import { useAppState } from "@/lib/store";
 import { toast } from "sonner";
 import type { Employee } from "@/lib/types";
 import { API } from "@/lib/api/client";
+import { formatUzbekPhone } from "@/lib/utils";
 import { UserPlus, Pencil, X, Phone, User as UserIcon, Check } from "lucide-react";
 import { ConfirmModal } from "@/components/ConfirmModal";
 
@@ -35,10 +36,15 @@ function EmployeesPage() {
     if (!confirmingStatus) return;
     setLoading(true);
     const emp = confirmingStatus;
-    const action = emp.isActive ? "deaktivatsiya" : "faollashtirish";
+    const newStatus = !emp.isActive;
+    const action = newStatus ? "faollashtirish" : "deaktivatsiya";
     try {
-      if (emp.isActive) await API.deactivateUser(emp.id);
-      else await API.activateUser(emp.id);
+      await API.updateEmployee(emp.id, {
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        phone: emp.phone,
+        isActive: newStatus
+      });
       
       toast.success(`Hodim ${action} qilindi`);
       await fetchEmployees();
@@ -116,8 +122,12 @@ function EmployeesPage() {
                     onClick={async () => {
                       const newStatus = !emp.isActive;
                       try {
-                        if (newStatus) await API.activateUser(emp.id);
-                        else await API.deactivateUser(emp.id);
+                        await API.updateEmployee(emp.id, {
+                          firstName: emp.firstName,
+                          lastName: emp.lastName,
+                          phone: emp.phone,
+                          isActive: newStatus
+                        });
                         await fetchEmployees();
                         toast.success(newStatus ? "Hodim faollashtirildi" : "Hodim bloklandi");
                       } catch (err) {
@@ -278,7 +288,7 @@ function EmployeeFormDialog({
             <input
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatUzbekPhone(e.target.value))}
               placeholder="+998 90 123 45 67"
               className="w-full px-4 py-3 rounded-xl border border-input bg-background/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             />

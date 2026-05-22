@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { useAppState } from "@/lib/store";
+import { useAppState, useSession } from "@/lib/store";
 import { FilePlus, Pencil, Trash2, X, ExternalLink, Plus, Minus, MoveUp, MoveDown, ClipboardCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/employee/forms")({
 
 function FormsPage() {
   const { state, update } = useAppState();
+  const session = useSession();
   const [forms, setForms] = useState<FormTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -77,12 +78,14 @@ function FormsPage() {
           >
             <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button
-            onClick={() => { setEditing(null); setShowDialog(true); }}
-            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
-          >
-            <FilePlus className="w-5 h-5" /> Yangi forma
-          </button>
+          {session?.isActive !== false && (
+            <button
+              onClick={() => { setEditing(null); setShowDialog(true); }}
+              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <FilePlus className="w-5 h-5" /> Yangi forma
+            </button>
+          )}
         </div>
       </header>
 
@@ -123,20 +126,24 @@ function FormsPage() {
                   >
                     <ExternalLink className="w-4.5 h-4.5" />
                   </a>
-                  <button
-                    onClick={() => { setEditing(form); setShowDialog(true); }}
-                    className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
-                    title="Tahrirlash"
-                  >
-                    <Pencil className="w-4.5 h-4.5" />
-                  </button>
-                  <button
-                    onClick={() => setConfirmingDelete(form)}
-                    className="p-2.5 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
-                    title="O'chirish"
-                  >
-                    <Trash2 className="w-4.5 h-4.5" />
-                  </button>
+                  {session?.isActive !== false && (
+                    <>
+                      <button
+                        onClick={() => { setEditing(form); setShowDialog(true); }}
+                        className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
+                        title="Tahrirlash"
+                      >
+                        <Pencil className="w-4.5 h-4.5" />
+                      </button>
+                      <button
+                        onClick={() => setConfirmingDelete(form)}
+                        className="p-2.5 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                        title="O'chirish"
+                      >
+                        <Trash2 className="w-4.5 h-4.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
               

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAppState, updateDirector } from "@/lib/store";
 import { API } from "@/lib/api/client";
+import { formatUzbekPhone } from "@/lib/utils";
 import { toast } from "sonner";
 import { User, Save } from "lucide-react";
 
@@ -110,7 +111,7 @@ function DirectorProfile() {
               <input
                 type="text"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(formatUzbekPhone(e.target.value))}
                 className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
               />
             </div>

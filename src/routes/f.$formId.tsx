@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { CheckCircle2, Briefcase, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
+import { formatUzbekPhone } from "@/lib/utils";
 import type { FormTemplate } from "@/lib/types";
 
 export const Route = createFileRoute("/f/$formId")({
@@ -198,7 +199,10 @@ function PublicForm() {
                   <input
                     type={field.type === "phone" ? "tel" : "text"}
                     value={values[field.label] ?? ""}
-                    onChange={(e) => setValues((p) => ({ ...p, [field.label]: e.target.value }))}
+                    onChange={(e) => {
+                      const val = field.type === "phone" ? formatUzbekPhone(e.target.value) : e.target.value;
+                      setValues((p) => ({ ...p, [field.label]: val }));
+                    }}
                     placeholder={
                       field.type === "phone"
                         ? `${field.label} (masalan: +998 90 123 45 67)`

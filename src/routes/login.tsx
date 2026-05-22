@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useSession, saveSession } from "@/lib/store";
 import { API, setToken } from "@/lib/api/client";
+import { formatUzbekPhone } from "@/lib/utils";
 import { Briefcase } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,7 +31,7 @@ function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { accessToken } = await API.login(login, password);
+      const { accessToken } = await API.login(login.replace("+", ""), password);
       setToken(accessToken);
       const { user } = await API.me();
       
@@ -88,7 +89,7 @@ function LoginPage() {
               <input
                 type="text"
                 value={login}
-                onChange={(e) => setLogin(e.target.value)}
+                onChange={(e) => setLogin(formatUzbekPhone(e.target.value))}
                 className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                 placeholder="+998901234567"
                 required

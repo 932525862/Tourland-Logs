@@ -42,7 +42,6 @@ export function ClientDetailDialog({
 
   const [noteText, setNoteText] = useState("");
   const [moveStage, setMoveStage] = useState<ClientStage>(client.stage);
-  const [reminderDate, setReminderDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [callNote, setCallNote] = useState("");
@@ -201,7 +200,7 @@ export function ClientDetailDialog({
     try {
       await API.callStart(localClient.id);
       toast.success("Mijoz sizga biriktirildi, qo'ng'iroq jarayonida");
-      
+
       // Immediate UI update
       setLocalClient(prev => ({
         ...prev,
@@ -233,10 +232,10 @@ export function ClientDetailDialog({
         payload.remindAt = new Date(callReminder).toISOString();
         setCallReminder("");
       }
-      
+
       await API.updateClient(localClient.id, payload);
       toast.success("Qo'ng'iroq yakunlandi");
-      
+
       // Immediate UI update
       setLocalClient(prev => ({
         ...prev,
@@ -247,7 +246,7 @@ export function ClientDetailDialog({
       if (action === "sold") {
         setShowPurchase(true);
       }
-      
+
       onRefresh();
     } catch (err: any) {
       toast.error(err.message || "Xatolik yuz berdi");
@@ -294,6 +293,12 @@ export function ClientDetailDialog({
                 <span className="text-muted-foreground">Tel raqam</span>
                 <span className="col-span-2 text-foreground font-medium">{localClient.phone}</span>
               </div>
+              {localClient.description && (
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <span className="text-muted-foreground">Izoh (Boshlang'ich)</span>
+                  <span className="col-span-2 text-foreground font-medium break-words">{localClient.description}</span>
+                </div>
+              )}
               {Object.entries(localClient.data || {}).map(([key, value]) => {
                 if (key === "Ism familya" || key === "Tel raqam") return null;
                 return (
@@ -308,52 +313,52 @@ export function ClientDetailDialog({
 
           {/* Call section - show for ALL stages except Sold, unless a call is active */}
           <section className="rounded-xl border border-border p-4 space-y-4">
-             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Phone className="w-4 h-4" /> Qo'ng'iroq
-             </h3>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Phone className="w-4 h-4" /> Qo'ng'iroq
+            </h3>
 
-             {/* If no one is calling and it's NOT sold, show the start button */}
-             {!localClient.call?.inCallByEmployeeId && localClient.stage !== "sold" && (
-                <button 
-                   onClick={handleStartCall}
-                   disabled={loading || session?.isActive === false}
-                   className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-black shadow-lg hover:shadow-glow transition-all"
-                >
-                   Qo'ng'iroq qilinyapti
-                </button>
-             )}
-             
-             {localClient.call?.inCallByEmployeeId && localClient.call.inCallByEmployeeId !== viewerId && (
-                 <div className="bg-warning/10 text-warning-foreground p-3 rounded-lg text-sm text-center">
-                    Ushbu mijoz bilan xozirda <strong>{localClient.call.inCallByName || "boshqa xodim"}</strong> gaplashmoqda.
-                 </div>
-             )}
+            {/* If no one is calling and it's NOT sold, show the start button */}
+            {!localClient.call?.inCallByEmployeeId && localClient.stage !== "sold" && (
+              <button
+                onClick={handleStartCall}
+                disabled={loading || session?.isActive === false}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-black shadow-lg hover:shadow-glow transition-all"
+              >
+                Qo'ng'iroq qilinyapti
+              </button>
+            )}
 
-             {localClient.call?.inCallByEmployeeId === viewerId && (
-                 <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">Siz hozir bu mijoz bilan bog'lanmoqdasiz. Yakunlang:</p>
-                    <textarea 
-                        value={callNote}
-                        onChange={(e) => setCallNote(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm min-h-[80px]"
-                        placeholder="Ertaga o'ylab ko'raman dedi..."
-                    />
-                    <div className="space-y-1.5">
-                      <label className="text-xs text-muted-foreground font-medium">Eslatma vaqti (ko'tarmagan bo'lsa)</label>
-                      <input 
-                         type="datetime-local" 
-                         value={callReminder}
-                         onChange={(e) => setCallReminder(e.target.value)}
-                         className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleCompleteCall("talked")} className="flex-[2] py-2.5 bg-[#0F172A] text-white rounded-lg text-sm font-medium hover:opacity-90">Gaplashildi</button>
-                      <button onClick={() => handleCompleteCall("no_answer")} className="flex-[1.5] py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Ko'tarmadi</button>
-                      <button onClick={() => handleCompleteCall("sold")} className="flex-[1] py-2.5 bg-success text-success-foreground rounded-lg text-sm font-medium hover:bg-success/90">Sotildi</button>
-                    </div>
-                 </div>
-             )}
+            {localClient.call?.inCallByEmployeeId && localClient.call.inCallByEmployeeId !== viewerId && (
+              <div className="bg-warning/10 text-warning-foreground p-3 rounded-lg text-sm text-center">
+                Ushbu mijoz bilan xozirda <strong>{localClient.call.inCallByName || "boshqa xodim"}</strong> gaplashmoqda.
+              </div>
+            )}
+
+            {localClient.call?.inCallByEmployeeId === viewerId && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Siz hozir bu mijoz bilan bog'lanmoqdasiz. Yakunlang:</p>
+                <textarea
+                  value={callNote}
+                  onChange={(e) => setCallNote(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm min-h-[80px]"
+                  placeholder="Ertaga o'ylab ko'raman dedi..."
+                />
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground font-medium">Eslatma vaqti (ko'tarmagan bo'lsa)</label>
+                  <input
+                    type="datetime-local"
+                    value={callReminder}
+                    onChange={(e) => setCallReminder(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleCompleteCall("talked")} className="flex-[2] py-2.5 bg-[#0F172A] text-white rounded-lg text-sm font-medium hover:opacity-90">Gaplashildi</button>
+                  <button onClick={() => handleCompleteCall("no_answer")} className="flex-[1.5] py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Ko'tarmadi</button>
+                  <button onClick={() => handleCompleteCall("sold")} className="flex-[1] py-2.5 bg-success text-success-foreground rounded-lg text-sm font-medium hover:bg-success/90">Sotildi</button>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Sale section - only show if sold or already has sale */}
@@ -464,11 +469,11 @@ export function ClientDetailDialog({
                   {sale.status === "partial" && remaining > 0 && sale.nextPaymentAt && (
                     <div className="flex items-center justify-between text-xs bg-warning/10 text-warning-foreground rounded-lg p-3 border border-warning/20">
                       <div className="flex items-center gap-2">
-                        <Bell className="w-3.5 h-3.5" /> 
+                        <Bell className="w-3.5 h-3.5" />
                         <span>To'lov sanasi: {new Date(sale.nextPaymentAt).toLocaleDateString("uz-UZ")}</span>
                       </div>
                       <div className="font-bold animate-pulse">
-                         {Math.max(0, Math.ceil((new Date(sale.nextPaymentAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} kun qoldi
+                        {Math.max(0, Math.ceil((new Date(sale.nextPaymentAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} kun qoldi
                       </div>
                     </div>
                   )}
@@ -550,12 +555,13 @@ export function ClientDetailDialog({
             </div>
           </section>
 
-            <section className="border-t border-border pt-5 flex flex-col items-center gap-3">
-              {session?.isActive === false && (
-                <div className="flex items-center gap-2 text-destructive text-[10px] font-bold uppercase tracking-widest bg-destructive/5 px-3 py-1.5 rounded-lg border border-destructive/10">
-                  <AlertCircle className="w-3.5 h-3.5" /> Hisob faolsizlantirilgan
-                </div>
-              )}
+          <section className="border-t border-border pt-5 flex flex-col items-center gap-3">
+            {session?.isActive === false && (
+              <div className="flex items-center gap-2 text-destructive text-[10px] font-bold uppercase tracking-widest bg-destructive/5 px-3 py-1.5 rounded-lg border border-destructive/10">
+                <AlertCircle className="w-3.5 h-3.5" /> Hisob faolsizlantirilgan
+              </div>
+            )}
+            {viewerRole === "director" && (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={loading || session?.isActive === false}
@@ -563,7 +569,8 @@ export function ClientDetailDialog({
               >
                 <Trash2 className="w-3.5 h-3.5" /> Mijozni o'chirib tashlash
               </button>
-            </section>
+            )}
+          </section>
         </div>
       </div>
 

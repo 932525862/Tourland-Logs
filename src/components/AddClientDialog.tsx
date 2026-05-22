@@ -3,6 +3,7 @@ import { X, UserPlus, User, Phone, MessageSquare, Layers } from "lucide-react";
 import type { AppState, ClientCategory } from "@/lib/types";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
+import { formatUzbekPhone } from "@/lib/utils";
 
 interface Props {
   state: AppState;
@@ -83,7 +84,7 @@ export function AddClientDialog({ state, defaultCategoryId, onClose, onCreated }
             <input
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatUzbekPhone(e.target.value))}
               placeholder="+998 90 123 45 67"
               className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
             />

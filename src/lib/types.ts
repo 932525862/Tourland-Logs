@@ -95,6 +95,7 @@ export interface Client {
   telegramChatId?: number;
   telegramUsername?: string;
   createdAt: string;
+  description?: string;
 }
 
 export type AttendanceStatus = 'PRESENT' | 'ATTENDED' | 'ABSENT';
