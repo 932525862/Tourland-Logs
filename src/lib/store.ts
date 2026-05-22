@@ -72,8 +72,8 @@ export function saveState(state: AppState) {
 }
 
 export type Session =
-  | { role: "director"; name: string; login?: string; }
-  | { role: "employee"; name: string; login?: string; }
+  | { role: "director"; name: string; login?: string; isActive?: boolean; }
+  | { role: "employee"; name: string; login?: string; isActive?: boolean; }
   | null;
 
 export function loadSession(): Session {
@@ -242,7 +242,7 @@ export function addTask(
     ...task,
     id: uid("task"),
     createdAt: new Date().toISOString(),
-    status: "new",
+    status: "todo",
   };
   return { ...state, tasks: [newTask, ...(state.tasks ?? [])] };
 }

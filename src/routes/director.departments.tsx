@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { useAppState } from "@/lib/store";
+import { useAppState, useSession } from "@/lib/store";
 import { FolderPlus, Pencil, Trash2, Archive, ArchiveRestore, X, Folder } from "lucide-react";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/director/departments")({
 
 function DepartmentsPage() {
   const { update } = useAppState();
+  const session = useSession();
   const [departments, setDepartments] = useState<ClientCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -55,8 +56,8 @@ function DepartmentsPage() {
       setName("");
       setEditing(null);
       await fetchDeps();
-    } catch (err) {
-      toast.error("Xatolik yuz berdi");
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
     } finally {
       setActionLoading(false);
     }
@@ -70,8 +71,8 @@ function DepartmentsPage() {
       toast.success(confirmingArchive.isArchive ? "Bo'lim aktivlashtirildi" : "Bo'lim arxivlandi");
       await fetchDeps();
       setConfirmingArchive(null);
-    } catch (err) {
-      toast.error("Xatolik yuz berdi");
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
     } finally {
       setActionLoading(false);
     }
@@ -85,8 +86,8 @@ function DepartmentsPage() {
       toast.success("Bo'lim o'chirildi");
       await fetchDeps();
       setConfirmingDelete(null);
-    } catch (err) {
-      toast.error("Xatolik yuz berdi. Bo'limda mijozlar bo'lishi mumkin.");
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi. Bo'limda mijozlar bo'lishi mumkin.");
     } finally {
       setActionLoading(false);
     }
@@ -108,12 +109,14 @@ function DepartmentsPage() {
           <h1 className="text-3xl font-bold text-foreground">Bo'limlar</h1>
           <p className="text-muted-foreground mt-1">Mijozlar toifalarini va lidlar oqimini boshqarish</p>
         </div>
-        <button
-          onClick={() => { setEditing(null); setName(""); setShowDialog(true); }}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-bold shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
-        >
-          <FolderPlus className="w-5 h-5" /> Yangi bo'lim
-        </button>
+        {session?.isActive !== false && (
+          <button
+            onClick={() => { setEditing(null); setName(""); setShowDialog(true); }}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-bold shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            <FolderPlus className="w-5 h-5" /> Yangi bo'lim
+          </button>
+        )}
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -126,29 +129,31 @@ function DepartmentsPage() {
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${dep.isArchive ? 'bg-secondary text-muted-foreground' : 'bg-primary-soft text-primary'}`}>
                 <Folder className="w-6 h-6" />
               </div>
-              <div className="flex items-center gap-1 transition-opacity">
-                <button
-                  onClick={() => { setEditing(dep); setName(dep.name); setShowDialog(true); }}
-                  className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
-                  title="Tahrirlash"
-                >
-                  <Pencil className="w-4.5 h-4.5" />
-                </button>
-                <button
-                  onClick={() => setConfirmingArchive(dep)}
-                  className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
-                  title={dep.isArchive ? "Aktivlashtirish" : "Arxivlash"}
-                >
-                  {dep.isArchive ? <ArchiveRestore className="w-4.5 h-4.5" /> : <Archive className="w-4.5 h-4.5" />}
-                </button>
-                <button
-                  onClick={() => setConfirmingDelete(dep)}
-                  className="p-2.5 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
-                  title="O'chirish"
-                >
-                  <Trash2 className="w-4.5 h-4.5" />
-                </button>
-              </div>
+              {session?.isActive !== false && (
+                <div className="flex items-center gap-1 transition-opacity">
+                  <button
+                    onClick={() => { setEditing(dep); setName(dep.name); setShowDialog(true); }}
+                    className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
+                    title="Tahrirlash"
+                  >
+                    <Pencil className="w-4.5 h-4.5" />
+                  </button>
+                  <button
+                    onClick={() => setConfirmingArchive(dep)}
+                    className="p-2.5 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
+                    title={dep.isArchive ? "Aktivlashtirish" : "Arxivlash"}
+                  >
+                    {dep.isArchive ? <ArchiveRestore className="w-4.5 h-4.5" /> : <Archive className="w-4.5 h-4.5" />}
+                  </button>
+                  <button
+                    onClick={() => setConfirmingDelete(dep)}
+                    className="p-2.5 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                    title="O'chirish"
+                  >
+                    <Trash2 className="w-4.5 h-4.5" />
+                  </button>
+                </div>
+              )}
             </div>
             
             <h3 className="text-xl font-bold text-foreground mb-4 truncate">{dep.name}</h3>

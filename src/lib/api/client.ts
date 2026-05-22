@@ -47,7 +47,9 @@ export async function api<T = unknown>(
     let msg = `HTTP ${res.status}`;
     try {
       const b = await res.json();
-      msg = b.message || JSON.stringify(b);
+      if (typeof b.message === "string") msg = b.message;
+      else if (Array.isArray(b.message)) msg = b.message.join(", ");
+      else msg = b.message || JSON.stringify(b);
     } catch { }
     throw new Error(msg);
   }
@@ -69,7 +71,8 @@ export const API = {
         sub: u.id,
         role: u.role.toLowerCase() as Role,
         name: `${u.firstName} ${u.lastName}`.trim(),
-        login: u.phoneNumber
+        login: u.phoneNumber,
+        isActive: u.isActive
       }
     };
   }),
@@ -219,6 +222,12 @@ export const API = {
       employeeName: a.employee ? `${a.employee.firstName} ${a.employee.lastName}`.trim() : "Unknown",
       photo: a.checkInPhoto || a.photo,
       checkOutPhoto: a.checkOutPhoto,
+      status: a.status ?? (() => {
+        if (a.checkOutAt) return 'ATTENDED';
+        if (!a.checkInAt) return 'ABSENT';
+        const isToday = a.date === new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tashkent' });
+        return isToday ? 'PRESENT' : 'ATTENDED';
+      })(),
     })));
   },
   myAttendance: () => {
@@ -227,6 +236,12 @@ export const API = {
       employeeName: a.employee ? `${a.employee.firstName} ${a.employee.lastName}`.trim() : "Unknown",
       photo: a.checkInPhoto || a.photo,
       checkOutPhoto: a.checkOutPhoto,
+      status: a.status ?? (() => {
+        if (a.checkOutAt) return 'ATTENDED';
+        if (!a.checkInAt) return 'ABSENT';
+        const isToday = a.date === new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tashkent' });
+        return isToday ? 'PRESENT' : 'ATTENDED';
+      })(),
     })));
   },
   checkIn: (photo?: string) => api("/attendance/check-in", { method: "POST", json: { photo } }),

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Phone, MessageSquare, Bell, ArrowRightLeft, Trash2, ShoppingCart, CheckCircle2, Wallet, Send, RefreshCw } from "lucide-react";
+import { useSession } from "@/lib/store";
+import { X, Phone, MessageSquare, Bell, ArrowRightLeft, Trash2, ShoppingCart, CheckCircle2, Wallet, Send, RefreshCw, AlertCircle } from "lucide-react";
 import type { Client, AppState, PaymentEntry, SaleInfo, ClientStage } from "@/lib/types";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
@@ -32,6 +33,7 @@ export function ClientDetailDialog({
   viewerId,
   enableCallActions = false,
 }: Props) {
+  const session = useSession();
   const [noteText, setNoteText] = useState("");
   const [moveStage, setMoveStage] = useState<ClientStage>(client.stage);
   const [reminderDate, setReminderDate] = useState("");
@@ -242,7 +244,8 @@ export function ClientDetailDialog({
             {sale.status === "none" && !showPurchase && (
               <button
                 onClick={() => setShowPurchase(true)}
-                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium shadow-md"
+                disabled={session?.isActive === false}
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Sotuvni rasmiylashtirish
               </button>
@@ -357,15 +360,21 @@ export function ClientDetailDialog({
                 {sale.status === "partial" && (
                   <div className="space-y-2 border-t border-border pt-3">
                     <label className="text-[11px] font-bold text-muted-foreground uppercase">Yangi to'lov</label>
-                    <div className="flex gap-2">
-                      <input type="number" value={extraAmount} onChange={(e) => setExtraAmount(e.target.value)} placeholder="0" className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm" />
-                      <button onClick={handleAddPayment} disabled={loading} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium">
-                        <Wallet className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <button onClick={handleCompletePayment} disabled={loading} className="w-full py-2 rounded-lg bg-success text-white text-sm font-medium">
-                      To'liq to'landi
-                    </button>
+                    {session?.isActive !== false ? (
+                      <>
+                        <div className="flex gap-2">
+                          <input type="number" value={extraAmount} onChange={(e) => setExtraAmount(e.target.value)} placeholder="0" className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                          <button onClick={handleAddPayment} disabled={loading} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium">
+                            <Wallet className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <button onClick={handleCompletePayment} disabled={loading} className="w-full py-2 rounded-lg bg-success text-white text-sm font-medium">
+                          To'liq to'landi
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-[10px] text-destructive font-bold italic">To'lovni qo'shish uchun hisob faol bo'lishi kerak</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -383,13 +392,14 @@ export function ClientDetailDialog({
               <input
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
-                placeholder="Yangi izoh..."
-                className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                disabled={session?.isActive === false}
+                placeholder={session?.isActive === false ? "Izoh qoldirish cheklangan..." : "Yangi izoh..."}
+                className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
               />
               <button
                 onClick={handleAddNote}
-                disabled={loading}
-                className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover"
+                disabled={loading || session?.isActive === false}
+                className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover disabled:opacity-50"
               >
                 Qo'shish
               </button>
@@ -419,8 +429,9 @@ export function ClientDetailDialog({
             <div className="flex gap-2">
               <select
                 value={moveStage}
+                disabled={session?.isActive === false}
                 onChange={(e) => setMoveStage(e.target.value as ClientStage)}
-                className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
               >
                 {(["new", "no_answer", "talked", "sold"] as ClientStage[]).map((st) => (
                   <option key={st} value={st}>{STAGE_LABELS[st]}</option>
@@ -428,7 +439,7 @@ export function ClientDetailDialog({
               </select>
               <button
                 onClick={handleMoveStage}
-                disabled={loading || moveStage === client.stage}
+                disabled={loading || moveStage === client.stage || session?.isActive === false}
                 className="px-4 py-2 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 disabled:opacity-40"
               >
                 O'zgartirish
@@ -436,11 +447,16 @@ export function ClientDetailDialog({
             </div>
           </section>
 
-            <section className="border-t border-border pt-5 flex justify-center">
+            <section className="border-t border-border pt-5 flex flex-col items-center gap-3">
+              {session?.isActive === false && (
+                <div className="flex items-center gap-2 text-destructive text-[10px] font-bold uppercase tracking-widest bg-destructive/5 px-3 py-1.5 rounded-lg border border-destructive/10">
+                  <AlertCircle className="w-3.5 h-3.5" /> Hisob faolsizlantirilgan
+                </div>
+              )}
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                disabled={loading}
-                className="inline-flex items-center gap-2 text-xs text-destructive hover:underline font-medium"
+                disabled={loading || session?.isActive === false}
+                className="inline-flex items-center gap-2 text-xs text-destructive hover:underline font-medium disabled:opacity-30 disabled:no-underline"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Mijozni o'chirib tashlash
               </button>

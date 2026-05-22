@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
+import { useSession } from "@/lib/store";
 import { Clock, CheckCheck, ListChecks, X, Calendar, AlertCircle, Play, Send, ExternalLink, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { playNotificationSound, showBrowserNotification } from "@/lib/notify";
@@ -46,6 +47,7 @@ const tabs: { id: "active" | "done"; label: string }[] = [
 ];
 
 function EmployeeTasks() {
+  const session = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"active" | "done">("active");
@@ -145,6 +147,12 @@ function EmployeeTasks() {
            <ListChecks className="w-10 h-10 text-primary" /> Topshiriqlar
         </h1>
         <p className="text-muted-foreground mt-1.5 font-medium">Sizga biriktirilgan vazifalar va ularning ijrosi</p>
+        {session?.isActive === false && (
+           <div className="mt-4 p-4 rounded-2xl bg-destructive/5 border border-destructive/20 text-destructive text-sm font-medium flex items-center gap-3">
+              <AlertCircle className="w-5 h-5" />
+              Sizning hisobingiz vaqtincha faolsizlantirilgan. Iltimos, direktor bilan bog'laning.
+           </div>
+        )}
       </header>
 
       <div className="flex gap-2 mb-8 p-1.5 bg-secondary/50 rounded-[22px] w-fit border border-border/40">
@@ -262,22 +270,24 @@ function EmployeeTasks() {
               </div>
 
               <div className="p-8 flex gap-4">
-                {(view.status === "todo" || view.status === "rejected") && (
-                  <button
-                    onClick={() => start(view)}
-                    className="flex-1 inline-flex items-center justify-center gap-2.5 py-4 rounded-2xl bg-amber-500 text-white font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
-                  >
-                    <Play className="w-5 h-5" /> Boshlash
-                  </button>
-                )}
-                {view.status === "in_progress" && (
-                  <button
-                    onClick={() => setFinishing(view)}
-                    className="flex-1 inline-flex items-center justify-center gap-2.5 py-4 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
-                  >
-                    <Send className="w-5 h-5" /> Tugatish
-                  </button>
-                )}
+                <>
+                  {(view.status === "todo" || view.status === "rejected") && (
+                    <button
+                      onClick={() => start(view)}
+                      className="flex-1 inline-flex items-center justify-center gap-2.5 py-4 rounded-2xl bg-amber-500 text-white font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    >
+                      <Play className="w-5 h-5" /> Boshlash
+                    </button>
+                  )}
+                  {view.status === "in_progress" && (
+                    <button
+                      onClick={() => setFinishing(view)}
+                      className="flex-1 inline-flex items-center justify-center gap-2.5 py-4 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    >
+                      <Send className="w-5 h-5" /> Tugatish
+                    </button>
+                  )}
+                </>
                 <button
                   onClick={() => setView(null)}
                   className="px-8 py-4 rounded-2xl border border-border font-bold text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
-import { useAppState } from "@/lib/store";
+import { useAppState, useSession } from "@/lib/store";
 import { ClientDetailDialog } from "@/components/ClientDetailDialog";
 import { AddClientDialog } from "@/components/AddClientDialog";
 import { ClientCard } from "@/components/ClientCard";
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/director/clients")({
 
 function DirectorClients() {
   const { state, update } = useAppState();
+  const session = useSession();
   const [activeCat, setActiveCat] = useState("");
   const [stage, setStage] = useState<ClientStage>("new");
   const [openClient, setOpenClient] = useState<Client | null>(null);
@@ -89,12 +90,14 @@ function DirectorClients() {
           >
             <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button
-            onClick={() => setShowAddClient(true)}
-            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
-          >
-            <UserPlus className="w-5 h-5" /> Yangi mijoz
-          </button>
+          {session?.isActive !== false && (
+            <button
+              onClick={() => setShowAddClient(true)}
+              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <UserPlus className="w-5 h-5" /> Yangi mijoz
+            </button>
+          )}
         </div>
       </header>
 

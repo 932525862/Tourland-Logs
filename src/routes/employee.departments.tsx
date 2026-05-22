@@ -60,8 +60,8 @@ function EmployeeDepartments() {
       setName("");
       setEditing(null);
       await fetchDeps();
-    } catch (err) {
-      toast.error("Xatolik yuz berdi");
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
     } finally {
       setActionLoading(false);
     }
@@ -75,8 +75,8 @@ function EmployeeDepartments() {
       toast.success(confirmingArchive.isArchive ? "Bo'lim aktivlashtirildi" : "Bo'lim arxivlandi");
       await fetchDeps();
       setConfirmingArchive(null);
-    } catch (err) {
-      toast.error("Xatolik yuz berdi");
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
     } finally {
       setActionLoading(false);
     }
@@ -90,8 +90,8 @@ function EmployeeDepartments() {
       toast.success("Bo'lim o'chirildi");
       await fetchDeps();
       setConfirmingDelete(null);
-    } catch (err) {
-      toast.error("Xatolik yuz berdi. Bo'limda mijozlar bo'lishi mumkin.");
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi. Bo'limda mijozlar bo'lishi mumkin.");
     } finally {
       setActionLoading(false);
     }

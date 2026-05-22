@@ -4,6 +4,7 @@ import { useAppState } from "@/lib/store";
 import { API, assetUrl } from "@/lib/api/client";
 import { formatUzDate, formatUzMonth, formatUzDateTable, formatUzTime } from "@/lib/date-utils";
 import { toast } from "sonner";
+import type { AttendanceStatus } from "@/lib/types";
 import {
   Calendar,
   Clock,
@@ -18,24 +19,34 @@ import {
   AlertCircle,
   Users,
   Filter,
+  UserX,
 } from "lucide-react";
 
 export const Route = createFileRoute("/director/attendance")({
   component: DirectorAttendance,
 });
 
-function fmtTime(iso?: string) {
-  return formatUzTime(iso || "");
+function fmtTime(iso?: string | null) {
+  return iso ? formatUzTime(iso) : "—";
 }
 
 function fmtDate(dateStr: string) {
   return formatUzDate(dateStr, { includeYear: true });
 }
 
-function hoursWorked(rec: { checkInAt: string; checkOutAt?: string }) {
+function hoursWorked(rec: { checkInAt?: string | null; checkOutAt?: string | null }) {
+  if (!rec.checkInAt || !rec.checkOutAt) return 0;
   const ci = new Date(rec.checkInAt).getTime();
-  const co = rec.checkOutAt ? new Date(rec.checkOutAt).getTime() : Date.now();
+  const co = new Date(rec.checkOutAt).getTime();
   return Math.max(0, (co - ci) / 3600000);
+}
+
+function formatHumanDuration(hours: number) {
+  if (hours <= 0) return "0m";
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
 }
 
 function todayStr() {
@@ -48,20 +59,47 @@ function currentYM() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function StatusBadge({ rec }: { rec: { checkInAt: string; checkOutAt?: string } }) {
-  if (!rec.checkOutAt) {
-    const hrs = ((Date.now() - new Date(rec.checkInAt).getTime()) / 3600000).toFixed(1);
+function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: string; checkInAt?: string | null; checkOutAt?: string | null } }) {
+  const isToday = rec.date === todayStr();
+  
+  if (status === "ABSENT") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold border border-primary/20 animate-pulse">
-        <Clock className="w-3 h-3" /> {hrs}s faol
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-destructive/10 text-destructive text-xs font-bold border border-destructive/20">
+        <UserX className="w-3 h-3" /> ABSENT
       </span>
     );
   }
-  return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-success/10 text-success text-xs font-bold border border-success/20">
-      <CheckCircle className="w-3 h-3" /> {hoursWorked(rec).toFixed(1)}h
-    </span>
-  );
+  
+  if (status === "ATTENDED" || (!isToday && rec.checkOutAt)) {
+    const hrs = hoursWorked(rec);
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-success/10 text-success text-xs font-bold border border-success/20">
+        <CheckCircle className="w-3 h-3" /> {formatHumanDuration(hrs)} ATTENDED
+      </span>
+    );
+  }
+
+  if (isToday && (status === "PRESENT" || (!status && rec.checkInAt && !rec.checkOutAt))) {
+    const hrsNum = rec.checkInAt
+      ? (Date.now() - new Date(rec.checkInAt).getTime()) / 3600000
+      : 0;
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold border border-primary/20 animate-pulse">
+        <Clock className="w-3 h-3" /> {formatHumanDuration(hrsNum)} PRESENT
+      </span>
+    );
+  }
+
+  // Fallback for past days with no checkout or explicitly marked PRESENT but it's not today anymore
+  if (!isToday && rec.checkInAt && !rec.checkOutAt) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-warning/10 text-warning text-xs font-bold border border-warning/20">
+        <AlertCircle className="w-3 h-3" /> INCOMPLETE
+      </span>
+    );
+  }
+
+  return null;
 }
 
 function DirectorAttendance() {
@@ -117,8 +155,9 @@ function DirectorAttendance() {
     () => (state.attendance ?? []).filter((r) => r.date === today),
     [state.attendance, today]
   );
-  const activeNow = todayRecs.filter((r) => !r.checkOutAt).length;
-  const checkedOutToday = todayRecs.filter((r) => r.checkOutAt).length;
+  const presentNow = todayRecs.filter((r) => r.status === "PRESENT" || (!r.status && r.checkInAt && !r.checkOutAt)).length;
+  const attendedToday = todayRecs.filter((r) => r.status === "ATTENDED" || r.checkOutAt).length;
+  const absentToday = todayRecs.filter((r) => r.status === "ABSENT").length;
   const neverCheckedIn = state.employees.filter(
     (e) => e.isActive && !todayRecs.find((r) => r.employeeId === e.id)
   ).length;
@@ -141,10 +180,13 @@ function DirectorAttendance() {
     const emp = state.employees.find((e) => e.id === selected);
     const allRecs = (recordsByEmp[selected] ?? [])
       .slice()
-      .sort((a, b) => b.checkInAt.localeCompare(a.checkInAt));
+      .sort((a, b) => b.date.localeCompare(a.date));
     const monthRecs = allRecs.filter((r) => r.date.startsWith(monthFilter));
     const monthTotal = monthRecs.reduce((s, r) => s + hoursWorked(r), 0);
-    const activeRec = allRecs.find((r) => r.date === today && !r.checkOutAt);
+    const activeRec = allRecs.find((r) => r.date === today && (r.status === "PRESENT" || (!r.status && !r.checkOutAt && r.checkInAt)));
+
+    const presentDays = monthRecs.filter((r) => r.status !== "ABSENT").length;
+    const absentDays = monthRecs.filter((r) => r.status === "ABSENT").length;
 
     return (
       <div className="p-6 md:p-10 max-w-6xl">
@@ -176,15 +218,44 @@ function DirectorAttendance() {
             </div>
           </div>
 
-          {/* Month filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-            <input
-              type="month"
-              value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+          {/* Status and Month filter */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card shadow-sm">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Hisob holati:</span>
+              <button
+                onClick={async () => {
+                  if (!emp) return;
+                  const newStatus = !emp.isActive;
+                  try {
+                    if (newStatus) await API.activateUser(emp.id);
+                    else await API.deactivateUser(emp.id);
+                    
+                    update(s => ({
+                      ...s,
+                      employees: s.employees.map(e => e.id === emp.id ? { ...e, isActive: newStatus } : e)
+                    }));
+                    toast.success(newStatus ? "Hodim faollashtirildi" : "Hodim bloklandi");
+                  } catch (err) {
+                    toast.error("Holatni o'zgartirishda xatolik");
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${emp?.isActive ? 'bg-success' : 'bg-destructive'}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${emp?.isActive ? 'translate-x-6' : 'translate-x-1'}`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <input
+                type="month"
+                value={monthFilter}
+                onChange={(e) => setMonthFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
           </div>
         </div>
 
@@ -193,31 +264,31 @@ function DirectorAttendance() {
           {[
             {
               label: "Bu oy jami soat",
-              value: monthTotal.toFixed(1),
-              unit: "soat",
+              value: formatHumanDuration(monthTotal),
+              unit: "",
               color: "text-primary",
               bg: "bg-primary/5",
             },
             {
-              label: "Bu oy kunlar",
-              value: monthRecs.length,
+              label: "Kelgan kunlar",
+              value: presentDays,
               unit: "kun",
               color: "text-success",
               bg: "bg-success/5",
             },
             {
-              label: "O'rtacha soat",
-              value: monthRecs.length ? (monthTotal / monthRecs.length).toFixed(1) : "0.0",
-              unit: "soat/kun",
-              color: "text-foreground",
-              bg: "bg-secondary/50",
+              label: "Kelmagan kunlar",
+              value: absentDays,
+              unit: "kun",
+              color: "text-destructive",
+              bg: "bg-destructive/5",
             },
             {
-              label: "Jami yozuvlar",
-              value: allRecs.length,
-              unit: "ta",
-              color: "text-muted-foreground",
-              bg: "bg-secondary/30",
+              label: "O'rtacha soat",
+              value: presentDays ? formatHumanDuration(monthTotal / presentDays) : "0m",
+              unit: "",
+              color: "text-foreground",
+              bg: "bg-secondary/50",
             },
           ].map((s) => (
             <div key={s.label} className={`${s.bg} rounded-2xl border border-border p-5`}>
@@ -258,64 +329,89 @@ function DirectorAttendance() {
                     <th className="text-left px-5 py-4">Keldi</th>
                     <th className="text-left px-5 py-4">Ketdi</th>
                     <th className="text-center px-5 py-4">Suratlar</th>
-                    <th className="text-right px-5 py-4">Ish vaqti</th>
+                    <th className="text-right px-5 py-4">Holat</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
-                  {monthRecs.map((r) => (
-                    <tr key={r.id} className="hover:bg-secondary/20 transition-colors">
-                      <td className="px-5 py-4">
-                        <div className="font-bold text-foreground">{formatUzDateTable(r.date).main}</div>
-                        <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">
-                          {formatUzDateTable(r.date).sub}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-success/10 text-success text-xs font-bold border border-success/10">
-                          <LogIn className="w-3 h-3" /> {fmtTime(r.checkInAt)}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        {r.checkOutAt ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-destructive/10 text-destructive text-xs font-bold border border-destructive/10">
-                            <LogOut className="w-3 h-3" /> {fmtTime(r.checkOutAt)}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold animate-pulse border border-primary/20">
-                            Hozir ishlayapti
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center justify-center gap-2">
-                          {r.photo && (
-                            <button
-                              onClick={() => setSelectedPhoto(r.photo!)}
-                              className="w-10 h-10 rounded-lg overflow-hidden border border-border hover:scale-110 transition-transform shadow-sm"
-                              title="Kelish surati"
-                            >
-                              <img src={assetUrl(r.photo!)} alt="In" className="w-full h-full object-cover" />
-                            </button>
-                          )}
-                          {r.checkOutPhoto && (
-                            <button
-                              onClick={() => setSelectedPhoto(r.checkOutPhoto!)}
-                              className="w-10 h-10 rounded-lg overflow-hidden border border-border hover:scale-110 transition-transform shadow-sm"
-                              title="Ketish surati"
-                            >
-                              <img src={assetUrl(r.checkOutPhoto!)} alt="Out" className="w-full h-full object-cover" />
-                            </button>
-                          )}
-                          {!r.photo && !r.checkOutPhoto && (
+                  {monthRecs.map((r) => {
+                    const isAbsent = r.status === "ABSENT";
+                    return (
+                      <tr
+                        key={r.id}
+                        className={`transition-colors ${isAbsent ? "bg-destructive/3 hover:bg-destructive/5" : "hover:bg-secondary/20"}`}
+                      >
+                        <td className="px-5 py-4">
+                          <div className="font-bold text-foreground">{formatUzDateTable(r.date).main}</div>
+                          <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">
+                            {formatUzDateTable(r.date).sub}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          {r.checkInAt ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-success/10 text-success text-xs font-bold border border-success/10">
+                              <LogIn className="w-3 h-3" /> {fmtTime(r.checkInAt)}
+                            </span>
+                          ) : (
                             <span className="text-muted-foreground/40 text-xs">—</span>
                           )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        <StatusBadge rec={r} />
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-5 py-4">
+                          {r.checkOutAt ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-destructive/10 text-destructive text-xs font-bold border border-destructive/10">
+                              <LogOut className="w-3 h-3" /> {fmtTime(r.checkOutAt)}
+                            </span>
+                          ) : isAbsent ? (
+                            <span className="text-muted-foreground/40 text-xs">—</span>
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold animate-pulse border border-primary/20 w-fit">
+                                Hozir ishlayapti
+                              </span>
+                              {r.checkInAt && (
+                                <span className="text-[10px] text-muted-foreground font-black ml-1">
+                                  {formatHumanDuration((Date.now() - new Date(r.checkInAt).getTime()) / 3600000)} ishladi
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center justify-center gap-4">
+                            {r.photo && (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Kelish</span>
+                                <button
+                                  onClick={() => setSelectedPhoto(r.photo!)}
+                                  className="w-10 h-10 rounded-lg overflow-hidden border border-border hover:scale-110 transition-transform shadow-sm"
+                                  title="Kelish surati"
+                                >
+                                  <img src={assetUrl(r.photo!)} alt="In" className="w-full h-full object-cover" />
+                                </button>
+                              </div>
+                            )}
+                            {r.checkOutPhoto && (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Ketish</span>
+                                <button
+                                  onClick={() => setSelectedPhoto(r.checkOutPhoto!)}
+                                  className="w-10 h-10 rounded-lg overflow-hidden border border-border hover:scale-110 transition-transform shadow-sm"
+                                  title="Ketish surati"
+                                >
+                                  <img src={assetUrl(r.checkOutPhoto!)} alt="Out" className="w-full h-full object-cover" />
+                                </button>
+                              </div>
+                            )}
+                            {!r.photo && !r.checkOutPhoto && (
+                              <span className="text-muted-foreground/40 text-xs">—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <StatusBadge status={r.status} rec={r} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -356,7 +452,7 @@ function DirectorAttendance() {
             <Clock className="w-8 h-8 text-primary" /> Davomat
           </h1>
           <p className="text-muted-foreground mt-1 font-medium">
-            Barcha hodimlarning davomat holati
+            {new Date().toLocaleDateString('uz-UZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
         <button
@@ -370,14 +466,14 @@ function DirectorAttendance() {
       </header>
 
       {/* Today's stats */}
-      <div className="grid sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid sm:grid-cols-4 gap-4 mb-8">
         <div className="bg-primary/5 border border-primary/10 rounded-2xl p-5 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <LogIn className="w-6 h-6" />
+            <Clock className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Hozir ishlayapti</p>
-            <p className="text-2xl font-black text-primary">{activeNow}</p>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">PRESENT</p>
+            <p className="text-2xl font-black text-primary">{presentNow}</p>
           </div>
         </div>
         <div className="bg-success/5 border border-success/10 rounded-2xl p-5 flex items-center gap-4">
@@ -385,8 +481,17 @@ function DirectorAttendance() {
             <CheckCircle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Bugun tugatdi</p>
-            <p className="text-2xl font-black text-success">{checkedOutToday}</p>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">ATTENDED</p>
+            <p className="text-2xl font-black text-success">{attendedToday}</p>
+          </div>
+        </div>
+        <div className="bg-destructive/5 border border-destructive/10 rounded-2xl p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive">
+            <UserX className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">ABSENT</p>
+            <p className="text-2xl font-black text-destructive">{absentToday}</p>
           </div>
         </div>
         <div className="bg-secondary/50 border border-border rounded-2xl p-5 flex items-center gap-4">
@@ -394,7 +499,7 @@ function DirectorAttendance() {
             <AlertCircle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Kelmagan</p>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Qayd etilmagan</p>
             <p className="text-2xl font-black text-foreground">{neverCheckedIn}</p>
           </div>
         </div>
@@ -454,21 +559,32 @@ function DirectorAttendance() {
             const monthRecs = recs.filter((r) => r.date.startsWith(ym));
             const monthTotal = monthRecs.reduce((s, r) => s + hoursWorked(r), 0);
             const todayRec = recs.find((r) => r.date === today);
-            const isActive = todayRec && !todayRec.checkOutAt;
+            const isPresent = todayRec?.status === "PRESENT" || (!todayRec?.status && todayRec?.checkInAt && !todayRec?.checkOutAt);
+            const isAttended = todayRec?.status === "ATTENDED" || (todayRec?.checkOutAt != null);
+            const isAbsent = todayRec?.status === "ABSENT";
             const lastRec = recs
+              .filter((r) => r.status !== "ABSENT")
               .slice()
-              .sort((a, b) => b.checkInAt.localeCompare(a.checkInAt))[0];
+              .sort((a, b) => b.date.localeCompare(a.date))[0];
 
             return (
               <button
                 key={emp.id}
                 onClick={() => setSelected(emp.id)}
-                className="text-left bg-card rounded-2xl border border-border p-5 hover:shadow-md hover:border-primary/30 transition-all group"
+                className={`text-left bg-card rounded-2xl border p-5 hover:shadow-md transition-all group ${
+                  isAbsent
+                    ? "border-destructive/20 hover:border-destructive/40"
+                    : isPresent
+                    ? "border-primary/20 hover:border-primary/40"
+                    : "border-border hover:border-primary/30"
+                }`}
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div
                     className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg font-black transition-transform group-hover:scale-110 ${
-                      isActive
+                      isAbsent
+                        ? "bg-destructive/10 text-destructive"
+                        : isPresent
                         ? "bg-primary/15 text-primary"
                         : "bg-secondary text-muted-foreground"
                     }`}
@@ -480,18 +596,22 @@ function DirectorAttendance() {
                       {emp.firstName} {emp.lastName}
                     </p>
                     <div className="flex items-center gap-1 mt-0.5">
-                      {isActive ? (
+                      {isPresent ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                          Ishlayapti
+                          PRESENT
                         </span>
-                      ) : todayRec ? (
+                      ) : isAttended ? (
                         <span className="text-[10px] font-black text-success uppercase tracking-widest">
-                          ✓ Bugun tugadi
+                          ✓ ATTENDED
+                        </span>
+                      ) : isAbsent ? (
+                        <span className="text-[10px] font-black text-destructive uppercase tracking-widest">
+                          ✗ ABSENT
                         </span>
                       ) : (
                         <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                          {emp.isActive ? "Kelmadi" : "Faolsiz"}
+                          {emp.isActive ? "Qayd etilmagan" : "Faolsiz"}
                         </span>
                       )}
                     </div>
@@ -501,11 +621,13 @@ function DirectorAttendance() {
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground text-xs">Bu oy soat</span>
-                    <span className="font-black text-foreground">{monthTotal.toFixed(1)}h</span>
+                    <span className="font-black text-foreground">{formatHumanDuration(monthTotal)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground text-xs">Bu oy kun</span>
-                    <span className="font-bold text-foreground">{monthRecs.length}</span>
+                    <span className="text-muted-foreground text-xs">Bu oy kelgan</span>
+                    <span className="font-bold text-foreground">
+                      {monthRecs.filter((r) => r.status !== "ABSENT").length} kun
+                    </span>
                   </div>
                   {lastRec && (
                     <div className="flex justify-between items-center pt-1 border-t border-border/50">

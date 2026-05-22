@@ -97,6 +97,8 @@ export interface Client {
   createdAt: string;
 }
 
+export type AttendanceStatus = 'PRESENT' | 'ATTENDED' | 'ABSENT';
+
 export interface AttendanceRecord {
   id: string;
   employeeId: string;
@@ -104,8 +106,9 @@ export interface AttendanceRecord {
   checkInAt: string; // ISO datetime
   checkOutAt?: string; // ISO datetime
   date: string; // YYYY-MM-DD
-  photo?: string; // dataURL (check-in)
-  checkOutPhoto?: string; // dataURL (check-out)
+  photo?: string; // check-in photo URL
+  checkOutPhoto?: string; // check-out photo URL
+  status?: AttendanceStatus; // PRESENT | ATTENDED | ABSENT
 }
 
 export type TaskStatus = "todo" | "in_progress" | "pending" | "done" | "approved" | "rejected" | "incomplete";

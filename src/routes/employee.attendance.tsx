@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useAppState, useSession } from "@/lib/store";
 import { CameraCheckInDialog } from "@/components/CameraCheckInDialog";
+import type { AttendanceStatus } from "@/lib/types";
 import {
   Calendar,
   Clock,
@@ -14,9 +15,11 @@ import {
   RefreshCw,
   Filter,
   CheckCircle,
+  UserX,
+  AlertCircle,
 } from "lucide-react";
 import { API, assetUrl } from "@/lib/api/client";
-import { formatUzMonth, formatUzDateTable, formatUzTime } from "@/lib/date-utils";
+import { formatUzDateTable, formatUzTime } from "@/lib/date-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/employee/attendance")({
@@ -33,12 +36,12 @@ function currentYM() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function fmtTime(iso?: string) {
-  return formatUzTime(iso || "");
+function fmtTime(iso?: string | null) {
+  return iso ? formatUzTime(iso) : "—";
 }
 
-function hoursWorked(rec: { checkInAt: string; checkOutAt?: string }) {
-  if (!rec.checkOutAt) return 0;
+function hoursWorked(rec: { checkInAt?: string | null; checkOutAt?: string | null }) {
+  if (!rec.checkInAt || !rec.checkOutAt) return 0;
   return Math.max(
     0,
     (new Date(rec.checkOutAt).getTime() - new Date(rec.checkInAt).getTime()) /
@@ -46,7 +49,54 @@ function hoursWorked(rec: { checkInAt: string; checkOutAt?: string }) {
   );
 }
 
-function useLiveElapsed(startIso?: string) {
+function formatHumanDuration(hours: number) {
+  if (hours <= 0) return "0m";
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: string; checkInAt?: string | null; checkOutAt?: string | null } }) {
+  const isToday = rec.date === todayStr();
+
+  if (status === "ABSENT") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-destructive/10 text-destructive text-xs font-bold border border-destructive/20">
+        <UserX className="w-3 h-3" /> ABSENT
+      </span>
+    );
+  }
+  
+  if (status === "ATTENDED" || (!isToday && rec.checkOutAt)) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-success/10 text-success text-xs font-bold border border-success/20">
+        <CheckCircle className="w-3 h-3" /> ATTENDED
+      </span>
+    );
+  }
+  
+  if (isToday && (status === "PRESENT" || (!status && rec.checkInAt && !rec.checkOutAt))) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold border border-primary/20 animate-pulse">
+        <Clock className="w-3 h-3" /> PRESENT
+      </span>
+    );
+  }
+
+  // Fail-safe for past days with no check-out
+  if (!isToday && rec.checkInAt && !rec.checkOutAt) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-warning/10 text-warning text-xs font-bold border border-warning/20">
+        <AlertCircle className="w-3 h-3" /> INCOMPLETE
+      </span>
+    );
+  }
+
+  return null;
+}
+
+function useLiveElapsed(startIso?: string | null) {
   const [ms, setMs] = useState(0);
   const ref = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -59,7 +109,7 @@ function useLiveElapsed(startIso?: string) {
     const tick = () =>
       setMs(Date.now() - new Date(startIso).getTime());
     tick();
-    ref.current = setInterval(tick, 30_000); // update every 30s
+    ref.current = setInterval(tick, 30_000);
     return () => { if (ref.current) clearInterval(ref.current); };
   }, [startIso]);
 
@@ -75,6 +125,8 @@ function EmployeeAttendance() {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [monthFilter, setMonthFilter] = useState(currentYM());
 
+  const [tick, setTick] = useState(0);
+
   const fetchAttendance = async () => {
     setLoading(true);
     try {
@@ -89,6 +141,8 @@ function EmployeeAttendance() {
 
   useEffect(() => {
     fetchAttendance();
+    const id = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(id);
   }, [session]);
 
   const myRecords = useMemo(
@@ -100,33 +154,41 @@ function EmployeeAttendance() {
   );
 
   const today = todayStr();
-  const activeRec = myRecords.find((r) => r.date === today && !r.checkOutAt);
-  const finishedToday = myRecords.some((r) => r.date === today && r.checkOutAt);
+  const activeRec = myRecords.find(
+    (r) => r.date === today && (r.status === "PRESENT" || (!r.status && r.checkInAt && !r.checkOutAt))
+  );
+  const finishedToday = myRecords.some(
+    (r) => r.date === today && (r.status === "ATTENDED" || r.checkOutAt)
+  );
   const canCheckIn = !activeRec && !finishedToday;
 
   // Live elapsed time
   const elapsedMs = useLiveElapsed(activeRec?.checkInAt);
-  const elapsedHrs = (elapsedMs / 3600000).toFixed(1);
+  const elapsedHrs = elapsedMs / 3600000;
+  const elapsedFmt = formatHumanDuration(elapsedHrs);
 
-  // Month totals
+  // Month totals (only non-absent days)
   const monthTotal = useMemo(() => {
     let total = myRecords
-      .filter((r) => r.date.startsWith(monthFilter))
+      .filter((r) => r.date.startsWith(monthFilter) && r.status !== "ABSENT")
       .reduce((s, r) => s + hoursWorked(r), 0);
-    
-    // Include active session if it matches the month filter
+
     if (activeRec && activeRec.date.startsWith(monthFilter)) {
-      total += (elapsedMs / 3600000);
+      total += elapsedMs / 3600000;
     }
     return total;
   }, [myRecords, monthFilter, activeRec, elapsedMs]);
 
   const monthDays = useMemo(
-    () => myRecords.filter((r) => r.date.startsWith(monthFilter)).length,
+    () => myRecords.filter((r) => r.date.startsWith(monthFilter) && r.status !== "ABSENT").length,
     [myRecords, monthFilter]
   );
 
-  // Filtered records for the history table
+  const absentDays = useMemo(
+    () => myRecords.filter((r) => r.date.startsWith(monthFilter) && r.status === "ABSENT").length,
+    [myRecords, monthFilter]
+  );
+
   const filteredRecords = useMemo(
     () => myRecords.filter((r) => r.date.startsWith(monthFilter)),
     [myRecords, monthFilter]
@@ -163,8 +225,14 @@ function EmployeeAttendance() {
             <Clock className="w-10 h-10 text-primary" /> Davomat
           </h1>
           <p className="text-muted-foreground mt-1.5 font-medium">
-            Ish vaqtingizni oson nazorat qiling va qayd eting
+            {new Date().toLocaleDateString('uz-UZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
+          {session?.isActive === false && (
+             <div className="mt-4 p-4 rounded-2xl bg-destructive/5 border border-destructive/20 text-destructive text-sm font-medium flex items-center gap-3">
+                <AlertCircle className="w-5 h-5" />
+                Sizning hisobingiz vaqtincha faolsizlantirilgan. Iltimos, direktor bilan bog'laning.
+             </div>
+          )}
         </div>
         <div className="flex gap-3 flex-wrap">
           <button
@@ -174,34 +242,36 @@ function EmployeeAttendance() {
           >
             <RefreshCw className={`w-6 h-6 ${loading ? "animate-spin" : ""}`} />
           </button>
-          {canCheckIn && (
-            <button
-              onClick={() => setOpenIn(true)}
-              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-success text-success-foreground font-black shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              <LogIn className="w-5 h-5" />
-              Ishga keldim
-            </button>
-          )}
+          <>
+            {canCheckIn && (
+              <button
+                onClick={() => setOpenIn(true)}
+                className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-success text-success-foreground font-black shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <LogIn className="w-5 h-5" />
+                Ishga keldim
+              </button>
+            )}
 
-          {activeRec && (
-            <button
-              onClick={() => setOpenOut(true)}
-              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-destructive text-destructive-foreground font-black shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              <LogOut className="w-5 h-5" /> Ishdan ketdim
-            </button>
-          )}
+            {activeRec && (
+              <button
+                onClick={() => setOpenOut(true)}
+                className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-destructive text-destructive-foreground font-black shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <LogOut className="w-5 h-5" /> Ishdan ketdim
+              </button>
+            )}
 
-          {finishedToday && (
-            <button
-              disabled
-              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-success text-success-foreground font-black shadow-lg opacity-50"
-            >
-              <LogIn className="w-5 h-5" />
-              Ishga kelindi ✓
-            </button>
-          )}
+            {finishedToday && (
+              <button
+                disabled
+                className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-success text-success-foreground font-black shadow-lg opacity-50"
+              >
+                <LogIn className="w-5 h-5" />
+                Ishga kelindi ✓
+              </button>
+            )}
+          </>
         </div>
       </header>
 
@@ -213,7 +283,7 @@ function EmployeeAttendance() {
           </div>
           <div className="flex-1">
             <p className="font-black text-primary text-lg">
-              {elapsedHrs} soat ishlandi
+              {elapsedFmt} ishlandi
             </p>
             <p className="text-muted-foreground text-sm">
               Kirish: {fmtTime(activeRec.checkInAt)} · Ish jarayonida...
@@ -221,7 +291,7 @@ function EmployeeAttendance() {
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs font-black text-primary uppercase tracking-widest">Faol</span>
+            <span className="text-xs font-black text-primary uppercase tracking-widest">PRESENT</span>
           </div>
         </div>
       )}
@@ -239,14 +309,12 @@ function EmployeeAttendance() {
           </div>
           <p className="text-3xl font-black text-foreground">
             {activeRec
-              ? elapsedHrs
+              ? elapsedFmt
               : finishedToday
-              ? myRecords
+              ? formatHumanDuration(myRecords
                   .filter((r) => r.date === today)
-                  .reduce((s, r) => s + hoursWorked(r), 0)
-                  .toFixed(1)
-              : "0.0"}
-            <span className="text-sm font-bold text-muted-foreground ml-1">soat</span>
+                  .reduce((s, r) => s + hoursWorked(r), 0))
+              : "0m"}
           </p>
         </div>
 
@@ -260,30 +328,25 @@ function EmployeeAttendance() {
             </p>
           </div>
           <p className="text-3xl font-black text-foreground">
-            {monthTotal.toFixed(1)}
-            <span className="text-sm font-bold text-muted-foreground ml-1">soat</span>
+            {formatHumanDuration(monthTotal)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">{monthDays} ish kuni</p>
         </div>
 
-        <div className="bg-card border border-border rounded-[28px] p-6 shadow-sm group hover:border-secondary transition-all overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/20 rounded-full -mr-12 -mt-12 group-hover:scale-125 transition-transform" />
-          <div className="flex items-center gap-4 mb-4 relative z-10">
-            <div className="w-12 h-12 rounded-[18px] bg-secondary text-muted-foreground flex items-center justify-center">
-              <User className="w-6 h-6" />
+        <div className="bg-card border border-border rounded-[28px] p-6 shadow-sm group hover:border-success/20 transition-all">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 rounded-[18px] bg-success/10 text-success flex items-center justify-center group-hover:scale-110 transition-transform">
+              <CheckCircle className="w-6 h-6" />
             </div>
             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-              Profilingiz
+              Kelgan kunlar
             </p>
           </div>
-          <p className="text-xl font-black text-foreground truncate relative z-10">
-            {session?.name || "Hodim"}
+          <p className="text-3xl font-black text-foreground">
+            {monthDays}
+            <span className="text-sm font-bold text-muted-foreground ml-1">kun</span>
           </p>
-          {finishedToday && (
-            <p className="text-[10px] text-success font-black uppercase tracking-widest mt-1 relative z-10 flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" /> Bugun bajarildi
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground mt-1">bu oy</p>
         </div>
       </div>
 
@@ -320,81 +383,108 @@ function EmployeeAttendance() {
                 <th className="text-left px-6 py-5">Kelish</th>
                 <th className="text-left px-6 py-5">Ketish</th>
                 <th className="text-center px-6 py-5">Surat</th>
+                <th className="text-center px-6 py-5">Holat</th>
                 <th className="text-right px-6 py-5">Ish vaqti</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {filteredRecords.map((r) => (
-                <tr key={r.id} className="hover:bg-secondary/20 transition-all group">
-                  <td className="px-6 py-5">
-                    <div className="text-foreground font-bold">
-                      {formatUzDateTable(r.date).main}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">
-                      {formatUzDateTable(r.date).sub}
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-success/10 text-success text-xs font-bold border border-success/10">
-                      <LogIn className="w-3.5 h-3.5" /> {fmtTime(r.checkInAt)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5">
-                    {r.checkOutAt ? (
-                      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-destructive/10 text-destructive text-xs font-bold border border-destructive/10">
-                        <LogOut className="w-3.5 h-3.5" /> {fmtTime(r.checkOutAt)}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-bold animate-pulse border border-primary/20">
-                        Ish jarayonida...
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      {r.photo && (
-                        <button
-                          onClick={() => setSelectedPhoto(r.photo!)}
-                          className="w-10 h-10 rounded-lg overflow-hidden border border-border shadow-sm hover:scale-110 transition-transform bg-muted"
-                        >
-                          <img
-                            src={assetUrl(r.photo!)}
-                            alt="In"
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
+              {filteredRecords.map((r) => {
+                const isAbsent = r.status === "ABSENT";
+                return (
+                  <tr
+                    key={r.id}
+                    className={`transition-all group ${isAbsent ? "bg-destructive/3 hover:bg-destructive/5" : "hover:bg-secondary/20"}`}
+                  >
+                    <td className="px-6 py-5">
+                      <div className={`text-foreground font-bold ${isAbsent ? "text-muted-foreground" : ""}`}>
+                        {formatUzDateTable(r.date).main}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">
+                        {formatUzDateTable(r.date).sub}
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      {r.checkInAt ? (
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-success/10 text-success text-xs font-bold border border-success/10">
+                          <LogIn className="w-3.5 h-3.5" /> {fmtTime(r.checkInAt)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/40 text-xs">—</span>
                       )}
-                      {r.checkOutPhoto && (
-                        <button
-                          onClick={() => setSelectedPhoto(r.checkOutPhoto!)}
-                          className="w-10 h-10 rounded-lg overflow-hidden border border-border shadow-sm hover:scale-110 transition-transform bg-muted"
-                        >
-                          <img
-                            src={assetUrl(r.checkOutPhoto!)}
-                            alt="Out"
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
+                    </td>
+                    <td className="px-6 py-5">
+                      {r.checkOutAt ? (
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-destructive/10 text-destructive text-xs font-bold border border-destructive/10">
+                          <LogOut className="w-3.5 h-3.5" /> {fmtTime(r.checkOutAt)}
+                        </span>
+                      ) : isAbsent ? (
+                        <span className="text-muted-foreground/40 text-xs">—</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-bold animate-pulse border border-primary/20">
+                          Ish jarayonida...
+                        </span>
                       )}
-                      {!r.photo && !r.checkOutPhoto && (
-                        <span className="text-muted-foreground/40">—</span>
+                    </td>
+                    <td className="px-6 py-5 text-center">
+                      <div className="flex items-center justify-center gap-4">
+                        {r.photo && (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Kelish</span>
+                            <button
+                              onClick={() => setSelectedPhoto(r.photo!)}
+                              className="w-10 h-10 rounded-lg overflow-hidden border border-border shadow-sm hover:scale-110 transition-transform bg-muted"
+                            >
+                              <img
+                                src={assetUrl(r.photo!)}
+                                alt="In"
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          </div>
+                        )}
+                        {r.checkOutPhoto && (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Ketish</span>
+                            <button
+                              onClick={() => setSelectedPhoto(r.checkOutPhoto!)}
+                              className="w-10 h-10 rounded-lg overflow-hidden border border-border shadow-sm hover:scale-110 transition-transform bg-muted"
+                            >
+                              <img
+                                src={assetUrl(r.checkOutPhoto!)}
+                                alt="Out"
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          </div>
+                        )}
+                        {!r.photo && !r.checkOutPhoto && (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-center">
+                      <StatusBadge status={r.status} rec={r} />
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      {isAbsent ? (
+                        <span className="text-muted-foreground/40 text-sm">—</span>
+                      ) : (
+                        <>
+                          <div className="text-foreground font-black text-lg">
+                            {r.status === "PRESENT" && r.checkInAt
+                              ? formatHumanDuration((Date.now() - new Date(r.checkInAt).getTime()) / 3600000)
+                              : formatHumanDuration(hoursWorked(r))}
+                          </div>
+                        </>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-5 text-right">
-                    <div className="text-foreground font-black text-lg">
-                      {hoursWorked(r).toFixed(1)}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-                      soat
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
 
               {filteredRecords.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-24 text-center">
+                  <td colSpan={6} className="px-6 py-24 text-center">
                     <div className="w-20 h-20 bg-secondary/50 rounded-[28px] flex items-center justify-center mx-auto mb-4 text-muted-foreground/30">
                       <Calendar className="w-10 h-10" />
                     </div>
