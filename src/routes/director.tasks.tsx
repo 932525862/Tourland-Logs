@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { useAppState } from "@/lib/store";
-import { Plus, ListChecks, Check, Clock, CheckCheck, X, RotateCcw } from "lucide-react";
+import { Plus, ListChecks, Check, Clock, CheckCheck, X, RotateCcw, ExternalLink, CalendarCheck } from "lucide-react";
 import { toast } from "sonner";
-import { playNotificationSound } from "@/lib/notify";
+import { playNotificationSound, showBrowserNotification } from "@/lib/notify";
 import { API } from "@/lib/api/client";
-import { formatUzDate } from "@/lib/date-utils";
+import { formatUzDate, formatUzStatus, formatUzDateTime } from "@/lib/date-utils";
 import {
   Dialog,
   DialogContent,
@@ -33,20 +33,24 @@ const tabs: { id: "active" | "done"; label: string }[] = [
   { id: "done", label: "Bajarilganlar" },
 ];
 
-function statusBadge(s: TaskStatus) {
-  const map: Record<TaskStatus, { label: string; cls: string; Icon: any }> = {
-    new: { label: "Yangi", cls: "bg-blue-100 text-blue-700", Icon: ListChecks },
-    in_progress: { label: "Jarayonda", cls: "bg-amber-100 text-amber-700", Icon: Clock },
-    done: { label: "Tekshiruvda", cls: "bg-purple-100 text-purple-700", Icon: Check },
-    approved: { label: "Bajarildi", cls: "bg-emerald-100 text-emerald-700", Icon: CheckCheck },
-    rejected: { label: "Rad etildi", cls: "bg-destructive/10 text-destructive", Icon: X },
-  };
-  const v = map[s] || map.new;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${v.cls}`}>
-      <v.Icon className="w-3 h-3" /> {v.label}
-    </span>
-  );
+function statusBadge(status: TaskStatus) {
+  switch (status) {
+    case "todo":
+      return <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-secondary text-muted-foreground border border-border transition-all">Yangi</span>;
+    case "in_progress":
+      return <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-600 border border-amber-200 transition-all">Jarayonda</span>;
+    case "pending":
+      return <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-blue-500/10 text-blue-600 border border-blue-200 transition-all">Tekshiruvda</span>;
+    case "done":
+    case "approved":
+      return <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-success/15 text-success border border-success/20 transition-all">Bajarildi</span>;
+    case "rejected":
+      return <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-destructive/15 text-destructive border border-destructive/20 transition-all">Rad etildi</span>;
+    case "incomplete":
+      return <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-destructive/10 text-destructive grayscale opacity-70 transition-all">Bajarilmadi</span>;
+    default:
+      return <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-muted text-muted-foreground border border-border">{status}</span>;
+  }
 }
 
 function DirectorTasks() {
@@ -62,6 +66,8 @@ function DirectorTasks() {
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
   const [view, setView] = useState<Task | null>(null);
+  const [rejecting, setRejecting] = useState<Task | null>(null);
+  const [rReason, setRReason] = useState("");
 
   const fetchTasks = async () => {
     try {
@@ -79,11 +85,27 @@ function DirectorTasks() {
 
     const unsub = API.initSocket((event, data) => {
       console.log("WS Event in DirectorTasks:", event, data);
-      if (event === "taskCreated" || event === "taskStatusChanged" || event === "taskVerified") {
+      if (event === "taskCreated" || event === "taskStatusChanged" || event === "taskVerified" || event === "taskIncomplete" || event === "taskRejected") {
         fetchTasks();
-        if (event === "taskStatusChanged" && data.newStatus === "PENDING") {
+        
+        const newStatus = data?.newStatus?.toUpperCase() || (event === "taskVerified" ? "APPROVED" : event === "taskIncomplete" ? "INCOMPLETE" : "");
+
+        if (event === "taskStatusChanged" && newStatus === "PENDING") {
           playNotificationSound();
-          toast.info("Yangi topshiriq tugatildi, tasdiqlash kerak");
+          toast.info("Hodim topshiriqni tugatdi, tasdiqlash kerak");
+          showBrowserNotification("Tasdiqlash kerak", { body: "Hodim topshiriqni tugatdi va tekshirishingizni kutmoqda." });
+        } else if ((event === "taskStatusChanged" && newStatus === "REJECTED") || event === "taskRejected") {
+          playNotificationSound();
+          toast.error("Topshiriq rad etildi");
+          showBrowserNotification("Rad etildi", { body: "Topshiriq rad etildi." });
+        } else if (event === "taskVerified" || newStatus === "APPROVED" || newStatus === "DONE") {
+          playNotificationSound();
+          toast.success("Topshiriq tasdiqlandi");
+          showBrowserNotification("Tasdiqlandi", { body: "Topshiriq muvaffaqiyatli tasdiqlandi." });
+        } else if (event === "taskIncomplete" || newStatus === "INCOMPLETE") {
+          playNotificationSound();
+          toast.warning("Topshiriq muddati o'tdi");
+          showBrowserNotification("Bajarilmadi", { body: "Topshiriqning muddati o'tdi va bajarilmadi." });
         }
       }
     });
@@ -95,8 +117,8 @@ function DirectorTasks() {
 
   const list = useMemo(() => {
     return tab === "done"
-      ? tasks.filter((t) => t.status === "approved")
-      : tasks.filter((t) => t.status !== "approved");
+      ? tasks.filter((t) => t.status === "done")
+      : tasks.filter((t) => t.status !== "done" && t.status !== "incomplete");
   }, [tasks, tab]);
 
   const empName = (id: string) => {
@@ -140,11 +162,17 @@ function DirectorTasks() {
     }
   };
 
-  const reject = async (t: Task) => {
+  const reject = async () => {
+    if (!rejecting || !rReason.trim()) {
+      toast.error("Rad etish sababini kiriting");
+      return;
+    }
     try {
-      await API.rejectTask(t.id);
+      await API.rejectTask(rejecting.id, rReason.trim());
       toast.error("Topshiriq rad etildi");
+      setRejecting(null);
       setView(null);
+      setRReason("");
       fetchTasks();
     } catch (err: any) {
       toast.error("Xatolik: " + err.message);
@@ -359,6 +387,11 @@ function DirectorTasks() {
                     <p className="text-xs font-bold text-foreground">{view.notifyAt}</p>
                   </div>
                 </div>
+
+                <div className="p-5 rounded-[28px] border border-border/50 bg-secondary/5">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4 px-2">Kunlik ijro tarixi</p>
+                  <TaskHistory templateId={view.templateId} currentInstanceId={view.id} />
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -368,10 +401,10 @@ function DirectorTasks() {
                 >
                   Yopish
                 </button>
-                {view.status === "done" && (
+                {view.status === "pending" && (
                   <>
                     <button
-                      onClick={() => reject(view)}
+                      onClick={() => setRejecting(view)}
                       className="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-destructive text-destructive-foreground font-black shadow-lg hover:shadow-glow transition-all"
                     >
                       <RotateCcw className="w-5 h-5" /> Rad etish
@@ -385,10 +418,167 @@ function DirectorTasks() {
                   </>
                 )}
               </div>
+
+              <RejectDialog 
+                open={!!rejecting}
+                onOpenChange={(o: boolean) => !o && setRejecting(null)}
+                reason={rReason}
+                setReason={setRReason}
+                onConfirm={reject}
+              />
             </div>
           )}
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function TaskHistory({ templateId, currentInstanceId }: { templateId: string, currentInstanceId?: string }) {
+  const [instances, setInstances] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<any | null>(null);
+
+  useEffect(() => {
+    API.templateInstances(templateId).then(data => {
+      setInstances(data);
+      if (currentInstanceId) {
+        const curr = data.find((x: any) => x.id === currentInstanceId);
+        if (curr) setSelected(curr);
+      } else if (data.length > 0) {
+        setSelected(data[data.length - 1]);
+      }
+    }).finally(() => setLoading(false));
+  }, [templateId, currentInstanceId]);
+
+  if (loading) return <div className="animate-pulse h-12 bg-secondary/30 rounded-xl" />;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2 pb-2">
+        {instances.map((inst) => {
+          const s = (inst.status || "TODO").toUpperCase();
+          const isDone = s === "DONE" || s === "APPROVED";
+          const isIncomplete = s === "INCOMPLETE" || s === "REJECTED";
+          const isSelected = selected?.id === inst.id;
+          
+          return (
+            <button 
+              key={inst.id} 
+              onClick={() => setSelected(inst)}
+              className="flex flex-col items-center gap-1.5 group relative px-1 transition-all"
+            >
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all transform hover:scale-110 shadow-sm ${
+                 isSelected ? 'scale-115 ring-4 ring-primary/10' : ''
+              } ${
+                 isDone ? (isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-emerald-50 border-emerald-200 text-emerald-600') :
+                 isIncomplete ? (isSelected ? 'bg-destructive border-destructive text-white' : 'bg-destructive/5 border-destructive/10 text-destructive') :
+                 (isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'bg-blue-50 border-blue-100 text-blue-500')
+              }`}>
+                 {isDone ? <Check className="w-5 h-5" /> : 
+                  isIncomplete ? <X className="w-5 h-5" /> : 
+                  <Clock className="w-5 h-5" />}
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-tighter ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
+                {new Date(inst.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {selected && (
+        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center justify-between px-1">
+             <div className="flex items-center gap-2">
+                <CalendarCheck className="w-4 h-4 text-primary" />
+                <span className="text-xs font-black text-foreground">{formatUzDate(selected.dueDate)}</span>
+             </div>
+             <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border ${
+                selected.status === 'done' || selected.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                selected.status === 'incomplete' || selected.status === 'rejected' ? 'bg-destructive/5 text-destructive border-destructive/10' :
+                'bg-blue-50 text-blue-600 border-blue-100'
+             }`}>
+                {formatUzStatus(selected.status)}
+             </span>
+          </div>
+
+          {(selected.completionDescription || selected.rejectionReason) ? (
+            <div className="space-y-3">
+              {selected.completionDescription && (
+                <div className="p-4 rounded-2xl bg-card border border-border/50 shadow-sm">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase mb-2">Hodim hisoboti</p>
+                  <p className="text-sm font-medium text-foreground leading-relaxed">{selected.completionDescription}</p>
+                  <div className="mt-3 flex items-center justify-between">
+                    {selected.completionLink && (
+                      <a href={selected.completionLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">
+                        <ExternalLink className="w-3 h-3" /> Havola
+                      </a>
+                    )}
+                    <span className="text-[10px] font-medium text-muted-foreground">
+                      {selected.completedAt ? formatUzDateTime(selected.completedAt) : ''}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {selected.rejectionReason && (
+                <div className="p-4 rounded-2xl bg-destructive/5 border border-destructive/20">
+                  <p className="text-[10px] font-black text-destructive uppercase mb-2">Rad etish sababi</p>
+                  <p className="text-sm font-medium text-foreground">{selected.rejectionReason}</p>
+                  <div className="mt-2 text-right">
+                    <span className="text-[10px] font-medium text-destructive/60">
+                      {selected.approvedAt ? formatUzDateTime(selected.approvedAt) : ''}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-6 text-center rounded-2xl border border-dashed border-border/50 text-muted-foreground italic text-xs">
+              Ushbu kun uchun ma'lumotlar mavjud emas
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RejectDialog({ open, onOpenChange, reason, setReason, onConfirm }: any) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="rounded-[32px] max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-black">Topshiriqni rad etish</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold px-1 text-destructive">Rad etish sababi (majburiy)</label>
+            <Textarea 
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Nima uchun rad etilayotganini tushuntiring..."
+              className="rounded-xl border-destructive/50 focus-visible:ring-destructive resize-none"
+              rows={3}
+            />
+          </div>
+        </div>
+        <DialogFooter className="pt-6">
+          <button 
+            onClick={() => onOpenChange(false)}
+            className="px-6 py-2.5 rounded-xl border border-border font-bold text-muted-foreground hover:bg-secondary transition-all"
+          >
+            Bekor qilish
+          </button>
+          <button 
+            onClick={onConfirm}
+            disabled={!reason.trim()}
+            className="px-8 py-2.5 rounded-xl bg-destructive text-white font-black shadow-lg hover:shadow-glow transition-all active:scale-95 disabled:opacity-50"
+          >
+            Rad etish
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -246,13 +246,11 @@ export const API = {
         notifyAt: template.notifyAt || "9:00 AM",
         startDate: template.startDate || "",
         endDate: template.endDate || "",
-        status: (rawStatus === "TODO"
-          ? "new"
-          : rawStatus === "PENDING"
-            ? "done"
-            : rawStatus === "DONE"
-              ? "approved"
-              : rawStatus.toLowerCase()) as TaskStatus,
+        status: rawStatus.toLowerCase() as TaskStatus,
+        templateId: t.templateId,
+        completionDescription: t.completionDescription,
+        completionLink: t.completionLink,
+        rejectionReason: t.rejectionReason,
         createdAt: t.createdAt,
         seenByEmployee: true,
         seenByDirector: true,
@@ -272,12 +270,19 @@ export const API = {
     method: "POST",
     json: data
   }),
-  updateTask: (id: string, data: { status: string }) => api(`/tasks/${id}/status`, {
-    method: "PATCH",
-    json: { status: data.status.toLowerCase() }
-  }),
+  updateTask: (id: string, data: { status: string; completionDescription?: string; completionLink?: string }) => {
+    const body: any = { status: data.status.toLowerCase() };
+    if (data.completionDescription) body.completionDescription = data.completionDescription;
+    if (data.completionLink) body.completionLink = data.completionLink;
+    return api(`/tasks/${id}/status`, {
+      method: "PATCH",
+      json: body
+    });
+  },
   verifyTask: (id: string) => api(`/tasks/${id}/verify`, { method: "PATCH" }),
-  rejectTask: (id: string) => api(`/tasks/${id}/reject`, { method: "PATCH" }),
+  rejectTask: (id: string, reason?: string) => api(`/tasks/${id}/reject`, { method: "PATCH", json: { reason } }),
+  taskDetail: (id: string) => api<any>(`/tasks/${id}`),
+  templateInstances: (templateId: string) => api<any[]>(`/tasks/template/${templateId}/instances`),
   taskSeen: (id: string) => Promise.resolve(), // TODO: Not supported in current CRM backend
   deleteTask: (id: string) => Promise.resolve(), // TODO: Not supported in current CRM backend
 

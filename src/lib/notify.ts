@@ -20,21 +20,53 @@ export function playNotificationSound() {
   if (!ctx) return;
   try {
     const now = ctx.currentTime;
-    const tones = [880, 1175];
-    tones.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
+
+    const playBell = (freq: number, startTime: number) => {
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, now + i * 0.18);
-      gain.gain.exponentialRampToValueAtTime(0.25, now + i * 0.18 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.18 + 0.22);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now + i * 0.18);
-      osc.stop(now + i * 0.18 + 0.25);
-    });
+
+      osc1.type = "sine";
+      osc1.frequency.value = freq;
+
+      osc2.type = "triangle";
+      osc2.frequency.value = freq * 2.01;
+
+      // Crisp attack and exponential decay for a "chime" or "bell" feel
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.15, startTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(startTime);
+      osc2.start(startTime);
+      osc1.stop(startTime + 0.6);
+      osc2.stop(startTime + 0.6);
+    };
+
+    // Modern 3-note rising sequence (like iPhone Tri-tone / Note)
+    playBell(587.33, now);        // D5
+    playBell(739.99, now + 0.12); // F#5
+    playBell(880.00, now + 0.24); // A5
   } catch {
     /* ignore */
+  }
+}
+
+export function showBrowserNotification(title: string, options?: NotificationOptions) {
+  if (typeof window === "undefined" || !("Notification" in window)) return;
+  
+  if (Notification.permission === "granted") {
+    new Notification(title, options);
+  } else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        new Notification(title, options);
+      }
+    });
   }
 }
 
@@ -64,6 +96,9 @@ if (typeof window !== "undefined") {
   const unlock = () => {
     const ctx = getCtx();
     if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
     window.removeEventListener("click", unlock);
     window.removeEventListener("keydown", unlock);
     window.removeEventListener("touchstart", unlock);

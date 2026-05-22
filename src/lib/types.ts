@@ -108,7 +108,7 @@ export interface AttendanceRecord {
   checkOutPhoto?: string; // dataURL (check-out)
 }
 
-export type TaskStatus = "new" | "in_progress" | "done" | "approved" | "rejected";
+export type TaskStatus = "todo" | "in_progress" | "pending" | "done" | "approved" | "rejected" | "incomplete";
 
 export interface Task {
   id: string;
@@ -119,6 +119,10 @@ export interface Task {
   startDate: string;
   endDate: string;
   status: TaskStatus;
+  templateId: string;
+  completionDescription?: string;
+  completionLink?: string;
+  rejectionReason?: string;
   createdAt: string;
   startedAt?: string;
   completedAt?: string;
