@@ -19,7 +19,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const session = useSession();
   const navigate = useNavigate();
-  const [login, setLogin] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"director" | "employee">("director");
 
@@ -31,18 +31,20 @@ function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { accessToken } = await API.login(login, password);
+      const { accessToken } = await API.login(phone, password);
       setToken(accessToken);
-      const { user } = await API.me();
+      const user = await API.me();
       
-      if (user.role !== role) {
+      const userRole = user.role.toLowerCase();
+      if (userRole !== role) {
         throw new Error("Ruxsat berilmagan: Tanlangan rol mos kelmadi");
       }
       
-      saveSession({ id: user.sub, role: user.role, name: user.name, login: user.login });
-      toast.success(`Xush kelibsiz, ${user.name}`);
+      const fullName = `${user.firstName} ${user.lastName}`.trim();
+      saveSession({ id: user.id || user.sub, role: userRole as "director" | "employee", name: fullName, login: user.phoneNumber });
+      toast.success(`Xush kelibsiz, ${fullName}`);
       
-      if (user.role === "director") navigate({ to: "/director" });
+      if (userRole === "director") navigate({ to: "/director" });
       else navigate({ to: "/employee" });
     } catch (err: any) {
       toast.error(err.message || "Login yoki parol noto'g'ri");
@@ -84,15 +86,22 @@ function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1.5">Telefon raqam</label>
+            <div className="space-y-1.5 relative">
+              <label 
+                htmlFor="phone" 
+                className="text-[13px] font-semibold text-foreground/80 pl-1 uppercase tracking-wider block"
+              >
+                Telefon raqam
+              </label>
               <input
-                type="text"
-                value={login}
-                onChange={(e) => setLogin(formatUzbekPhone(e.target.value))}
-                className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-                placeholder="+998901234567"
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(formatUzbekPhone(e.target.value))}
+                placeholder="+998 90 123 45 67"
+                dir="ltr"
                 required
+                className="w-full px-4 py-3.5 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
               />
             </div>
             <div>
@@ -112,6 +121,18 @@ function LoginPage() {
             >
               Kirish
             </button>
+            <div className="text-center pt-1">
+              <a
+                href="/forgot-password"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate({ to: "/forgot-password" });
+                }}
+                className="text-sm text-primary hover:underline font-medium"
+              >
+                Parolni unutdingizmi?
+              </a>
+            </div>
           </form>
         </div>
       </div>

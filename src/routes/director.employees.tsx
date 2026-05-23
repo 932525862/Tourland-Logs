@@ -298,9 +298,9 @@ function EmployeeFormDialog({
               <label className="text-sm font-bold text-foreground/70 ml-1">Login</label>
               <input
                 type="text"
-                value={login}
-                onChange={(e) => setLogin(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
+                value={phone}
+                readOnly
+                className="w-full px-4 py-3 rounded-xl border border-input bg-secondary/50 text-muted-foreground focus:outline-none transition-all font-mono"
               />
             </div>
             <div className="space-y-1.5">

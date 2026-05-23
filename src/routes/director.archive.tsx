@@ -344,7 +344,7 @@ function DirectorArchive() {
 function TaskDetailModal({ task, open, onOpenChange, loading }: any) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl rounded-[40px] border-border bg-card p-0 overflow-hidden">
+      <DialogContent className="max-w-xl rounded-[40px] border-border bg-card p-0 overflow-hidden max-h-[85vh] overflow-y-auto">
         {loading || !task ? (
           <div className="p-12 flex justify-center items-center">
             <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />

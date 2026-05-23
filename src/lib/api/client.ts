@@ -117,45 +117,58 @@ export async function api<T = unknown>(
   return (await res.json()) as T;
 }
 
+const cleanPhone = (phone: string | undefined) => phone ? phone.replace(/\s+/g, "") : "";
+
 export const API = {
-  // auth
   login: (login: string, password: string) =>
-    api<{ accessToken: string; refreshToken: string }>(
-      "/auth/login",
-      { method: "POST", json: { phoneNumber: login, password } },
-    ).then(res => {
-        setRefreshToken(res.refreshToken);
-        return res;
-    }),
-  logout: () => {
-    setToken(null);
-    setRefreshToken(null);
-    return api("/auth/logout", { method: "POST" }).catch(() => {});
-  },
-  me: () => api<any>("/users/me").then(u => {
+    api<{ accessToken: string; refreshToken: string }>("/auth/login", { method: "POST", json: { phoneNumber: cleanPhone(login), password } }),
+  refresh: (refreshToken: string) =>
+    api<{ accessToken: string; refreshToken: string }>("/auth/refresh", { method: "POST", json: { refreshToken } }),
+  logout: () => api("/auth/logout", { method: "POST" }),
+
+  // me
+  me: () => api<any>("/users/me").then(user => {
     return {
-      user: {
-        sub: u.id,
-        role: u.role.toLowerCase() as Role,
-        name: `${u.firstName} ${u.lastName}`.trim(),
-        login: u.phoneNumber,
-        isActive: u.isActive
-      }
-    };
+      ...user,
+      id: user.id || "me",
+    }
   }),
+  getMyEmployees: () => api<any[]>("/users/me/employees").then(list => list.map(u => ({
+    id: u.id,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    phone: u.phoneNumber,
+    login: u.phoneNumber,
+    password: "",
+    isActive: u.isActive,
+    createdAt: u.createdAt,
+  }))),
   updateProfile: (data: { firstName?: string; lastName?: string; phoneNumber?: string }) =>
-    api("/users/profile", { method: "PATCH", json: data }),
-  changePassword: (data: any) =>
-    api("/users/director/change-password", { method: "PATCH", json: data }),
+    api<any>("/users/profile", {
+      method: "PATCH",
+      json: { ...data, phoneNumber: cleanPhone(data.phoneNumber) }
+    }),
+  changePassword: (oldPassword: string, newPassword: string) =>
+    api("/users/director/change-password", { method: "PATCH", json: { oldPassword, newPassword } }),
   activateUser: (id: string) => api(`/users/${id}/activate`, { method: "POST" }),
   deactivateUser: (id: string) => api(`/users/${id}/deactivate`, { method: "POST" }),
 
+  // Forgot password / pincode
+  verifyPincode: (phoneNumber: string, pincode: string) =>
+    api<{ valid: boolean }>("/auth/verify-pincode", { method: "POST", json: { phoneNumber: cleanPhone(phoneNumber), pincode } }),
+  resetPassword: (phoneNumber: string, pincode: string, newPassword: string) =>
+    api("/auth/forgot-password", { method: "POST", json: { phoneNumber: cleanPhone(phoneNumber), pincode, newPassword } }),
+
   // employees -> /users/employees
   employees: () => api<any[]>("/users/employees").then(list => list.map(e => ({
-    ...e,
+    id: e.id,
+    firstName: e.firstName,
+    lastName: e.lastName,
     phone: e.phoneNumber,
     login: e.phoneNumber,
-    isActive: e.isActive
+    password: "",
+    isActive: e.isActive,
+    createdAt: e.createdAt,
   }))),
 
   // categories -> /departments
@@ -190,29 +203,27 @@ export const API = {
     }
   }),
   deleteForm: (id: string) => api(`/forms/${id}`, { method: "DELETE" }),
-  createEmployee: (data: any) => {
-    return api("/users/employees", {
+  createEmployee: (data: any) =>
+    api("/users/employees", {
       method: "POST",
       json: {
         firstName: data.firstName,
         lastName: data.lastName,
-        phoneNumber: data.phoneNumber || data.phone,
-        password: data.password
+        phoneNumber: cleanPhone(data.phoneNumber || data.phone),
+        password: data.password,
       }
-    });
-  },
-  updateEmployee: (id: string, data: any) => {
-    return api(`/users/employees/${id}`, {
+    }),
+  updateEmployee: (id: string, data: any) =>
+    api(`/users/employees/${id}`, {
       method: "PATCH",
       json: {
         firstName: data.firstName,
         lastName: data.lastName,
-        phoneNumber: data.phoneNumber || data.phone,
+        phoneNumber: cleanPhone(data.phoneNumber || data.phone),
         password: data.password,
         isActive: data.isActive
       }
-    });
-  },
+    }),
   deleteEmployee: (id: string) => api(`/users/${id}/deactivate`, { method: "POST" }),
 
   createCategory: (data: any) => api("/departments", { method: "POST", json: data }),
