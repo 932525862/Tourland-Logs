@@ -80,14 +80,22 @@ function RootComponent() {
     const token = getToken();
     if (token) {
       API.me()
-        .then(({ user }) => {
-          const sessionData: any = { id: user.sub, role: user.role, name: user.name, login: user.login, isActive: user.isActive };
+        .then((user) => {
+          const roleStr = user.role?.toLowerCase() || 'employee';
+          const fullName = `${user.firstName} ${user.lastName}`.trim();
+          const sessionData: any = { 
+            id: user.id || user.sub, 
+            role: roleStr, 
+            name: fullName, 
+            login: user.phoneNumber, 
+            isActive: user.isActive 
+          };
           saveSession(sessionData);
 
-          if (user.role === "director") {
+          if (roleStr === "director") {
             update((s: any) => ({
               ...s,
-              director: { ...s.director, name: user.name, login: user.login },
+              director: { ...s.director, name: fullName, login: user.phoneNumber },
             }));
           } else {
             API.employees().then((employees: any[]) =>
