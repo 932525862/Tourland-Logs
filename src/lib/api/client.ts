@@ -254,6 +254,7 @@ export const API = {
       sale: {
         status: c.saleStatus?.toLowerCase() || 'none',
         totalAmount: c.saleTotalAmount,
+        additionalPrice: c.saleAdditionalPrice,
         payments: c.payments || [],
         nextPaymentAt: c.nextPaymentAt,
         soldAt: c.soldAt,
@@ -275,6 +276,7 @@ export const API = {
     sale: {
       status: c.saleStatus?.toLowerCase() || 'none',
       totalAmount: c.saleTotalAmount,
+      additionalPrice: c.saleAdditionalPrice,
       payments: c.payments || [],
       nextPaymentAt: c.nextPaymentAt,
       soldAt: c.soldAt,
@@ -408,6 +410,12 @@ export const API = {
   tgSubscribers: () => Promise.resolve([]),
   tgSend: (chatId: number, text: string) => Promise.resolve(),
 
+  // notifications
+  notifications: () => api<any[]>("/notifications"),
+  markNotificationRead: (id: string) => api(`/notifications/${id}/read`, { method: "PATCH" }),
+  markAllNotificationsRead: () => api("/notifications/read-all", { method: "POST" }),
+  subscribePush: (subscription: any) => api("/notifications/push-subscribe", { method: "POST", json: subscription }),
+
   // public
   publicSubmit: (formId: string, data: Record<string, any>) =>
     api(`/forms/submit/${formId}`, { method: "POST", json: { data } }),
@@ -429,6 +437,7 @@ export const API = {
     };
 
     socket.on("connect", () => console.log("WS connected"));
+    socket.on("notification", (data) => notify("notification", data));
     socket.on("taskCreated", (data) => notify("taskCreated", data));
     socket.on("taskStatusChanged", (data) => notify("taskStatusChanged", data));
     socket.on("taskVerified", (data) => notify("taskVerified", data));

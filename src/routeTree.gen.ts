@@ -19,12 +19,14 @@ import { Route as DirectorIndexRouteImport } from './routes/director.index'
 import { Route as FFormIdRouteImport } from './routes/f.$formId'
 import { Route as EmployeeTasksRouteImport } from './routes/employee.tasks'
 import { Route as EmployeeProfileRouteImport } from './routes/employee.profile'
+import { Route as EmployeeNotificationsRouteImport } from './routes/employee.notifications'
 import { Route as EmployeeFormsRouteImport } from './routes/employee.forms'
 import { Route as EmployeeDepartmentsRouteImport } from './routes/employee.departments'
 import { Route as EmployeeAttendanceRouteImport } from './routes/employee.attendance'
 import { Route as EmployeeArchiveRouteImport } from './routes/employee.archive'
 import { Route as DirectorTasksRouteImport } from './routes/director.tasks'
 import { Route as DirectorStatsRouteImport } from './routes/director.stats'
+import { Route as DirectorNotificationsRouteImport } from './routes/director.notifications'
 import { Route as DirectorFormsRouteImport } from './routes/director.forms'
 import { Route as DirectorEmployeesRouteImport } from './routes/director.employees'
 import { Route as DirectorDepartmentsRouteImport } from './routes/director.departments'
@@ -82,6 +84,11 @@ const EmployeeProfileRoute = EmployeeProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => EmployeeRoute,
 } as any)
+const EmployeeNotificationsRoute = EmployeeNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => EmployeeRoute,
+} as any)
 const EmployeeFormsRoute = EmployeeFormsRouteImport.update({
   id: '/forms',
   path: '/forms',
@@ -110,6 +117,11 @@ const DirectorTasksRoute = DirectorTasksRouteImport.update({
 const DirectorStatsRoute = DirectorStatsRouteImport.update({
   id: '/stats',
   path: '/stats',
+  getParentRoute: () => DirectorRoute,
+} as any)
+const DirectorNotificationsRoute = DirectorNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => DirectorRoute,
 } as any)
 const DirectorFormsRoute = DirectorFormsRouteImport.update({
@@ -155,12 +167,14 @@ export interface FileRoutesByFullPath {
   '/director/departments': typeof DirectorDepartmentsRoute
   '/director/employees': typeof DirectorEmployeesRoute
   '/director/forms': typeof DirectorFormsRoute
+  '/director/notifications': typeof DirectorNotificationsRoute
   '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
   '/employee/forms': typeof EmployeeFormsRoute
+  '/employee/notifications': typeof EmployeeNotificationsRoute
   '/employee/profile': typeof EmployeeProfileRoute
   '/employee/tasks': typeof EmployeeTasksRoute
   '/f/$formId': typeof FFormIdRoute
@@ -177,12 +191,14 @@ export interface FileRoutesByTo {
   '/director/departments': typeof DirectorDepartmentsRoute
   '/director/employees': typeof DirectorEmployeesRoute
   '/director/forms': typeof DirectorFormsRoute
+  '/director/notifications': typeof DirectorNotificationsRoute
   '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
   '/employee/forms': typeof EmployeeFormsRoute
+  '/employee/notifications': typeof EmployeeNotificationsRoute
   '/employee/profile': typeof EmployeeProfileRoute
   '/employee/tasks': typeof EmployeeTasksRoute
   '/f/$formId': typeof FFormIdRoute
@@ -202,12 +218,14 @@ export interface FileRoutesById {
   '/director/departments': typeof DirectorDepartmentsRoute
   '/director/employees': typeof DirectorEmployeesRoute
   '/director/forms': typeof DirectorFormsRoute
+  '/director/notifications': typeof DirectorNotificationsRoute
   '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
   '/employee/forms': typeof EmployeeFormsRoute
+  '/employee/notifications': typeof EmployeeNotificationsRoute
   '/employee/profile': typeof EmployeeProfileRoute
   '/employee/tasks': typeof EmployeeTasksRoute
   '/f/$formId': typeof FFormIdRoute
@@ -228,12 +246,14 @@ export interface FileRouteTypes {
     | '/director/departments'
     | '/director/employees'
     | '/director/forms'
+    | '/director/notifications'
     | '/director/stats'
     | '/director/tasks'
     | '/employee/archive'
     | '/employee/attendance'
     | '/employee/departments'
     | '/employee/forms'
+    | '/employee/notifications'
     | '/employee/profile'
     | '/employee/tasks'
     | '/f/$formId'
@@ -250,12 +270,14 @@ export interface FileRouteTypes {
     | '/director/departments'
     | '/director/employees'
     | '/director/forms'
+    | '/director/notifications'
     | '/director/stats'
     | '/director/tasks'
     | '/employee/archive'
     | '/employee/attendance'
     | '/employee/departments'
     | '/employee/forms'
+    | '/employee/notifications'
     | '/employee/profile'
     | '/employee/tasks'
     | '/f/$formId'
@@ -274,12 +296,14 @@ export interface FileRouteTypes {
     | '/director/departments'
     | '/director/employees'
     | '/director/forms'
+    | '/director/notifications'
     | '/director/stats'
     | '/director/tasks'
     | '/employee/archive'
     | '/employee/attendance'
     | '/employee/departments'
     | '/employee/forms'
+    | '/employee/notifications'
     | '/employee/profile'
     | '/employee/tasks'
     | '/f/$formId'
@@ -368,6 +392,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployeeProfileRouteImport
       parentRoute: typeof EmployeeRoute
     }
+    '/employee/notifications': {
+      id: '/employee/notifications'
+      path: '/notifications'
+      fullPath: '/employee/notifications'
+      preLoaderRoute: typeof EmployeeNotificationsRouteImport
+      parentRoute: typeof EmployeeRoute
+    }
     '/employee/forms': {
       id: '/employee/forms'
       path: '/forms'
@@ -408,6 +439,13 @@ declare module '@tanstack/react-router' {
       path: '/stats'
       fullPath: '/director/stats'
       preLoaderRoute: typeof DirectorStatsRouteImport
+      parentRoute: typeof DirectorRoute
+    }
+    '/director/notifications': {
+      id: '/director/notifications'
+      path: '/notifications'
+      fullPath: '/director/notifications'
+      preLoaderRoute: typeof DirectorNotificationsRouteImport
       parentRoute: typeof DirectorRoute
     }
     '/director/forms': {
@@ -462,6 +500,7 @@ interface DirectorRouteChildren {
   DirectorDepartmentsRoute: typeof DirectorDepartmentsRoute
   DirectorEmployeesRoute: typeof DirectorEmployeesRoute
   DirectorFormsRoute: typeof DirectorFormsRoute
+  DirectorNotificationsRoute: typeof DirectorNotificationsRoute
   DirectorStatsRoute: typeof DirectorStatsRoute
   DirectorTasksRoute: typeof DirectorTasksRoute
   DirectorIndexRoute: typeof DirectorIndexRoute
@@ -474,6 +513,7 @@ const DirectorRouteChildren: DirectorRouteChildren = {
   DirectorDepartmentsRoute: DirectorDepartmentsRoute,
   DirectorEmployeesRoute: DirectorEmployeesRoute,
   DirectorFormsRoute: DirectorFormsRoute,
+  DirectorNotificationsRoute: DirectorNotificationsRoute,
   DirectorStatsRoute: DirectorStatsRoute,
   DirectorTasksRoute: DirectorTasksRoute,
   DirectorIndexRoute: DirectorIndexRoute,
@@ -488,6 +528,7 @@ interface EmployeeRouteChildren {
   EmployeeAttendanceRoute: typeof EmployeeAttendanceRoute
   EmployeeDepartmentsRoute: typeof EmployeeDepartmentsRoute
   EmployeeFormsRoute: typeof EmployeeFormsRoute
+  EmployeeNotificationsRoute: typeof EmployeeNotificationsRoute
   EmployeeProfileRoute: typeof EmployeeProfileRoute
   EmployeeTasksRoute: typeof EmployeeTasksRoute
   EmployeeIndexRoute: typeof EmployeeIndexRoute
@@ -498,6 +539,7 @@ const EmployeeRouteChildren: EmployeeRouteChildren = {
   EmployeeAttendanceRoute: EmployeeAttendanceRoute,
   EmployeeDepartmentsRoute: EmployeeDepartmentsRoute,
   EmployeeFormsRoute: EmployeeFormsRoute,
+  EmployeeNotificationsRoute: EmployeeNotificationsRoute,
   EmployeeProfileRoute: EmployeeProfileRoute,
   EmployeeTasksRoute: EmployeeTasksRoute,
   EmployeeIndexRoute: EmployeeIndexRoute,

@@ -3,6 +3,7 @@ import { LogOut, Briefcase } from "lucide-react";
 import { saveSession } from "@/lib/store";
 import { setToken } from "@/lib/api/client";
 import { toast } from "sonner";
+import { NotificationBell } from "./NotificationBell";
 
 interface NavItem {
   to: string;
@@ -35,10 +36,11 @@ export function CrmSidebar({ title, subtitle, items, footer }: SidebarProps) {
           <div className="w-10 h-10 rounded-lg bg-[var(--gradient-primary)] flex items-center justify-center text-primary-foreground shadow-[var(--shadow-md)]">
             <Briefcase className="w-5 h-5" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-semibold text-foreground text-sm truncate">{title}</p>
             {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
           </div>
+          <NotificationBell />
         </div>
       </div>
 

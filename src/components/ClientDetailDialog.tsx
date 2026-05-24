@@ -44,6 +44,8 @@ export function ClientDetailDialog({
   const [moveStage, setMoveStage] = useState<ClientStage>(client.stage);
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSaleFlow, setShowSaleFlow] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [callNote, setCallNote] = useState("");
   const [callReminder, setCallReminder] = useState("");
 
@@ -55,6 +57,7 @@ export function ClientDetailDialog({
   const [showPurchase, setShowPurchase] = useState(false);
   const [purchaseMode, setPurchaseMode] = useState<"choose" | "full" | "partial">("choose");
   const [fullAmount, setFullAmount] = useState("");
+  const [fullAdditional, setFullAdditional] = useState("");
   const [partialTotal, setPartialTotal] = useState(sale.totalAmount?.toString() ?? "");
   const [partialPaid, setPartialPaid] = useState("");
   const [partialNextDate, setPartialNextDate] = useState("");
@@ -91,6 +94,8 @@ export function ClientDetailDialog({
 
   const handleFullPurchase = async () => {
     const amt = parseFloat(fullAmount);
+    const addAmt = parseFloat(fullAdditional || "0");
+    const total = amt + addAmt;
     if (!amt || amt <= 0) {
       toast.error("To'lov summasini kiriting");
       return;
@@ -99,11 +104,15 @@ export function ClientDetailDialog({
     try {
       await API.setSale(localClient.id, {
         status: "full",
-        totalAmount: amt,
-        paidAmount: amt
+        totalAmount: total,
+        paidAmount: total,
+        additionalPrice: addAmt
       });
+      await API.updateClient(localClient.id, { stage: "sold" });
+      setLocalClient(prev => ({ ...prev, stage: "sold" }));
       toast.success("Sotildi (to'liq)");
       setShowPurchase(false);
+      setShowSaleFlow(false);
       onRefresh();
     } catch (err: any) {
       toast.error(err.message || "Xatolik yuz berdi");
@@ -135,8 +144,11 @@ export function ClientDetailDialog({
         paidAmount: paid,
         nextPaymentAt: new Date(partialNextDate).toISOString()
       });
+      await API.updateClient(localClient.id, { stage: "sold" });
+      setLocalClient(prev => ({ ...prev, stage: "sold" }));
       toast.success("Sotildi (bir qismi)");
       setShowPurchase(false);
+      setShowSaleFlow(false);
       onRefresh();
     } catch (err: any) {
       toast.error(err.message || "Xatolik yuz berdi");
@@ -243,9 +255,7 @@ export function ClientDetailDialog({
         call: { ...prev.call, inCallByEmployeeId: undefined, inCallByName: undefined, callStartedAt: undefined }
       }));
 
-      if (action === "sold") {
-        setShowPurchase(true);
-      }
+      // Sale flow is handled separately via handleStartSaleFlow
 
       onRefresh();
     } catch (err: any) {
@@ -253,6 +263,54 @@ export function ClientDetailDialog({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStartSaleFlow = async () => {
+    setLoading(true);
+    try {
+      if (callNote.trim()) {
+        await API.addNote(localClient.id, callNote.trim());
+        setCallNote("");
+      }
+      const payload: any = { stage: "talked" };
+      if (callReminder) {
+        payload.remindAt = new Date(callReminder).toISOString();
+        setCallReminder("");
+      }
+      await API.updateClient(localClient.id, payload);
+      toast.success("Sotov jarayoni boshlandi");
+
+      setLocalClient(prev => ({
+        ...prev,
+        stage: "talked",
+        call: { ...prev.call, inCallByEmployeeId: undefined, inCallByName: undefined, callStartedAt: undefined }
+      }));
+
+      setShowSaleFlow(true);
+      setShowPurchase(true);
+      setPurchaseMode("choose");
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (showSaleFlow) {
+      setShowCloseConfirm(true);
+      return;
+    }
+    onClose();
+  };
+
+  const handleConfirmClose = async () => {
+    setShowCloseConfirm(false);
+    setShowSaleFlow(false);
+    setShowPurchase(false);
+    setPurchaseMode("choose");
+    onClose();
   };
 
   return (
@@ -275,7 +333,7 @@ export function ClientDetailDialog({
             </h2>
             <p className="text-xs text-muted-foreground">Bo'lim: {localClient.formTitle || "—"}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -311,14 +369,15 @@ export function ClientDetailDialog({
             </div>
           </section>
 
-          {/* Call section - show for ALL stages except Sold, unless a call is active */}
-          <section className="rounded-xl border border-border p-4 space-y-4">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Phone className="w-4 h-4" /> Qo'ng'iroq
-            </h3>
+          {/* Call section - show for ALL stages except Sold, unless a call is active. Hide during sale flow. */}
+          {!showSaleFlow && (
+            <section className="rounded-xl border border-border p-4 space-y-4">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Phone className="w-4 h-4" /> Qo'ng'iroq
+              </h3>
 
-            {/* If no one is calling and it's NOT sold, show the start button */}
-            {!localClient.call?.inCallByEmployeeId && localClient.stage !== "sold" && (
+              {/* If no one is calling and it's NOT sold, show the start button */}
+              {!localClient.call?.inCallByEmployeeId && localClient.stage !== "sold" && (
               <button
                 onClick={handleStartCall}
                 disabled={loading || session?.isActive === false}
@@ -353,16 +412,17 @@ export function ClientDetailDialog({
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleCompleteCall("talked")} className="flex-[2] py-2.5 bg-[#0F172A] text-white rounded-lg text-sm font-medium hover:opacity-90">Gaplashildi</button>
-                  <button onClick={() => handleCompleteCall("no_answer")} className="flex-[1.5] py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Ko'tarmadi</button>
-                  <button onClick={() => handleCompleteCall("sold")} className="flex-[1] py-2.5 bg-success text-success-foreground rounded-lg text-sm font-medium hover:bg-success/90">Sotildi</button>
+                  <button onClick={() => handleCompleteCall("talked")} className="flex-[2] py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium transition-colors hover:bg-[#0F172A] hover:text-white">Gaplashildi</button>
+                  <button onClick={() => handleCompleteCall("no_answer")} className="flex-[1.5] py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium transition-colors hover:bg-[#0F172A] hover:text-white">Ko'tarmadi</button>
+                  <button onClick={handleStartSaleFlow} className="flex-[1] py-2.5 bg-success text-success-foreground rounded-lg text-sm font-medium hover:bg-success/90">Sotildi</button>
                 </div>
               </div>
             )}
           </section>
+          )}
 
           {/* Sale section - only show if sold or already has sale */}
-          {(localClient.stage === "sold" || sale.status !== "none") && (
+          {(localClient.stage === "sold" || sale.status !== "none" || showSaleFlow) && (
             <section className="rounded-xl border border-border p-4 space-y-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <ShoppingCart className="w-4 h-4" /> Sotov
@@ -393,7 +453,7 @@ export function ClientDetailDialog({
                     Bo'lib to'lash
                   </button>
                   <button
-                    onClick={() => { setShowPurchase(false); setPurchaseMode("choose"); }}
+                    onClick={() => { setShowPurchase(false); setPurchaseMode("choose"); setShowSaleFlow(false); }}
                     className="col-span-2 py-2 text-sm text-muted-foreground hover:text-foreground"
                   >
                     Bekor qilish
@@ -402,16 +462,40 @@ export function ClientDetailDialog({
               )}
 
               {sale.status === "none" && purchaseMode === "full" && (
-                <div className="space-y-2">
-                  <label className="text-xs text-muted-foreground">To'lov summasi</label>
-                  <input
-                    type="number"
-                    value={fullAmount}
-                    onChange={(e) => setFullAmount(e.target.value)}
-                    placeholder="0"
-                    className="w-full px-3 py-2 rounded-lg border border-input bg-background"
-                  />
-                  <div className="flex gap-2">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">To'lov summasi</label>
+                      <input
+                        type="number"
+                        value={fullAmount}
+                        onChange={(e) => setFullAmount(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Qo'shimcha summa</label>
+                      <input
+                        type="number"
+                        value={fullAdditional}
+                        onChange={(e) => setFullAdditional(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Umumiy summa (jami)</label>
+                    <input
+                      type="number"
+                      readOnly
+                      value={(parseFloat(fullAmount || "0") + parseFloat(fullAdditional || "0")) || ""}
+                      placeholder="0"
+                      className="w-full px-3 py-2 rounded-lg border border-transparent bg-secondary/50 text-foreground font-bold cursor-not-allowed text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
                     <button onClick={handleFullPurchase} disabled={loading} className="flex-1 py-2 rounded-lg bg-success text-white text-sm font-medium">
                       Tasdiqlash
                     </button>
@@ -583,6 +667,17 @@ export function ClientDetailDialog({
         confirmLabel="O'chirish"
         tone="destructive"
         loading={loading}
+      />
+
+      <ConfirmModal
+        isOpen={showCloseConfirm}
+        onClose={() => setShowCloseConfirm(false)}
+        onConfirm={handleConfirmClose}
+        title="Sotov jarayonini bekor qilish"
+        description="Sotov hali yakunlanmagan. Agar yopsangiz, mijoz 'Gaplashildi' bosqichida qoladi. Davom etasizmi?"
+        confirmLabel="Yopish"
+        tone="destructive"
+        loading={false}
       />
     </div>
   );

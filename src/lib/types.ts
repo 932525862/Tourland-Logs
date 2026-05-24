@@ -69,6 +69,7 @@ export type SaleStatus = "none" | "partial" | "full";
 export interface SaleInfo {
   status: SaleStatus;
   totalAmount?: number; // expected total
+  additionalPrice?: number; // upsell amount
   payments: PaymentEntry[];
   nextPaymentAt?: string; // ISO datetime when remainder is due
   soldAt?: string;

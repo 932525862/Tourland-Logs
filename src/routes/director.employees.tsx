@@ -225,13 +225,12 @@ function EmployeeFormDialog({
   const [firstName, setFirstName] = useState(employee?.firstName ?? "");
   const [lastName, setLastName] = useState(employee?.lastName ?? "");
   const [phone, setPhone] = useState(employee?.phone ?? "");
-  const [login, setLogin] = useState(employee?.login ?? "");
   const [password, setPassword] = useState(employee?.password ?? "");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim() || !phone.trim() || !login.trim() || (!employee && !password.trim())) {
+    if (!firstName.trim() || !lastName.trim() || !phone.trim() || (!employee && !password.trim())) {
       toast.error("Barcha maydonlarni to'ldiring");
       return;
     }
@@ -241,7 +240,7 @@ function EmployeeFormDialog({
         firstName: firstName.trim(), 
         lastName: lastName.trim(), 
         phone: phone.trim(), 
-        login: login.trim(), 
+        login: phone.trim(), 
         password,
         isActive: employee?.isActive ?? true 
       });

@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useEffect } from "react";
 import { useSession, saveSession, useAppState } from "@/lib/store";
 import { API, getToken, setToken } from "@/lib/api/client";
+import { registerPushNotifications } from "@/lib/push-notification";
 
 import appCss from "../styles.css?url";
 
@@ -102,6 +103,9 @@ function RootComponent() {
               update((s: any) => ({ ...s, employees }))
             );
           }
+
+          // Register for push notifications
+          registerPushNotifications();
         })
         .catch(() => {
           setToken(null);

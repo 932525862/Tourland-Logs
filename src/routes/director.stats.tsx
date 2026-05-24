@@ -92,11 +92,17 @@ function DirectorStats() {
       }))
       .sort((a, b) => +new Date(b.date) - +new Date(a.date));
 
+    const additionalRevenue = clients.reduce((sum, c) => {
+      if (employeeFilter !== "all" && c.sale?.completedByName !== employeeFilter) return sum;
+      return sum + (c.sale?.additionalPrice || 0);
+    }, 0);
+
     return {
       totalClients,
       soldCount: soldClients.length,
       partialCount: partialClients.length,
       totalRevenue,
+      additionalRevenue,
       byEmployee: Array.from(byEmployee.values()).sort((a, b) => b.revenue - a.revenue),
       byCategory,
       sales,
@@ -142,10 +148,11 @@ function DirectorStats() {
       </header>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
         <KpiCard icon={Users} label="Jami mijozlar" value={String(stats.totalClients)} tone="primary"  delta="+12%" />
         <KpiCard icon={ShoppingCart} label="Sotildi" value={String(stats.soldCount)} tone="success" delta="+5%" />
         <KpiCard icon={ShoppingCart} label="Nasiya sotuv" value={String(stats.partialCount)} tone="warning" delta="-2%" />
+        <KpiCard icon={ArrowUpRight} label="Qo'shimcha daromad" value={fmt(stats.additionalRevenue)} tone="success" delta="+15%" />
         <KpiCard icon={Wallet} label="Umumiy tushum" value={fmt(stats.totalRevenue)} tone="info" delta="+18%" />
       </div>
 
