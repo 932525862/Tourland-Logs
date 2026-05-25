@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { CrmSidebar } from "@/components/CrmSidebar";
 import { MobileNav } from "@/components/MobileNav";
@@ -12,24 +12,38 @@ export const Route = createFileRoute("/employee")({
 function EmployeeLayout() {
   const session = useSession();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!session || session.role !== "employee") {
       navigate({ to: "/login" });
+      return;
     }
-  }, [session, navigate]);
+
+    // Route-level permission check
+    const path = location.pathname;
+    
+    const isDeptPath = path === "/employee" || path.startsWith("/employee/departments") || path.startsWith("/employee/clients") || path.startsWith("/employee/archive");
+    const isFormsPath = path.startsWith("/employee/forms");
+
+    if (isDeptPath && session.canAccessDepartments === false) {
+      navigate({ to: "/employee/tasks" });
+    } else if (isFormsPath && session.canAccessForms === false) {
+      navigate({ to: "/employee/tasks" });
+    }
+  }, [session, navigate, location.pathname]);
 
   if (!session || session.role !== "employee") return null;
 
   const navItems = [
-    { to: "/employee", label: "Mijozlar", icon: Users },
-    { to: "/employee/departments", label: "Bo'limlar", icon: Layers },
-    { to: "/employee/forms", label: "Formalar", icon: ClipboardCheck },
+    { to: "/employee", label: "Mijozlar", icon: Users, permission: session.canAccessDepartments !== false },
+    { to: "/employee/departments", label: "Bo'limlar", icon: Layers, permission: session.canAccessDepartments !== false },
+    { to: "/employee/forms", label: "Formalar", icon: ClipboardCheck, permission: session.canAccessForms !== false },
     { to: "/employee/tasks", label: "Topshiriqlar", icon: ListChecks },
     { to: "/employee/attendance", label: "Davomat", icon: ClipboardCheck },
-    { to: "/employee/archive", label: "Arxiv", icon: Archive },
+    { to: "/employee/archive", label: "Arxiv", icon: Archive, permission: session.canAccessDepartments !== false },
     { to: "/employee/profile", label: "Profil", icon: UserIcon },
-  ];
+  ].filter(item => item.permission !== false);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">

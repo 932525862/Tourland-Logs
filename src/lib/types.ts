@@ -14,6 +14,8 @@ export interface Employee {
   login: string;
   password: string;
   isActive: boolean;
+  canAccessDepartments: boolean;
+  canAccessForms: boolean;
   createdAt: string;
 }
 

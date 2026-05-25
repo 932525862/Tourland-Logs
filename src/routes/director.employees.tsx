@@ -142,6 +142,40 @@ function EmployeesPage() {
                   </button>
                 </div>
 
+                {/* Permissions Toggles */}
+                <div className="flex items-center gap-4 px-4 py-2 rounded-xl border border-border bg-card shadow-sm h-[46px]">
+                  <div className="flex items-center gap-3 pr-3 border-r border-border">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Bo'lim:</span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await API.updateEmployee(emp.id, { canAccessDepartments: !emp.canAccessDepartments });
+                          await fetchEmployees();
+                          toast.success("Ruxsat o'zgartirildi");
+                        } catch { toast.error("Xatolik"); }
+                      }}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${emp.canAccessDepartments ? 'bg-primary' : 'bg-muted'}`}
+                    >
+                      <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${emp.canAccessDepartments ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Forma:</span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await API.updateEmployee(emp.id, { canAccessForms: !emp.canAccessForms });
+                          await fetchEmployees();
+                          toast.success("Ruxsat o'zgartirildi");
+                        } catch { toast.error("Xatolik"); }
+                      }}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${emp.canAccessForms ? 'bg-primary' : 'bg-muted'}`}
+                    >
+                      <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${emp.canAccessForms ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-3 flex-1 lg:flex-initial">
                   <button
                     onClick={() => { setEditing(emp); setShowForm(true); }}
@@ -178,7 +212,9 @@ function EmployeesPage() {
                   lastName: data.lastName,
                   phoneNumber: data.phone,
                   password: data.password ? data.password : undefined,
-                  isActive: data.isActive
+                  isActive: data.isActive,
+                  canAccessDepartments: data.canAccessDepartments,
+                  canAccessForms: data.canAccessForms
                 });
                 toast.success("Hodim ma'lumotlari yangilandi");
               } else {
@@ -186,7 +222,9 @@ function EmployeesPage() {
                   firstName: data.firstName,
                   lastName: data.lastName,
                   phoneNumber: data.phone,
-                  password: data.password
+                  password: data.password,
+                  canAccessDepartments: data.canAccessDepartments,
+                  canAccessForms: data.canAccessForms
                 });
                 toast.success("Yangi hodim qo'shildi");
               }
@@ -226,6 +264,8 @@ function EmployeeFormDialog({
   const [lastName, setLastName] = useState(employee?.lastName ?? "");
   const [phone, setPhone] = useState(employee?.phone ?? "");
   const [password, setPassword] = useState(employee?.password ?? "");
+  const [canAccessDepartments, setCanAccessDepartments] = useState(employee?.canAccessDepartments ?? true);
+  const [canAccessForms, setCanAccessForms] = useState(employee?.canAccessForms ?? true);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -242,7 +282,9 @@ function EmployeeFormDialog({
         phone: phone.trim(), 
         login: phone.trim(), 
         password,
-        isActive: employee?.isActive ?? true 
+        isActive: employee?.isActive ?? true,
+        canAccessDepartments,
+        canAccessForms
       });
     } finally {
       setLoading(false);
@@ -311,6 +353,29 @@ function EmployeeFormDialog({
                 placeholder={employee ? "O'zgartirish uchun yozing" : "****"}
                 className="w-full px-4 py-3 rounded-xl border border-input bg-background/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 p-4 rounded-2xl bg-secondary/20">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-foreground/70">Bo'limlar va Mijozlar</span>
+              <button
+                type="button"
+                onClick={() => setCanAccessDepartments(!canAccessDepartments)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${canAccessDepartments ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${canAccessDepartments ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            <div className="flex items-center justify-between pl-4 border-l border-border">
+              <span className="text-sm font-bold text-foreground/70">Formalar (Lidlar)</span>
+              <button
+                type="button"
+                onClick={() => setCanAccessForms(!canAccessForms)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${canAccessForms ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${canAccessForms ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4">

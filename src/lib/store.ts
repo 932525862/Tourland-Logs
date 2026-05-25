@@ -28,6 +28,8 @@ const defaultState: AppState = {
       password: "12345",
       createdAt: new Date().toISOString(),
       isActive: true,
+      canAccessDepartments: true,
+      canAccessForms: true,
     },
   ],
   forms: [],
@@ -73,7 +75,7 @@ export function saveState(state: AppState) {
 
 export type Session =
   | { id: string; role: "director"; name: string; login?: string; isActive?: boolean; }
-  | { id: string; role: "employee"; name: string; login?: string; isActive?: boolean; }
+  | { id: string; role: "employee"; name: string; login?: string; isActive?: boolean; canAccessDepartments?: boolean; canAccessForms?: boolean; }
   | null;
 
 export function loadSession(): Session {

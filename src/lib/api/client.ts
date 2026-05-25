@@ -168,6 +168,8 @@ export const API = {
     login: e.phoneNumber,
     password: "",
     isActive: e.isActive,
+    canAccessDepartments: !!e.canAccessDepartments,
+    canAccessForms: !!e.canAccessForms,
     createdAt: e.createdAt,
   }))),
 
@@ -211,6 +213,8 @@ export const API = {
         lastName: data.lastName,
         phoneNumber: cleanPhone(data.phoneNumber || data.phone),
         password: data.password,
+        canAccessDepartments: data.canAccessDepartments,
+        canAccessForms: data.canAccessForms
       }
     }),
   updateEmployee: (id: string, data: any) =>
@@ -221,7 +225,9 @@ export const API = {
         lastName: data.lastName,
         phoneNumber: cleanPhone(data.phoneNumber || data.phone),
         password: data.password,
-        isActive: data.isActive
+        isActive: data.isActive,
+        canAccessDepartments: data.canAccessDepartments,
+        canAccessForms: data.canAccessForms
       }
     }),
   deleteEmployee: (id: string) => api(`/users/${id}/deactivate`, { method: "POST" }),
