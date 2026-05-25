@@ -52,42 +52,49 @@ function DirectorStats() {
       return sum + (c.sale?.payments?.reduce((s, p) => s + (p.amount || 0), 0) ?? 0)
     }, 0);
 
-    const byEmployee = new Map<string, { name: string; count: number; revenue: number }>();
-    for (const c of clients.filter(c => c.sale?.status === "full")) {
+    const byEmployee = new Map<string, { name: string; count: number; revenue: number; additional: number }>();
+    for (const c of clients.filter(c => c.sale?.status === "full" || c.sale?.status === "partial")) {
       const name = c.sale?.completedByName ?? "Noma'lum";
       if (employeeFilter !== "all" && name !== employeeFilter) continue;
       
-      const rev = c.sale?.payments?.reduce((s, p) => s + p.amount, 0) ?? 0;
-      const cur = byEmployee.get(name) ?? { name, count: 0, revenue: 0 };
-      cur.count += 1;
+      const rev = c.sale?.payments?.reduce((s, p) => s + (p.amount || 0), 0) ?? 0;
+      const additional = c.sale?.additionalPrice || 0;
+      const cur = byEmployee.get(name) ?? { name, count: 0, revenue: 0, additional: 0 };
+      if (c.sale?.status === "full") cur.count += 1;
       cur.revenue += rev;
+      cur.additional += additional;
       byEmployee.set(name, cur);
     }
 
     const byCategory = state.categories.map((cat) => {
       const inCat = filteredBaseClients.filter((c) => c.categoryId === cat.id);
-      const sold = inCat.filter((c) => c.sale?.status === "full" && (employeeFilter === "all" || c.sale?.completedByName === employeeFilter));
+      const withSale = inCat.filter((c) => (c.sale?.status === "full" || c.sale?.status === "partial") && (employeeFilter === "all" || c.sale?.completedByName === employeeFilter));
       
-      const revenue = sold.reduce(
-        (s, c) => s + (c.sale?.payments?.reduce((a, p) => a + p.amount, 0) ?? 0),
+      const revenue = withSale.reduce(
+        (s, c) => s + (c.sale?.payments?.reduce((a, p) => a + (p.amount || 0), 0) ?? 0),
         0
       );
+      const additional = withSale.reduce((s, c) => s + (c.sale?.additionalPrice || 0), 0);
+      const soldCount = withSale.filter(c => c.sale?.status === "full").length;
+
       return {
         id: cat.id,
         name: cat.name,
         clients: inCat.length,
-        sold: sold.length,
+        sold: soldCount,
         revenue,
+        additional,
       };
     });
 
-    const sales = soldClients
+    const sales = (employeeFilter === "all" ? clients : clients.filter(c => c.sale?.completedByName === employeeFilter))
+      .filter(c => c.sale?.status === "full" || c.sale?.status === "partial")
       .map((c) => ({
         id: c.id,
         name: c.data?.["Ism familya"] || c.name || "Mijoz",
         category: state.categories.find((cat) => cat.id === c.categoryId)?.name ?? "—",
         seller: c.sale?.completedByName ?? "—",
-        amount: c.sale?.payments?.reduce((s, p) => s + p.amount, 0) ?? 0,
+        amount: c.sale?.payments?.reduce((s, p) => s + (p.amount || 0), 0) ?? 0,
         date: c.sale?.completedAt ?? c.sale?.soldAt ?? c.createdAt,
       }))
       .sort((a, b) => +new Date(b.date) - +new Date(a.date));
@@ -99,11 +106,17 @@ function DirectorStats() {
 
     return {
       totalClients,
-      soldCount: soldClients.length,
-      partialCount: partialClients.length,
+      soldCount: clients.filter(c => 
+        (c.sale?.status === "full") && 
+        (employeeFilter === "all" || c.sale?.completedByName === employeeFilter)
+      ).length,
+      partialCount: clients.filter(c => 
+        (c.sale?.status === "partial") && 
+        (employeeFilter === "all" || c.sale?.completedByName === employeeFilter)
+      ).length,
       totalRevenue,
       additionalRevenue,
-      byEmployee: Array.from(byEmployee.values()).sort((a, b) => b.revenue - a.revenue),
+      byEmployee: Array.from(byEmployee.values()).sort((a, b) => (b.revenue + b.additional) - (a.revenue + a.additional)),
       byCategory,
       sales,
     };
@@ -170,7 +183,8 @@ function DirectorStats() {
                   <th className="text-left px-6 py-4">Bo'lim</th>
                   <th className="text-right px-6 py-4">Mijoz</th>
                   <th className="text-right px-6 py-4">Sotuv</th>
-                  <th className="text-right px-6 py-4">Daromad</th>
+                  <th className="text-right px-6 py-4">Umumiy tushum</th>
+                  <th className="text-right px-6 py-4">Qo'shimcha daromad</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -180,6 +194,7 @@ function DirectorStats() {
                     <td className="px-6 py-4 text-right text-muted-foreground font-medium">{c.clients}</td>
                     <td className="px-6 py-4 text-right text-success font-black">{c.sold}</td>
                     <td className="px-6 py-4 text-right text-foreground font-bold">{fmt(c.revenue)}</td>
+                    <td className="px-6 py-4 text-right text-primary font-bold">{fmt(c.additional)}</td>
                   </tr>
                 ))}
                 {stats.byCategory.length === 0 && (
@@ -204,7 +219,8 @@ function DirectorStats() {
                 <tr>
                   <th className="text-left px-6 py-4">Xodim</th>
                   <th className="text-right px-6 py-4">Sotuvlar</th>
-                  <th className="text-right px-6 py-4">Daromad</th>
+                  <th className="text-right px-6 py-4">Umumiy tushum</th>
+                  <th className="text-right px-6 py-4">Qo'shimcha daromad</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -213,6 +229,7 @@ function DirectorStats() {
                     <td className="px-6 py-4 text-foreground font-bold">{e.name}</td>
                     <td className="px-6 py-4 text-right text-primary font-black">{e.count}</td>
                     <td className="px-6 py-4 text-right text-foreground font-bold">{fmt(e.revenue)}</td>
+                    <td className="px-6 py-4 text-right text-success font-bold">{fmt(e.additional)}</td>
                   </tr>
                 ))}
                 {stats.byEmployee.length === 0 && (

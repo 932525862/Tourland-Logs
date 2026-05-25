@@ -307,10 +307,16 @@ function DirectorAttendance() {
                   {monthRecs.map((r) => {
                     const isAbsent = r.status === "ABSENT";
                     return (
-                      <tr
-                        key={r.id}
-                        className={`transition-colors ${isAbsent ? "bg-destructive/3 hover:bg-destructive/5" : "hover:bg-secondary/20"}`}
-                      >
+                        <tr
+                          key={r.id}
+                          className={`transition-colors ${
+                            isAbsent 
+                              ? "bg-destructive/3 hover:bg-destructive/5" 
+                              : r.isAutoCheckout
+                              ? "bg-destructive/5 hover:bg-destructive/10 border-2 border-destructive/50"
+                              : "hover:bg-secondary/20"
+                          }`}
+                        >
                         <td className="px-5 py-4">
                           <div className="font-bold text-foreground">{formatUzDateTable(r.date).main}</div>
                           <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">

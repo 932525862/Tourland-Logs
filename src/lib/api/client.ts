@@ -252,7 +252,7 @@ export const API = {
         remindAt: c.remindAt
       },
       sale: {
-        status: c.saleStatus?.toLowerCase() || 'none',
+        status: (c.saleStatus || 'NONE').toLowerCase(),
         totalAmount: c.saleTotalAmount,
         additionalPrice: c.saleAdditionalPrice,
         payments: c.payments || [],
@@ -309,6 +309,7 @@ export const API = {
   callEnd: (id: string, remindAt?: string) => Promise.resolve(), // Not supported in current CRM backend unless done via updateClient
   addNote: (id: string, text: string) => api(`/clients/${id}/notes`, { method: "POST", json: { text } }),
   addPayment: (id: string, amount: number) => api(`/clients/${id}/payments`, { method: "POST", json: { amount } }),
+  deletePayment: (id: string) => api(`/clients/payments/${id}`, { method: "DELETE" }),
   setSale: (id: string, data: any) => api(`/clients/${id}/sale`, { method: "PATCH", json: data }),
 
   // attendance

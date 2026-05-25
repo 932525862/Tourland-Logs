@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "@/lib/store";
-import { X, Phone, MessageSquare, Bell, ArrowRightLeft, Trash2, ShoppingCart, CheckCircle2, Wallet, Send, RefreshCw, AlertCircle } from "lucide-react";
-import type { Client, AppState, PaymentEntry, SaleInfo, ClientStage } from "@/lib/types";
+import { X, Phone, MessageSquare, Bell, Trash2, ShoppingCart, CheckCircle2, AlertCircle } from "lucide-react";
+import type { Client, AppState, SaleInfo, ClientStage } from "@/lib/types";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -48,6 +48,8 @@ export function ClientDetailDialog({
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [callNote, setCallNote] = useState("");
   const [callReminder, setCallReminder] = useState("");
+  const [showFullPaymentConfirm, setShowFullPaymentConfirm] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
 
   // Sale state
   const sale: SaleInfo = localClient.sale ?? { status: "none", payments: [] };
@@ -176,6 +178,21 @@ export function ClientDetailDialog({
     }
   };
 
+  const handleDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    setLoading(true);
+    try {
+      await API.deletePayment(paymentToDelete);
+      toast.success("To'lov o'chirildi");
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+      setPaymentToDelete(null);
+    }
+  };
+
   const handleCompletePayment = async () => {
     setLoading(true);
     try {
@@ -254,8 +271,6 @@ export function ClientDetailDialog({
         stage: action,
         call: { ...prev.call, inCallByEmployeeId: undefined, inCallByName: undefined, callStartedAt: undefined }
       }));
-
-      // Sale flow is handled separately via handleStartSaleFlow
 
       onRefresh();
     } catch (err: any) {
@@ -432,7 +447,7 @@ export function ClientDetailDialog({
                 <button
                   onClick={() => setShowPurchase(true)}
                   disabled={session?.isActive === false}
-                  className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 rounded-lg bg-success text-white font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Sotuvni rasmiylashtirish
                 </button>
@@ -566,9 +581,17 @@ export function ClientDetailDialog({
                     <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">To'lovlar tarixi</h4>
                     <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                       {sale.payments.map((p) => (
-                        <div key={p.id} className="flex items-center justify-between text-xs bg-secondary/30 rounded-lg p-2">
-                          <span className="font-bold text-foreground">{p.amount.toLocaleString()}</span>
-                          <span className="text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("uz-UZ")}</span>
+                        <div key={p.id} className="flex items-center justify-between text-xs bg-secondary/30 rounded-lg p-2 group/pay">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-foreground">{p.amount.toLocaleString()}</span>
+                            <span className="text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("uz-UZ")}</span>
+                          </div>
+                          <button 
+                            onClick={() => setPaymentToDelete(p.id)}
+                            className="opacity-0 group-hover/pay:opacity-100 p-1 rounded-md text-destructive hover:bg-destructive/10 transition-all"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -579,13 +602,13 @@ export function ClientDetailDialog({
                       <label className="text-[11px] font-bold text-muted-foreground uppercase">Yangi to'lov</label>
                       {session?.isActive !== false ? (
                         <>
-                          <div className="flex gap-2">
-                            <input type="number" value={extraAmount} onChange={(e) => setExtraAmount(e.target.value)} placeholder="0" className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm" />
-                            <button onClick={handleAddPayment} disabled={loading} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium">
-                              <Wallet className="w-4 h-4" />
+                          <div className="flex gap-2 max-w-[240px]">
+                            <input type="number" value={extraAmount} onChange={(e) => setExtraAmount(e.target.value)} placeholder="0" className="w-24 px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                            <button onClick={handleAddPayment} disabled={loading} className="flex-1 px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold whitespace-nowrap">
+                              Pul qo'shish
                             </button>
                           </div>
-                          <button onClick={handleCompletePayment} disabled={loading} className="w-full py-2 rounded-lg bg-success text-white text-sm font-medium">
+                          <button onClick={() => setShowFullPaymentConfirm(true)} disabled={loading} className="w-full mt-2 py-2 rounded-lg bg-success text-white text-sm font-medium">
                             To'liq to'landi
                           </button>
                         </>
@@ -678,6 +701,31 @@ export function ClientDetailDialog({
         confirmLabel="Yopish"
         tone="destructive"
         loading={false}
+      />
+
+      <ConfirmModal
+        isOpen={showFullPaymentConfirm}
+        onClose={() => setShowFullPaymentConfirm(false)}
+        onConfirm={() => {
+          handleCompletePayment();
+          setShowFullPaymentConfirm(false);
+        }}
+        title="To'lovni yakunlash"
+        description={`Mijoz barcha qolgan summani (${remaining.toLocaleString()} so'm) to'laganini va sotuvni muvaffaqiyatli yakunlashni tasdiqlaysizmi?`}
+        confirmLabel="Tasdiqlash"
+        tone="success"
+        loading={loading}
+      />
+
+      <ConfirmModal
+        isOpen={!!paymentToDelete}
+        onClose={() => setPaymentToDelete(null)}
+        onConfirm={handleDeletePayment}
+        title="To'lovni o'chirish"
+        description="Ushbu to'lovni o'chirishni tasdiqlaysizmi? Bu harakat sotuv balansiga ta'sir qiladi."
+        confirmLabel="O'chirish"
+        tone="destructive"
+        loading={loading}
       />
     </div>
   );

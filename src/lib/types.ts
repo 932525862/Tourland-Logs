@@ -111,6 +111,7 @@ export interface AttendanceRecord {
   photo?: string; // check-in photo URL
   checkOutPhoto?: string; // check-out photo URL
   status?: AttendanceStatus; // PRESENT | ATTENDED | ABSENT
+  isAutoCheckout?: boolean;
 }
 
 export type TaskStatus = "todo" | "in_progress" | "pending" | "done" | "approved" | "rejected" | "incomplete";

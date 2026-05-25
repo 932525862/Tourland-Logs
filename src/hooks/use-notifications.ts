@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { API } from "@/lib/api/client";
 import { notify } from "@/lib/notify";
 
-// Global state for notifications to sync across all hook instances (Sidebar, MobileNav, Page)
+
 let globalNotifications: any[] = [];
 let globalUnreadCount = 0;
 let globalIsLoading = false;
@@ -11,6 +11,19 @@ const listeners = new Set<() => void>();
 function notifyListeners() {
   listeners.forEach((l) => l());
 }
+
+const globalNotificationHandler = (event: string, data: any) => {
+  if (event === "notification") {
+    // Prevent duplicates
+    const exists = globalNotifications.some((n) => n.id === data.id);
+    if (!exists) {
+      globalNotifications = [data, ...globalNotifications];
+      globalUnreadCount += 1;
+      notify.info(data.message);
+      notifyListeners();
+    }
+  }
+};
 
 export function useNotifications() {
   const [state, setState] = useState({
@@ -54,19 +67,15 @@ export function useNotifications() {
     if (globalNotifications.length === 0 && !globalIsLoading) {
       fetchNotifications();
     }
-
-    // Subscribe to real-time notifications
-    const cleanup = API.initSocket((event, data) => {
-      if (event === "notification") {
-        globalNotifications = [data, ...globalNotifications];
-        globalUnreadCount += 1;
-        notify.info(data.message);
-        notifyListeners();
-      }
-    });
-
-    return () => cleanup();
   }, [fetchNotifications]);
+
+  // Subscribe to real-time notifications globally once
+  useEffect(() => {
+    API.initSocket(globalNotificationHandler);
+    // Note: We don't return the cleanup here because we want this dedicated 
+    // global handler to persist throughout the app lifecycle.
+    // API.initSocket uses a Set, so adding the same reference multiple times is safe.
+  }, []);
 
   const markRead = async (id: string) => {
     try {

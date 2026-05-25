@@ -64,7 +64,7 @@ function DirectorTasks() {
   const [empId, setEmpId] = useState<string>("");
   const [notifyAt, setNotifyAt] = useState("09:00");
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
-  const [endDate, setEndDate] = useState(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
+  const [endDate, setEndDate] = useState(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
   const [view, setView] = useState<Task | null>(null);
   const [rejecting, setRejecting] = useState<Task | null>(null);
   const [rReason, setRReason] = useState("");
