@@ -2,8 +2,11 @@ import { createFileRoute, Outlet, useNavigate, useLocation } from "@tanstack/rea
 import { useEffect } from "react";
 import { CrmSidebar } from "@/components/CrmSidebar";
 import { MobileNav } from "@/components/MobileNav";
-import { useSession, useAppState } from "@/lib/store";
-import { Users, Archive, User as UserIcon, ClipboardCheck, ListChecks, Layers } from "lucide-react";
+import { useSession, saveSession, loadSession } from "@/lib/store";
+import { Users, Archive, User as UserIcon, ClipboardCheck, ListChecks, Layers, Bell } from "lucide-react";
+import { useSocketEvent } from "@/lib/api/socket";
+import { API } from "@/lib/api/client";
+import { useNotifications } from "@/hooks/use-notifications";
 
 export const Route = createFileRoute("/employee")({
   component: EmployeeLayout,
@@ -13,37 +16,59 @@ function EmployeeLayout() {
   const session = useSession();
   const navigate = useNavigate();
   const location = useLocation();
+  const { unreadCount } = useNotifications();
+
+  const fetchSessionSync = async () => {
+    if (!session || session.role !== "employee") return;
+    try {
+      const user = await API.me();
+      const currentSession = loadSession();
+      if (!currentSession) return;
+      if (
+        currentSession.isActive !== user.isActive ||
+        currentSession.canAccessDepartments !== user.canAccessDepartments ||
+        currentSession.canAccessForms !== user.canAccessForms
+      ) {
+        saveSession({
+          ...currentSession,
+          isActive: user.isActive,
+          canAccessDepartments: user.canAccessDepartments,
+          canAccessForms: user.canAccessForms
+        });
+      }
+    } catch (err) {}
+  };
+
+  useSocketEvent("userUpdated", fetchSessionSync);
 
   useEffect(() => {
     if (!session || session.role !== "employee") {
       navigate({ to: "/login" });
       return;
     }
+    // Fetch immediately on path change and mount
+    fetchSessionSync();
+  }, [session?.id, navigate, location.pathname]);
 
-    // Route-level permission check
-    const path = location.pathname;
-    
-    const isDeptPath = path === "/employee" || path.startsWith("/employee/departments") || path.startsWith("/employee/clients") || path.startsWith("/employee/archive");
-    const isFormsPath = path.startsWith("/employee/forms");
-
-    if (isDeptPath && session.canAccessDepartments === false) {
-      navigate({ to: "/employee/tasks" });
-    } else if (isFormsPath && session.canAccessForms === false) {
-      navigate({ to: "/employee/tasks" });
-    }
-  }, [session, navigate, location.pathname]);
+  // Sync user permissions on interval (Real-time update fallback)
+  useEffect(() => {
+    if (!session || session.role !== "employee") return;
+    const interval = setInterval(fetchSessionSync, 5000);
+    return () => clearInterval(interval);
+  }, [session?.id]);
 
   if (!session || session.role !== "employee") return null;
 
   const navItems = [
-    { to: "/employee", label: "Mijozlar", icon: Users, permission: session.canAccessDepartments !== false },
-    { to: "/employee/departments", label: "Bo'limlar", icon: Layers, permission: session.canAccessDepartments !== false },
-    { to: "/employee/forms", label: "Formalar", icon: ClipboardCheck, permission: session.canAccessForms !== false },
+    { to: "/employee", label: "Mijozlar", icon: Users },
+    { to: "/employee/departments", label: "Bo'limlar", icon: Layers },
+    { to: "/employee/forms", label: "Formalar", icon: ClipboardCheck },
     { to: "/employee/tasks", label: "Topshiriqlar", icon: ListChecks },
     { to: "/employee/attendance", label: "Davomat", icon: ClipboardCheck },
-    { to: "/employee/archive", label: "Arxiv", icon: Archive, permission: session.canAccessDepartments !== false },
+    { to: "/employee/archive", label: "Arxiv", icon: Archive },
+    { to: "/employee/notifications", label: "Bildirishnomalar", icon: Bell, badge: unreadCount },
     { to: "/employee/profile", label: "Profil", icon: UserIcon },
-  ].filter(item => item.permission !== false);
+  ];
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">

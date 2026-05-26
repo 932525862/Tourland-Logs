@@ -5,6 +5,7 @@ import type { Client, AppState, SaleInfo, ClientStage } from "@/lib/types";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { formatUzDateTime, formatUzDate, getTashkentDayjs } from "@/lib/date-utils";
 
 const STAGE_LABELS: Record<ClientStage, string> = {
   new: "Yangi",
@@ -39,6 +40,13 @@ export function ClientDetailDialog({
   useEffect(() => {
     setLocalClient(client);
   }, [client]);
+
+  const formatPrice = (val: string) => {
+    if (!val) return "";
+    return val.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  };
+
+  const parsePrice = (val: string) => val.replace(/\D/g, "");
 
   const [noteText, setNoteText] = useState("");
   const [moveStage, setMoveStage] = useState<ClientStage>(client.stage);
@@ -482,9 +490,10 @@ export function ClientDetailDialog({
                     <div>
                       <label className="text-xs text-muted-foreground">To'lov summasi</label>
                       <input
-                        type="number"
-                        value={fullAmount}
-                        onChange={(e) => setFullAmount(e.target.value)}
+                        type="text"
+                        inputMode="numeric"
+                        value={formatPrice(fullAmount)}
+                        onChange={(e) => setFullAmount(parsePrice(e.target.value))}
                         placeholder="0"
                         className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
                       />
@@ -492,9 +501,10 @@ export function ClientDetailDialog({
                     <div>
                       <label className="text-xs text-muted-foreground">Qo'shimcha summa</label>
                       <input
-                        type="number"
-                        value={fullAdditional}
-                        onChange={(e) => setFullAdditional(e.target.value)}
+                        type="text"
+                        inputMode="numeric"
+                        value={formatPrice(fullAdditional)}
+                        onChange={(e) => setFullAdditional(parsePrice(e.target.value))}
                         placeholder="0"
                         className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
                       />
@@ -503,9 +513,9 @@ export function ClientDetailDialog({
                   <div>
                     <label className="text-xs text-muted-foreground">Umumiy summa (jami)</label>
                     <input
-                      type="number"
+                      type="text"
                       readOnly
-                      value={(parseFloat(fullAmount || "0") + parseFloat(fullAdditional || "0")) || ""}
+                      value={formatPrice(((parseFloat(fullAmount || "0") + parseFloat(fullAdditional || "0")) || "").toString())}
                       placeholder="0"
                       className="w-full px-3 py-2 rounded-lg border border-transparent bg-secondary/50 text-foreground font-bold cursor-not-allowed text-sm"
                     />
@@ -526,11 +536,11 @@ export function ClientDetailDialog({
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-xs text-muted-foreground">To'liq summa</label>
-                      <input type="number" value={partialTotal} onChange={(e) => setPartialTotal(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                      <input type="text" inputMode="numeric" value={formatPrice(partialTotal)} onChange={(e) => setPartialTotal(parsePrice(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground">To'langan summa</label>
-                      <input type="number" value={partialPaid} onChange={(e) => setPartialPaid(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                      <input type="text" inputMode="numeric" value={formatPrice(partialPaid)} onChange={(e) => setPartialPaid(parsePrice(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
                     </div>
                   </div>
                   <div>
@@ -569,10 +579,10 @@ export function ClientDetailDialog({
                     <div className="flex items-center justify-between text-xs bg-warning/10 text-warning-foreground rounded-lg p-3 border border-warning/20">
                       <div className="flex items-center gap-2">
                         <Bell className="w-3.5 h-3.5" />
-                        <span>To'lov sanasi: {new Date(sale.nextPaymentAt).toLocaleDateString("uz-UZ")}</span>
+                        <span>To'lov sanasi: {formatUzDate(sale.nextPaymentAt)}</span>
                       </div>
                       <div className="font-bold animate-pulse">
-                        {Math.max(0, Math.ceil((new Date(sale.nextPaymentAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} kun qoldi
+                        {Math.max(0, Math.ceil((getTashkentDayjs(sale.nextPaymentAt).valueOf() - getTashkentDayjs().valueOf()) / (1000 * 60 * 60 * 24)))} kun qoldi
                       </div>
                     </div>
                   )}
@@ -584,7 +594,7 @@ export function ClientDetailDialog({
                         <div key={p.id} className="flex items-center justify-between text-xs bg-secondary/30 rounded-lg p-2 group/pay">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-foreground">{p.amount.toLocaleString()}</span>
-                            <span className="text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("uz-UZ")}</span>
+                            <span className="text-muted-foreground">{formatUzDate(p.createdAt)}</span>
                           </div>
                           <button 
                             onClick={() => setPaymentToDelete(p.id)}
@@ -602,10 +612,10 @@ export function ClientDetailDialog({
                       <label className="text-[11px] font-bold text-muted-foreground uppercase">Yangi to'lov</label>
                       {session?.isActive !== false ? (
                         <>
-                          <div className="flex gap-2 max-w-[240px]">
-                            <input type="number" value={extraAmount} onChange={(e) => setExtraAmount(e.target.value)} placeholder="0" className="w-24 px-3 py-2 rounded-lg border border-input bg-background text-sm" />
-                            <button onClick={handleAddPayment} disabled={loading} className="flex-1 px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold whitespace-nowrap">
-                              Pul qo'shish
+                          <div className="flex gap-2 max-w-full">
+                            <input type="text" inputMode="numeric" value={formatPrice(extraAmount)} onChange={(e) => setExtraAmount(parsePrice(e.target.value))} placeholder="0" className="flex-1 px-3 py-2.5 rounded-lg border border-input bg-background text-sm" />
+                            <button onClick={handleAddPayment} disabled={loading} className="px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-bold whitespace-nowrap">
+                              To'lov qo'shish
                             </button>
                           </div>
                           <button onClick={() => setShowFullPaymentConfirm(true)} disabled={loading} className="w-full mt-2 py-2 rounded-lg bg-success text-white text-sm font-medium">
@@ -654,7 +664,7 @@ export function ClientDetailDialog({
                     <p className="text-sm text-foreground leading-relaxed">{n.text}</p>
                     <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
                       <span className="font-medium text-primary">{n.authorName}</span>
-                      <span>{new Date(n.createdAt).toLocaleString("uz-UZ")}</span>
+                      <span>{formatUzDateTime(n.createdAt)}</span>
                     </div>
                   </div>
                 ))

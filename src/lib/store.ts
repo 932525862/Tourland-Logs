@@ -73,10 +73,15 @@ export function saveState(state: AppState) {
   window.dispatchEvent(new Event("crm-state-update"));
 }
 
-export type Session =
-  | { id: string; role: "director"; name: string; login?: string; isActive?: boolean; }
-  | { id: string; role: "employee"; name: string; login?: string; isActive?: boolean; canAccessDepartments?: boolean; canAccessForms?: boolean; }
-  | null;
+export type Session = {
+  id: string;
+  role: "director" | "employee";
+  name: string;
+  login?: string;
+  isActive?: boolean;
+  canAccessDepartments?: boolean;
+  canAccessForms?: boolean;
+} | null;
 
 export function loadSession(): Session {
   if (typeof window === "undefined") return null;

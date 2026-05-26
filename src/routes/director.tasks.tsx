@@ -5,7 +5,7 @@ import { Plus, ListChecks, Check, Clock, CheckCheck, X, RotateCcw, ExternalLink,
 import { toast } from "sonner";
 import { playNotificationSound, showBrowserNotification } from "@/lib/notify";
 import { API } from "@/lib/api/client";
-import { formatUzDate, formatUzStatus, formatUzDateTime } from "@/lib/date-utils";
+import { formatUzDate, formatUzStatus, formatUzDateTime, getTashkentDayjs } from "@/lib/date-utils";
 import {
   Dialog,
   DialogContent,
@@ -63,8 +63,8 @@ function DirectorTasks() {
   const [desc, setDesc] = useState("");
   const [empId, setEmpId] = useState<string>("");
   const [notifyAt, setNotifyAt] = useState("09:00");
-  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
-  const [endDate, setEndDate] = useState(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
+  const [startDate, setStartDate] = useState(getTashkentDayjs().format("YYYY-MM-DD"));
+  const [endDate, setEndDate] = useState(getTashkentDayjs().add(90, "day").format("YYYY-MM-DD"));
   const [view, setView] = useState<Task | null>(null);
   const [rejecting, setRejecting] = useState<Task | null>(null);
   const [rReason, setRReason] = useState("");
@@ -480,7 +480,7 @@ function TaskHistory({ templateId, currentInstanceId }: { templateId: string, cu
                   <Clock className="w-5 h-5" />}
               </div>
               <span className={`text-[9px] font-black uppercase tracking-tighter ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
-                {new Date(inst.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                {getTashkentDayjs(inst.dueDate).format("DD MMM")}
               </span>
             </button>
           );

@@ -19,7 +19,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { API, assetUrl } from "@/lib/api/client";
-import { formatUzDateTable, formatUzTime } from "@/lib/date-utils";
+import { formatUzDate, formatUzDateTable, formatUzTime } from "@/lib/date-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/employee/attendance")({
@@ -53,8 +53,8 @@ function formatHumanDuration(hours: number) {
   if (hours <= 0) return "0m";
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
+  if (h === 0) return `${m}d`;
+  return `${h}s ${m}d`;
 }
 
 function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: string; checkInAt?: string | null; checkOutAt?: string | null } }) {
@@ -63,7 +63,7 @@ function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: 
   if (status === "ABSENT") {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-destructive/10 text-destructive text-xs font-bold border border-destructive/20">
-        <UserX className="w-3 h-3" /> ABSENT
+        <UserX className="w-3 h-3" /> KELMAGAN
       </span>
     );
   }
@@ -71,7 +71,7 @@ function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: 
   if (status === "ATTENDED" || (!isToday && rec.checkOutAt)) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-success/10 text-success text-xs font-bold border border-success/20">
-        <CheckCircle className="w-3 h-3" /> ATTENDED
+        <CheckCircle className="w-3 h-3" /> ISHLADI
       </span>
     );
   }
@@ -79,7 +79,7 @@ function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: 
   if (isToday && (status === "PRESENT" || (!status && rec.checkInAt && !rec.checkOutAt))) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold border border-primary/20 animate-pulse">
-        <Clock className="w-3 h-3" /> PRESENT
+        <Clock className="w-3 h-3" /> HOZIR ISHDA
       </span>
     );
   }
@@ -88,7 +88,7 @@ function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: 
   if (!isToday && rec.checkInAt && !rec.checkOutAt) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-warning/10 text-warning text-xs font-bold border border-warning/20">
-        <AlertCircle className="w-3 h-3" /> INCOMPLETE
+        <AlertCircle className="w-3 h-3" /> YAKUNLANMAGAN
       </span>
     );
   }
@@ -225,7 +225,7 @@ function EmployeeAttendance() {
             <Clock className="w-10 h-10 text-primary" /> Davomat
           </h1>
           <p className="text-muted-foreground mt-1.5 font-medium">
-            {new Date().toLocaleDateString('uz-UZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {formatUzDate(new Date(), { includeYear: true, includeWeekday: true })}
           </p>
           {session?.isActive === false && (
              <div className="mt-4 p-4 rounded-2xl bg-destructive/5 border border-destructive/20 text-destructive text-sm font-medium flex items-center gap-3">
@@ -291,7 +291,7 @@ function EmployeeAttendance() {
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs font-black text-primary uppercase tracking-widest">PRESENT</span>
+            <span className="text-xs font-black text-primary uppercase tracking-widest">HOZIR ISHDA</span>
           </div>
         </div>
       )}

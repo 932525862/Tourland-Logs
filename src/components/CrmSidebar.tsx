@@ -3,8 +3,6 @@ import { LogOut, Briefcase } from "lucide-react";
 import { saveSession } from "@/lib/store";
 import { setToken } from "@/lib/api/client";
 import { toast } from "sonner";
-import { NotificationBell } from "./NotificationBell";
-
 interface NavItem {
   to: string;
   label: string;
@@ -40,7 +38,6 @@ export function CrmSidebar({ title, subtitle, items, footer }: SidebarProps) {
             <p className="font-semibold text-foreground text-sm truncate">{title}</p>
             {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
           </div>
-          <NotificationBell />
         </div>
       </div>
 

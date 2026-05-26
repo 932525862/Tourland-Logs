@@ -1,4 +1,5 @@
 import { User as UserIcon, Phone, Bell, MessageCircle, Lock } from "lucide-react";
+import { formatUzDate } from "@/lib/date-utils";
 import type { Client } from "@/lib/types";
 
 interface Props {
@@ -34,7 +35,7 @@ export function ClientCard({ client, onClick }: Props) {
           {!sale?.status || sale.status === "none" && (
              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-black uppercase tracking-widest border border-border">Lid</span>
           )}
-          <span className="text-[10px] text-muted-foreground font-medium">{new Date(client.createdAt).toLocaleDateString("uz-UZ")}</span>
+          <span className="text-[10px] text-muted-foreground font-medium">{formatUzDate(client.createdAt)}</span>
         </div>
       </div>
       

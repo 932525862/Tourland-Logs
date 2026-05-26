@@ -5,8 +5,6 @@ import { Drawer } from "vaul";
 import { saveSession } from "@/lib/store";
 import { setToken } from "@/lib/api/client";
 import { toast } from "sonner";
-import { NotificationBell } from "./NotificationBell";
-
 interface NavItem {
   to: string;
   label: string;
@@ -44,7 +42,6 @@ export function MobileNav({ title, subtitle, items }: MobileNavProps) {
       </div>
 
       <div className="flex items-center gap-1">
-        <NotificationBell />
         <Drawer.Root open={open} onOpenChange={setOpen}>
           <Drawer.Trigger asChild>
             <button className="p-2 rounded-lg hover:bg-secondary transition-colors">

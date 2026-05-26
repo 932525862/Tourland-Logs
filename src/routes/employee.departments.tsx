@@ -14,7 +14,7 @@ export const Route = createFileRoute("/employee/departments")({
 function EmployeeDepartments() {
   const { state, update } = useAppState();
   const session = useSession();
-  const [departments, setDepartments] = useState<ClientCategory[]>([]);
+  const [departments, setDepartments] = useState<ClientCategory[]>(state.categories || []);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [editing, setEditing] = useState<ClientCategory | null>(null);
@@ -28,10 +28,15 @@ function EmployeeDepartments() {
   const fetchDeps = async () => {
     setLoading(true);
     try {
-      const [cats, clients] = await Promise.all([
-        API.categories(),
-        API.clients()
-      ]);
+      const catsP = API.categories().catch((err) => {
+        console.warn("Categories fetch failed:", err);
+        return state.categories;
+      });
+      const clientsP = API.clients().catch((err) => {
+        console.warn("Clients fetch failed:", err);
+        return state.clients;
+      });
+      const [cats, clients] = await Promise.all([catsP, clientsP]);
       setDepartments(cats);
       update(s => ({ ...s, categories: cats, clients }));
     } catch (err) {
@@ -125,7 +130,7 @@ function EmployeeDepartments() {
           >
             <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          {session?.isActive !== false && (
+          {session?.isActive !== false && session?.canAccessDepartments !== false && (
             <button
               onClick={() => { setEditing(null); setName(""); setShowDialog(true); }}
               className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
@@ -176,7 +181,7 @@ function EmployeeDepartments() {
                   <Folder className="w-7 h-7" />
                 </div>
                 
-                {session?.isActive !== false && (
+                {session?.isActive !== false && session?.canAccessDepartments !== false && (
                   <div className="flex items-center gap-1 transition-opacity">
                     <button
                       onClick={() => { setEditing(cat); setName(cat.name); setShowDialog(true); }}

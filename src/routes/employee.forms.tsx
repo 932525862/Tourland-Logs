@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAppState, useSession } from "@/lib/store";
 import { FilePlus, Pencil, Trash2, X, ExternalLink, Plus, Minus, MoveUp, MoveDown, ClipboardCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { formatUzDate } from "@/lib/date-utils";
 import { API } from "@/lib/api/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import type { FormTemplate } from "@/lib/types";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/employee/forms")({
 function FormsPage() {
   const { state, update } = useAppState();
   const session = useSession();
-  const [forms, setForms] = useState<FormTemplate[]>([]);
+  const [forms, setForms] = useState<FormTemplate[]>(state.forms || []);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -27,8 +28,9 @@ function FormsPage() {
       const list = await API.forms();
       setForms(list);
       update(s => ({ ...s, forms: list }));
-    } catch {
-      toast.error("Formalarni yuklashda xatolik");
+    } catch (err) {
+      console.warn("Forms fetch failed:", err);
+      // Suppress the error toast and use cached forms
     } finally {
       setLoading(false);
     }
@@ -78,7 +80,7 @@ function FormsPage() {
           >
             <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          {session?.isActive !== false && (
+          {session?.isActive !== false && session?.canAccessForms !== false && (
             <button
               onClick={() => { setEditing(null); setShowDialog(true); }}
               className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
@@ -126,7 +128,7 @@ function FormsPage() {
                   >
                     <ExternalLink className="w-4.5 h-4.5" />
                   </a>
-                  {session?.isActive !== false && (
+                  {session?.isActive !== false && session?.canAccessForms !== false && (
                     <>
                       <button
                         onClick={() => { setEditing(form); setShowDialog(true); }}
@@ -164,7 +166,7 @@ function FormsPage() {
               
               <div className="flex items-center justify-between mt-auto relative z-10">
                 <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest bg-secondary px-2.5 py-1 rounded-full">
-                  {new Date(form.createdAt).toLocaleDateString("uz-UZ")}
+                  {formatUzDate(form.createdAt)}
                 </span>
                 <button
                   onClick={() => {

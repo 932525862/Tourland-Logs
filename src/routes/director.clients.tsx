@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import type { Client, ClientStage } from "@/lib/types";
 import { API } from "@/lib/api/client";
 import { playNotificationSound, showBrowserNotification } from "@/lib/notify";
+import { getTashkentDayjs } from "@/lib/date-utils";
 
 const STAGES: { id: ClientStage; label: string }[] = [
   { id: "new", label: "Yangi" },
@@ -197,7 +198,7 @@ function DirectorClients() {
                 : "text-muted-foreground hover:text-foreground hover:bg-card/30"
             }`}
           >
-            {s.label} <span className="ml-2 text-[10px] opacity-40 bg-secondary px-2 py-0.5 rounded-full">{counts[s.id]}</span>
+            {s.label} <span className="ml-2 text-[10px] text-destructive bg-destructive/10 px-2 py-0.5 rounded-full font-bold">{counts[s.id]}</span>
           </button>
         ))}
       </div>

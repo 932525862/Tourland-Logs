@@ -5,7 +5,7 @@ import { Clock, CheckCheck, ListChecks, X, Calendar, AlertCircle, Play, Send, Ex
 import { toast } from "sonner";
 import { playNotificationSound, showBrowserNotification } from "@/lib/notify";
 import { API } from "@/lib/api/client";
-import { formatUzDate, formatUzStatus } from "@/lib/date-utils";
+import { formatUzDate, formatUzStatus, getTashkentDayjs, formatUzDateTime } from "@/lib/date-utils";
 import {
   Dialog,
   DialogContent,
@@ -360,7 +360,7 @@ function TaskHistory({ templateId, currentInstanceId }: { templateId: string, cu
                   <Clock className="w-6 h-6" />}
               </div>
               <span className={`text-[10px] font-black uppercase tracking-tight ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
-                {new Date(inst.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                {getTashkentDayjs(inst.dueDate).format("DD MMM")}
               </span>
             </button>
           );

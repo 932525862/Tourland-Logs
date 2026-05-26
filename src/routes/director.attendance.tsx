@@ -45,8 +45,8 @@ function formatHumanDuration(hours: number) {
   if (hours <= 0) return "0m";
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
+  if (h === 0) return `${m}d`;
+  return `${h}s ${m}d`;
 }
 
 function todayStr() {
@@ -65,7 +65,7 @@ function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: 
   if (status === "ABSENT") {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-destructive/10 text-destructive text-xs font-bold border border-destructive/20">
-        <UserX className="w-3 h-3" /> ABSENT
+        <UserX className="w-3 h-3" /> KELMAGAN
       </span>
     );
   }
@@ -74,7 +74,7 @@ function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: 
     const hrs = hoursWorked(rec);
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-success/10 text-success text-xs font-bold border border-success/20">
-        <CheckCircle className="w-3 h-3" /> {formatHumanDuration(hrs)} ATTENDED
+        <CheckCircle className="w-3 h-3" /> {formatHumanDuration(hrs)} ISHLADI
       </span>
     );
   }
@@ -85,7 +85,7 @@ function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: 
       : 0;
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold border border-primary/20 animate-pulse">
-        <Clock className="w-3 h-3" /> {formatHumanDuration(hrsNum)} PRESENT
+        <Clock className="w-3 h-3" /> {formatHumanDuration(hrsNum)} HOZIR ISHDA
       </span>
     );
   }
@@ -94,7 +94,7 @@ function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: 
   if (!isToday && rec.checkInAt && !rec.checkOutAt) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-warning/10 text-warning text-xs font-bold border border-warning/20">
-        <AlertCircle className="w-3 h-3" /> INCOMPLETE
+        <AlertCircle className="w-3 h-3" /> YAKUNLANMAGAN
       </span>
     );
   }
@@ -429,7 +429,7 @@ function DirectorAttendance() {
             <Clock className="w-8 h-8 text-primary" /> Davomat
           </h1>
           <p className="text-muted-foreground mt-1 font-medium">
-            {new Date().toLocaleDateString('uz-UZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {formatUzDate(new Date(), { includeYear: true, includeWeekday: true })}
           </p>
         </div>
         <button
@@ -449,7 +449,7 @@ function DirectorAttendance() {
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">PRESENT</p>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">HOZIR ISHDAGI</p>
             <p className="text-2xl font-black text-primary">{presentNow}</p>
           </div>
         </div>
@@ -458,7 +458,7 @@ function DirectorAttendance() {
             <CheckCircle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">ATTENDED</p>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">ISHLADI</p>
             <p className="text-2xl font-black text-success">{attendedToday}</p>
           </div>
         </div>
@@ -467,7 +467,7 @@ function DirectorAttendance() {
             <UserX className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">ABSENT</p>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">KELMAGAN</p>
             <p className="text-2xl font-black text-destructive">{absentToday}</p>
           </div>
         </div>
@@ -576,15 +576,15 @@ function DirectorAttendance() {
                       {isPresent ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                          PRESENT
+                          HOZIR ISHDA
                         </span>
                       ) : isAttended ? (
                         <span className="text-[10px] font-black text-success uppercase tracking-widest">
-                          ✓ ATTENDED
+                          ✓ ISHLADI
                         </span>
                       ) : isAbsent ? (
                         <span className="text-[10px] font-black text-destructive uppercase tracking-widest">
-                          ✗ ABSENT
+                          ✗ KELMAGAN
                         </span>
                       ) : (
                         <span className="text-[10px] text-muted-foreground uppercase tracking-widest">

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { Archive, RefreshCw, Search, CheckSquare, Users, FileText, CalendarCheck, User, Clock, ExternalLink, X, ListChecks, CheckCheck, Calendar } from "lucide-react";
 import { API } from "@/lib/api/client";
-import { formatUzStatus, formatUzDateTime, formatUzDate } from "@/lib/date-utils";
+import { formatUzStatus, formatUzDateTime, formatUzDate, getTashkentDayjs } from "@/lib/date-utils";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import "dayjs/locale/uz-latn";
@@ -161,7 +161,7 @@ function DirectorArchive() {
       const template = data.template || data;
       setTaskDetail({
         id: data.id,
-        title: template.title || "Untitled",
+        title: template.title || "Nomsiz",
         description: template.description || "",
         notifyAt: template.notifyAt || "—",
         startDate: template.startDate || "",
@@ -323,7 +323,7 @@ function DirectorArchive() {
                     </div>
                   )}
                   <div className="text-[10px] text-muted-foreground">
-                    {dayjs(log.createdAt).locale("uz-latn").format("DD MMM, HH:mm")}
+                    {formatUzDateTime(log.createdAt)}
                   </div>
                 </div>
               </div>
@@ -457,7 +457,7 @@ function TaskHistory({ templateId, currentInstanceId }: { templateId: string, cu
                   <Clock className="w-6 h-6" />}
               </div>
               <span className={`text-[10px] font-black uppercase tracking-tight ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
-                {new Date(inst.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                {getTashkentDayjs(inst.dueDate).format("DD MMM")}
               </span>
             </button>
           );

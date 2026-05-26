@@ -121,18 +121,20 @@ function LoginPage() {
             >
               Kirish
             </button>
-            <div className="text-center pt-1">
-              <a
-                href="/forgot-password"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate({ to: "/forgot-password" });
-                }}
-                className="text-sm text-primary hover:underline font-medium"
-              >
-                Parolni unutdingizmi?
-              </a>
-            </div>
+            {role === "director" && (
+              <div className="text-center pt-1">
+                <a
+                  href="/forgot-password"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate({ to: "/forgot-password" });
+                  }}
+                  className="text-sm text-primary hover:underline font-medium"
+                >
+                  Parolni unutdingizmi?
+                </a>
+              </div>
+            )}
           </form>
         </div>
       </div>

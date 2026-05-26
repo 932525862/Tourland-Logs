@@ -4,6 +4,7 @@ import { useAppState } from "@/lib/store";
 import { BarChart3, Users, ShoppingCart, Wallet, Filter, TrendingUp, Calendar, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { API } from "@/lib/api/client";
 import { toast } from "sonner";
+import { getTashkentDayjs } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/director/stats")({
   component: DirectorStats,
@@ -276,7 +277,7 @@ function DirectorStats() {
                   <td className="px-6 py-4 text-foreground font-medium">{s.seller}</td>
                   <td className="px-6 py-4 text-right text-success font-black">{fmt(s.amount)}</td>
                   <td className="px-6 py-4 text-right text-muted-foreground font-bold">
-                    {new Date(s.date).toLocaleDateString("uz-UZ")}
+                    {getTashkentDayjs(s.date).format("DD.MM.YYYY")}
                   </td>
                 </tr>
               ))}

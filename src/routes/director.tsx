@@ -3,7 +3,8 @@ import { useEffect } from "react";
 import { CrmSidebar } from "@/components/CrmSidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { useSession, useAppState } from "@/lib/store";
-import { User, Users, FileText, UserPlus, ClipboardCheck, ListChecks, BarChart3, Layers, Archive } from "lucide-react";
+import { User, Users, FileText, UserPlus, ClipboardCheck, ListChecks, BarChart3, Layers, Archive, Bell } from "lucide-react";
+import { useNotifications } from "@/hooks/use-notifications";
 
 export const Route = createFileRoute("/director")({
   component: DirectorLayout,
@@ -13,6 +14,7 @@ function DirectorLayout() {
   const session = useSession();
   const { state } = useAppState();
   const navigate = useNavigate();
+  const { unreadCount } = useNotifications();
 
   useEffect(() => {
     if (!session || session.role !== "director") {
@@ -37,6 +39,7 @@ function DirectorLayout() {
     { to: "/director/tasks", label: "Topshiriqlar", icon: ListChecks, badge: taskBadge },
     { to: "/director/stats", label: "Statistika", icon: BarChart3 },
     { to: "/director/archive", label: "Arxiv", icon: Archive },
+    { to: "/director/notifications", label: "Bildirishnomalar", icon: Bell, badge: unreadCount },
   ];
 
   return (

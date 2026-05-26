@@ -15,9 +15,8 @@ import {
   FileText,
   ExternalLink
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
-import { uz } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { getTashkentDayjs, formatUzDateTime } from "@/lib/date-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -177,15 +176,12 @@ export function NotificationList({
                             <TooltipTrigger asChild>
                               <div className="flex items-center gap-1.5 text-[10px] md:text-xs text-muted-foreground font-semibold bg-secondary/60 px-2.5 py-1 rounded-lg">
                                 <Clock className="w-3 h-3" />
-                                {formatDistanceToNow(new Date(n.createdAt), {
-                                  addSuffix: true,
-                                  locale: uz,
-                                })}
+                                {getTashkentDayjs(n.createdAt).fromNow()}
                               </div>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="bg-popover text-popover-foreground border-border font-medium">
                               <p className="text-xs">
-                                {format(new Date(n.createdAt), "d-MMMM, yyyy HH:mm", { locale: uz })}
+                                {formatUzDateTime(n.createdAt)}
                               </p>
                             </TooltipContent>
                           </Tooltip>

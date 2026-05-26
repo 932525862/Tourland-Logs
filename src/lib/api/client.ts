@@ -131,6 +131,9 @@ export const API = {
     return {
       ...user,
       id: user.id || "me",
+      isActive: user.isActive !== undefined ? !!user.isActive : true,
+      canAccessDepartments: user.canAccessDepartments !== undefined ? !!user.canAccessDepartments : true,
+      canAccessForms: user.canAccessForms !== undefined ? !!user.canAccessForms : true,
     }
   }),
   getMyEmployees: () => api<any[]>("/users/me/employees").then(list => list.map(u => ({
@@ -359,7 +362,7 @@ export const API = {
 
       return {
         id: t.id,
-        title: template.title || "Untitled",
+        title: template.title || "Nomsiz",
         description: template.description || "",
         assignedTo: t.assignedTo,
         notifyAt: template.notifyAt || "9:00 AM",
@@ -451,6 +454,7 @@ export const API = {
     socket.on("taskIncomplete", (data) => notify("taskIncomplete", data));
     socket.on("attendanceCheckedIn", (data) => notify("attendanceCheckedIn", data));
     socket.on("attendanceCheckedOut", (data) => notify("attendanceCheckedOut", data));
+    socket.on("userUpdated", (data) => notify("userUpdated", data));
     socket.on("clientCallStarted", (data) => notify("clientCallStarted", data));
     socket.on("clientCallEnded", (data) => notify("clientCallEnded", data));
     socket.on("clientUpdated", (data) => notify("clientUpdated", data));

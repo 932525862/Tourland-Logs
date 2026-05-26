@@ -8,6 +8,7 @@ import { UserPlus, RefreshCw, Search, Layers, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
 import { playNotificationSound, showBrowserNotification } from "@/lib/notify";
+import { getTashkentDayjs } from "@/lib/date-utils";
 import type { Client, ClientStage } from "@/lib/types";
 
 const STAGES: { id: ClientStage; label: string }[] = [
@@ -36,10 +37,16 @@ function EmployeeClients() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [cats, clients] = await Promise.all([
-        API.categories(),
-        API.clients()
-      ]);
+      const catsReq = API.categories().catch((err) => {
+        console.warn("Categories fetch failed:", err);
+        return state.categories || [];
+      });
+      const clientsReq = API.clients().catch((err) => {
+        console.warn("Clients fetch failed:", err);
+        return state.clients || [];
+      });
+      const [cats, clients] = await Promise.all([catsReq, clientsReq]);
+      
       update(s => ({ ...s, categories: cats, clients }));
       setOpenClient(prev => prev ? (clients.find(c => c.id === prev.id) || prev) : null);
       if (!activeCat && cats.length > 0) {
@@ -65,7 +72,7 @@ function EmployeeClients() {
                   ...c.call, 
                   inCallByEmployeeId: data.employeeId, 
                   inCallByName: data.employeeName, 
-                  callStartedAt: new Date().toISOString() 
+                  callStartedAt: getTashkentDayjs().toISOString() 
                 } 
               } : c)
           }));
@@ -151,7 +158,7 @@ function EmployeeClients() {
           >
             <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          {session?.isActive !== false && (
+          {session?.isActive !== false && session?.canAccessDepartments !== false && (
             <button
               onClick={() => setShowAddClient(true)}
               className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
@@ -206,7 +213,7 @@ function EmployeeClients() {
                 : "text-muted-foreground hover:text-foreground hover:bg-card/30"
             }`}
           >
-            {s.label} <span className="ml-2 text-[10px] opacity-40 bg-secondary px-2 py-0.5 rounded-full">{countsForCat[s.id]}</span>
+            {s.label} <span className="ml-2 text-[10px] text-destructive bg-destructive/10 px-2 py-0.5 rounded-full font-bold">{countsForCat[s.id]}</span>
           </button>
         ))}
       </div>

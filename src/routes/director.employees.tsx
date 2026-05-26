@@ -7,6 +7,7 @@ import { API } from "@/lib/api/client";
 import { formatUzbekPhone } from "@/lib/utils";
 import { UserPlus, Pencil, X, Phone, User as UserIcon, Check } from "lucide-react";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { formatUzDate } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/director/employees")({
   component: EmployeesPage,
@@ -111,7 +112,7 @@ function EmployeesPage() {
                     <Phone className="w-4 h-4 text-primary" /> {emp.phone}
                   </p>
                   <p className="text-muted-foreground">Log: <span className="font-mono text-foreground/60">{emp.login}</span></p>
-                  <p className="text-muted-foreground">Sana: {new Date(emp.createdAt).toLocaleDateString("uz-UZ")}</p>
+                  <p className="text-muted-foreground">Sana: {formatUzDate(emp.createdAt)}</p>
                 </div>
               </div>
 

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAppState, useSession } from "@/lib/store";
 import { FilePlus, Pencil, Trash2, X, ExternalLink, Plus, Minus, MoveUp, MoveDown } from "lucide-react";
 import { toast } from "sonner";
+import { formatUzDate } from "@/lib/date-utils";
 import { API } from "@/lib/api/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import type { FormTemplate } from "@/lib/types";
@@ -139,7 +140,7 @@ function FormsPage() {
               
               <div className="flex items-center justify-between mt-auto">
                 <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest bg-secondary px-2.5 py-1 rounded-full">
-                  {new Date(form.createdAt).toLocaleDateString("uz-UZ")}
+                  {formatUzDate(form.createdAt)}
                 </span>
                 <button
                   onClick={() => {
