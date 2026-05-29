@@ -430,6 +430,11 @@ export const API = {
   publicSubmit: (formId: string, data: Record<string, any>) =>
     api(`/forms/submit/${formId}`, { method: "POST", json: { data } }),
 
+  // Telegram
+  telegramUsers: () => api<any[]>("/telegram/users"),
+  telegramBroadcast: (dto: { telegramIds: string[]; description: string; link?: string }) => 
+    api("/telegram/broadcast", { method: "POST", json: dto }),
+
   // WebSocket
   initSocket: (onEvent: (event: string, data: any) => void) => {
     listeners.add(onEvent);

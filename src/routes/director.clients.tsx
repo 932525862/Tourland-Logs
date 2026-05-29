@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import type { Client, ClientStage } from "@/lib/types";
 import { API } from "@/lib/api/client";
 import { playNotificationSound, showBrowserNotification } from "@/lib/notify";
-import { getTashkentDayjs } from "@/lib/date-utils";
+import { TelegramUserSelect } from "@/components/TelegramUserSelect";
+import { TelegramMessageModal } from "@/components/TelegramMessageModal";
 
 const STAGES: { id: ClientStage; label: string }[] = [
   { id: "new", label: "Yangi" },
@@ -31,6 +32,8 @@ function DirectorClients() {
   const [showAddClient, setShowAddClient] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedTelegramIds, setSelectedTelegramIds] = useState<string[]>([]);
+  const [showTelegramModal, setShowTelegramModal] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -137,6 +140,10 @@ function DirectorClients() {
           <p className="text-muted-foreground mt-1.5 font-medium">Lidlar oqimi va sotuv operatsiyalari</p>
         </div>
         <div className="flex gap-3">
+          <TelegramUserSelect 
+            onSelected={setSelectedTelegramIds} 
+            onSendMessage={() => setShowTelegramModal(true)} 
+          />
           <button
             onClick={fetchAll}
             className="p-3 rounded-2xl border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary/30 hover:shadow-sm transition-all"
@@ -153,6 +160,17 @@ function DirectorClients() {
           )}
         </div>
       </header>
+
+      {showTelegramModal && (
+        <TelegramMessageModal
+          selectedTelegramIds={selectedTelegramIds}
+          onClose={() => setShowTelegramModal(false)}
+          onSuccess={() => {
+            setShowTelegramModal(false);
+            setSelectedTelegramIds([]);
+          }}
+        />
+      )}
 
       {/* Search & Tabs */}
       <div className="flex flex-col xl:flex-row gap-6 mb-10">
