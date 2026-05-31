@@ -16,16 +16,23 @@ self.addEventListener('push', function(event) {
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  const urlToOpen = event.notification.data?.url || '/';
+  const relativePath = event.notification.data?.url || '/';
+  // Build an absolute URL using the SW scope (frontend origin) so we never
+  // accidentally navigate to the backend's origin.
+  const scope = self.registration.scope; // e.g. "http://localhost:5173/"
+  const urlToOpen = new URL(relativePath, scope).href;
 
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(function(windowClients) {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(windowClients) {
+      // Focus an existing tab that is already on the same origin
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
-        if (client.url === urlToOpen && 'focus' in client) {
+        if (client.url.startsWith(scope) && 'focus' in client) {
+          client.navigate(urlToOpen);
           return client.focus();
         }
       }
+      // Otherwise open a new tab
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }

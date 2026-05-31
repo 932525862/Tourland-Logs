@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Check, Users, MessageCircleWarning, X } from "lucide-react";
+import { Search, Check, Send, X } from "lucide-react";
 import { API } from "@/lib/api/client";
 import { toast } from "sonner";
 
@@ -10,6 +10,7 @@ interface TelegramUser {
   firstName: string;
   lastName: string | null;
   phoneNumber: string | null;
+  tempFullName: string | null;
 }
 
 interface Props {
@@ -61,7 +62,7 @@ export function TelegramUserSingleSelect({ onSelected }: Props) {
               : "bg-card border-border text-muted-foreground hover:border-amber-500/20"
           }`}
         >
-          <MessageCircleWarning className="w-5 h-5" />
+          <Send className="w-5 h-5" />
           {selectedId ? "Xususiy xabar" : "Ogohlantirish"}
         </button>
         
@@ -102,31 +103,39 @@ export function TelegramUserSingleSelect({ onSelected }: Props) {
               ) : filtered.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground font-medium text-sm">Foydalanuvchilar topilmadi</div>
               ) : (
-                filtered.map(user => (
-                  <button
-                    key={user.id}
-                    onClick={() => handleSelect(user.telegramId)}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all text-left group ${
-                      selectedId === user.telegramId
-                        ? "bg-amber-500/10 text-amber-600"
-                        : "hover:bg-secondary/80 text-foreground"
-                    }`}
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-bold text-sm leading-tight text-foreground group-hover:text-amber-600 transition-colors">
-                        {user.firstName} {user.lastName}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground font-medium">
-                        {user.username ? `@${user.username}` : user.phoneNumber || "Raqamsiz"}
-                      </span>
-                    </div>
-                    {selectedId === user.telegramId && (
-                      <div className="w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center">
-                        <Check className="w-3 h-3 stroke-[4]" />
-                      </div>
-                    )}
-                  </button>
-                ))
+                  filtered.map(user => {
+                    const fullName = user.tempFullName
+                      || (`${user.firstName} ${user.lastName || ''}`.trim())
+                      || '—';
+                    return (
+                      <button
+                        key={user.id}
+                        onClick={() => handleSelect(user.telegramId)}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all text-left group ${
+                          selectedId === user.telegramId
+                            ? "bg-amber-500/10 text-amber-600"
+                            : "hover:bg-secondary/80 text-foreground"
+                        }`}
+                      >
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="font-bold text-sm leading-tight text-foreground group-hover:text-amber-600 transition-colors truncate">
+                            {fullName}
+                          </span>
+                          {user.phoneNumber && (
+                            <span className="text-[11px] text-muted-foreground font-medium">📞 +{user.phoneNumber}</span>
+                          )}
+                          {user.username && (
+                            <span className="text-[11px] text-muted-foreground">@{user.username}</span>
+                          )}
+                        </div>
+                        {selectedId === user.telegramId && (
+                          <div className="w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+                            <Check className="w-3 h-3 stroke-[4]" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })
               )}
             </div>
           </div>

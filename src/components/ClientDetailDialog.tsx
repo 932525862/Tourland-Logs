@@ -64,6 +64,7 @@ export function ClientDetailDialog({
   const [singleTelegramId, setSingleTelegramId] = useState<string | null>(null);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
+  const [leaseWarningTelegramId, setLeaseWarningTelegramId] = useState<string | null>(null);
 
   // Sale state
   const sale: SaleInfo = localClient.sale ?? { status: "none", payments: [] };
@@ -152,6 +153,10 @@ export function ClientDetailDialog({
       toast.error("Keyingi to'lov sanasini kiriting");
       return;
     }
+    if (!leaseWarningTelegramId) {
+      toast.error("Ogohlantirish yuborish uchun telegram foydalanuvchisini tanlang");
+      return;
+    }
     setLoading(true);
     try {
       await API.setSale(localClient.id, {
@@ -162,6 +167,9 @@ export function ClientDetailDialog({
       });
       await API.updateClient(localClient.id, { stage: "sold" });
       setLocalClient(prev => ({ ...prev, stage: "sold" }));
+      // Trigger Telegram warning message
+      setSingleTelegramId(leaseWarningTelegramId);
+      setShowTelegramModal(true);
       toast.success("Sotildi (bir qismi)");
       setShowPurchase(false);
       setShowSaleFlow(false);
@@ -374,17 +382,7 @@ export function ClientDetailDialog({
         </div>
 
         <div className="p-5 space-y-6">
-          {/* Telegram Alerts */}
-          <div className="flex justify-end">
-            <TelegramUserSingleSelect 
-              onSelected={(id) => {
-                if (id) {
-                  setSingleTelegramId(id);
-                  setShowTelegramModal(true);
-                }
-              }} 
-            />
-          </div>
+
 
           {/* Form data / Details */}
           <section>
@@ -463,7 +461,7 @@ export function ClientDetailDialog({
           {(localClient.stage === "sold" || sale.status !== "none" || showSaleFlow) && (
             <section className="rounded-xl border border-border p-4 space-y-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <ShoppingCart className="w-4 h-4" /> Sotov
+                <ShoppingCart className="w-4 h-4" /> Sotuv
               </h3>
 
               {sale.status === "none" && !showPurchase && (
@@ -562,8 +560,26 @@ export function ClientDetailDialog({
                     <label className="text-xs text-muted-foreground">Keyingi to'lov sanasi</label>
                     <input type="datetime-local" value={partialNextDate} onChange={(e) => setPartialNextDate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={handlePartialPurchase} disabled={loading} className="flex-1 py-2 rounded-lg bg-warning text-white text-sm font-medium">
+
+                  {/* Required: Telegram warning — must select before confirming lease */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-amber-700 mb-0.5">Telegram ogohlantirish <span className="text-destructive">*</span></p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {leaseWarningTelegramId ? "✓ Foydalanuvchi tanlandi" : "Tasdiqlashdan oldin tanlash shart"}
+                      </p>
+                    </div>
+                    <TelegramUserSingleSelect
+                      onSelected={(id) => setLeaseWarningTelegramId(id || null)}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handlePartialPurchase}
+                      disabled={loading || !leaseWarningTelegramId}
+                      className="flex-1 py-2 rounded-lg bg-warning text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
                       Tasdiqlash
                     </button>
                     <button onClick={() => setPurchaseMode("choose")} className="px-3 py-2 rounded-lg border border-border text-sm">
@@ -636,12 +652,28 @@ export function ClientDetailDialog({
                           <button onClick={() => setShowFullPaymentConfirm(true)} disabled={loading} className="w-full mt-2 py-2 rounded-lg bg-success text-white text-sm font-medium">
                             To'liq to'landi
                           </button>
+                          {/* Telegram Ogohlantirish for ongoing lease */}
+                          <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5 mt-1">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-amber-700 mb-0.5">Telegram ogohlantirish</p>
+                              <p className="text-[11px] text-muted-foreground">Mijozga xabar yuborish (ixtiyoriy)</p>
+                            </div>
+                            <TelegramUserSingleSelect
+                              onSelected={(id) => {
+                                if (id) {
+                                  setSingleTelegramId(id);
+                                  setShowTelegramModal(true);
+                                }
+                              }}
+                            />
+                          </div>
                         </>
                       ) : (
                         <p className="text-[10px] text-destructive font-bold italic">To'lovni qo'shish uchun hisob faol bo'lishi kerak</p>
                       )}
                     </div>
                   )}
+
                 </div>
               )}
             </section>
