@@ -24,6 +24,7 @@ import { Route as EmployeeFormsRouteImport } from './routes/employee.forms'
 import { Route as EmployeeDepartmentsRouteImport } from './routes/employee.departments'
 import { Route as EmployeeAttendanceRouteImport } from './routes/employee.attendance'
 import { Route as EmployeeArchiveRouteImport } from './routes/employee.archive'
+import { Route as DirectorToursRouteImport } from './routes/director.tours'
 import { Route as DirectorTasksRouteImport } from './routes/director.tasks'
 import { Route as DirectorStatsRouteImport } from './routes/director.stats'
 import { Route as DirectorNotificationsRouteImport } from './routes/director.notifications'
@@ -109,6 +110,11 @@ const EmployeeArchiveRoute = EmployeeArchiveRouteImport.update({
   path: '/archive',
   getParentRoute: () => EmployeeRoute,
 } as any)
+const DirectorToursRoute = DirectorToursRouteImport.update({
+  id: '/tours',
+  path: '/tours',
+  getParentRoute: () => DirectorRoute,
+} as any)
 const DirectorTasksRoute = DirectorTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/director/notifications': typeof DirectorNotificationsRoute
   '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
+  '/director/tours': typeof DirectorToursRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/director/notifications': typeof DirectorNotificationsRoute
   '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
+  '/director/tours': typeof DirectorToursRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/director/notifications': typeof DirectorNotificationsRoute
   '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
+  '/director/tours': typeof DirectorToursRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/director/notifications'
     | '/director/stats'
     | '/director/tasks'
+    | '/director/tours'
     | '/employee/archive'
     | '/employee/attendance'
     | '/employee/departments'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
     | '/director/notifications'
     | '/director/stats'
     | '/director/tasks'
+    | '/director/tours'
     | '/employee/archive'
     | '/employee/attendance'
     | '/employee/departments'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/director/notifications'
     | '/director/stats'
     | '/director/tasks'
+    | '/director/tours'
     | '/employee/archive'
     | '/employee/attendance'
     | '/employee/departments'
@@ -427,6 +439,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployeeArchiveRouteImport
       parentRoute: typeof EmployeeRoute
     }
+    '/director/tours': {
+      id: '/director/tours'
+      path: '/tours'
+      fullPath: '/director/tours'
+      preLoaderRoute: typeof DirectorToursRouteImport
+      parentRoute: typeof DirectorRoute
+    }
     '/director/tasks': {
       id: '/director/tasks'
       path: '/tasks'
@@ -503,6 +522,7 @@ interface DirectorRouteChildren {
   DirectorNotificationsRoute: typeof DirectorNotificationsRoute
   DirectorStatsRoute: typeof DirectorStatsRoute
   DirectorTasksRoute: typeof DirectorTasksRoute
+  DirectorToursRoute: typeof DirectorToursRoute
   DirectorIndexRoute: typeof DirectorIndexRoute
 }
 
@@ -516,6 +536,7 @@ const DirectorRouteChildren: DirectorRouteChildren = {
   DirectorNotificationsRoute: DirectorNotificationsRoute,
   DirectorStatsRoute: DirectorStatsRoute,
   DirectorTasksRoute: DirectorTasksRoute,
+  DirectorToursRoute: DirectorToursRoute,
   DirectorIndexRoute: DirectorIndexRoute,
 }
 

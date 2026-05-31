@@ -435,6 +435,12 @@ export const API = {
   telegramBroadcast: (dto: { telegramIds: string[]; description: string; link?: string }) => 
     api("/telegram/broadcast", { method: "POST", json: dto }),
 
+  // tours
+  tours: () => api<any[]>("/tours"),
+  createTour: (data: any) => api("/tours", { method: "POST", json: data }),
+  updateTour: (id: string, data: any) => api(`/tours/${id}`, { method: "PATCH", json: data }),
+  deleteTour: (id: string) => api(`/tours/${id}`, { method: "DELETE" }),
+
   // WebSocket
   initSocket: (onEvent: (event: string, data: any) => void) => {
     listeners.add(onEvent);
