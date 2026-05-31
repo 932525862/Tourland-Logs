@@ -61,8 +61,8 @@ function EmployeeLayout() {
 
   const navItems = [
     { to: "/employee", label: "Mijozlar", icon: Users },
-    { to: "/employee/departments", label: "Bo'limlar", icon: Layers },
-    { to: "/employee/forms", label: "Formalar", icon: ClipboardCheck },
+    ...(session.canAccessDepartments !== false ? [{ to: "/employee/departments", label: "Bo'limlar", icon: Layers }] : []),
+    ...(session.canAccessForms !== false ? [{ to: "/employee/forms", label: "Formalar", icon: ClipboardCheck }] : []),
     { to: "/employee/tasks", label: "Topshiriqlar", icon: ListChecks },
     { to: "/employee/attendance", label: "Davomat", icon: ClipboardCheck },
     { to: "/employee/archive", label: "Arxiv", icon: Archive },
