@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useAppState, useSession } from "@/lib/store";
 import { CameraCheckInDialog } from "@/components/CameraCheckInDialog";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import type { AttendanceStatus } from "@/lib/types";
 import {
   Calendar,
@@ -121,6 +122,7 @@ function EmployeeAttendance() {
   const session = useSession();
   const [openIn, setOpenIn] = useState(false);
   const [openOut, setOpenOut] = useState(false);
+  const [openConfirmOut, setOpenConfirmOut] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [monthFilter, setMonthFilter] = useState(currentYM());
@@ -255,7 +257,7 @@ function EmployeeAttendance() {
 
             {activeRec && (
               <button
-                onClick={() => setOpenOut(true)}
+                onClick={() => setOpenConfirmOut(true)}
                 className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-destructive text-destructive-foreground font-black shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 <LogOut className="w-5 h-5" /> Ishdan ketdim
@@ -542,6 +544,19 @@ function EmployeeAttendance() {
         title="Ishdan ketishni tasdiqlash"
         description="Ish kuningizni yakunlash uchun suratga tushing."
         confirmLabel="Ishni yakunlash"
+      />
+      <ConfirmModal
+        isOpen={openConfirmOut}
+        onClose={() => setOpenConfirmOut(false)}
+        onConfirm={() => {
+          setOpenConfirmOut(false);
+          setOpenOut(true);
+        }}
+        title="Ish vaqtini yakunlash"
+        description="Siz haqiqatan ham ish vaqtini yakunlamoqchimisiz?"
+        confirmLabel="Ha"
+        cancelLabel="Yo'q"
+        tone="destructive"
       />
     </div>
   );

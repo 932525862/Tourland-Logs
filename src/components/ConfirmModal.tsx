@@ -109,20 +109,20 @@ export function ConfirmModal({
           </div>
         </div>
 
-        <div className="p-4 bg-secondary/30 flex flex-col gap-2 border-t border-border">
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className={`w-full py-3 rounded-xl font-bold transition-all disabled:opacity-50 ${config.btnBg} ${config.btnText} ${config.btnHover}`}
-          >
-            {loading ? "Yuklanmoqda..." : confirmLabel}
-          </button>
+        <div className="p-4 bg-secondary/30 grid grid-cols-2 gap-3 border-t border-border">
           <button
             onClick={onClose}
             disabled={loading}
             className="w-full py-3 rounded-xl font-bold text-muted-foreground hover:text-foreground hover:bg-secondary transition-all disabled:opacity-50"
           >
             {cancelLabel}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className={`w-full py-3 rounded-xl font-bold transition-all disabled:opacity-50 ${config.btnBg} ${config.btnText} ${config.btnHover}`}
+          >
+            {loading ? "Yuklanmoqda..." : confirmLabel}
           </button>
         </div>
       </div>

@@ -13,6 +13,7 @@ export const Route = createFileRoute("/director/stats")({
 function DirectorStats() {
   const { state, update } = useAppState();
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
+  const [salesPage, setSalesPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -122,6 +123,18 @@ function DirectorStats() {
       sales,
     };
   }, [state, employeeFilter]);
+
+  const salesPageSize = 10;
+  const salesPageCount = Math.max(1, Math.ceil(stats.sales.length / salesPageSize));
+  const salesPageItems = stats.sales.slice((salesPage - 1) * salesPageSize, salesPage * salesPageSize);
+
+  const handleSalesPageChange = (page: number) => {
+    setSalesPage(Math.min(Math.max(page, 1), salesPageCount));
+  };
+
+  useEffect(() => {
+    setSalesPage(1);
+  }, [employeeFilter, stats.sales.length]);
 
   const fmt = (n: number) => n.toLocaleString("uz-UZ") + " so'm";
 
@@ -267,7 +280,7 @@ function DirectorStats() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {stats.sales.map((s) => (
+                {salesPageItems.map((s) => (
                 <tr key={s.id} className="hover:bg-secondary/20 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="text-foreground font-bold group-hover:text-primary transition-colors">{s.name}</div>
@@ -289,6 +302,43 @@ function DirectorStats() {
             </tbody>
           </table>
         </div>
+        {stats.sales.length > salesPageSize ? (
+          <div className="border-t border-border bg-secondary/10 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              {`Ko'rinayotgan ${Math.min((salesPage - 1) * salesPageSize + 1, stats.sales.length)}–${Math.min(salesPage * salesPageSize, stats.sales.length)} / ${stats.sales.length}`}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleSalesPageChange(salesPage - 1)}
+                disabled={salesPage === 1}
+                className="inline-flex items-center justify-center rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Oldingi
+              </button>
+              <div className="hidden sm:flex items-center gap-1">
+                {Array.from({ length: salesPageCount }, (_, index) => {
+                  const page = index + 1;
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => handleSalesPageChange(page)}
+                      className={`min-w-[36px] rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${page === salesPage ? "bg-primary text-primary-foreground" : "bg-card text-foreground hover:bg-secondary"}`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => handleSalesPageChange(salesPage + 1)}
+                disabled={salesPage === salesPageCount}
+                className="inline-flex items-center justify-center rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Keyingi
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
     </div>
   );

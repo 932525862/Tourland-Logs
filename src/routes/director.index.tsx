@@ -38,12 +38,14 @@ function DirectorProfile() {
       await API.updateProfile({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phoneNumber: phone.trim()
+        phoneNumber: phone.trim(),
       });
-      update((s) => updateDirector(s, {
-        name: `${firstName.trim()} ${lastName.trim()}`,
-        login: phone.trim()
-      }));
+      update((s) =>
+        updateDirector(s, {
+          name: `${firstName.trim()} ${lastName.trim()}`,
+          login: phone.trim(),
+        }),
+      );
       toast.success("Profil ma'lumotlari yangilandi");
     } catch (err: any) {
       toast.error(err.message || "Xatolik yuz berdi");
@@ -70,14 +72,14 @@ function DirectorProfile() {
     <div className="p-6 md:p-10 max-w-3xl">
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Profil</h1>
-        <p className="text-muted-foreground mt-1">O'z ma'lumotlaringizni tahrirlang</p>
+        <p className="text-muted-foreground mt-1">Ushbu bo‘lim orqali ma’lumotlaringizni tahrirlashingiz mumkin.</p>
       </header>
 
       <div className="space-y-6">
         <div className="bg-card rounded-2xl border border-border p-6 md:p-8 shadow-[var(--shadow-sm)]">
           <div className="flex items-center gap-4 mb-8 pb-6 border-b border-border">
             <div className="w-16 h-16 rounded-2xl bg-[var(--gradient-primary)] flex items-center justify-center text-primary-foreground shadow-[var(--shadow-md)]">
-              <User className="w-8 h-8" />
+              <User className="w-8 h-8 text-blue-500" />
             </div>
             <div>
               <h2 className="text-xl font-semibold text-foreground">{state.director.name}</h2>
@@ -107,7 +109,9 @@ function DirectorProfile() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground block mb-1.5">Telefon raqam</label>
+              <label className="text-sm font-medium text-foreground block mb-1.5">
+                Telefon raqam
+              </label>
               <input
                 type="text"
                 value={phone}
@@ -138,7 +142,9 @@ function DirectorProfile() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground block mb-1.5">Yangi parol</label>
+              <label className="text-sm font-medium text-foreground block mb-1.5">
+                Yangi parol
+              </label>
               <input
                 type="password"
                 value={newPassword}

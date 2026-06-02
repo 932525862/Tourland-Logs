@@ -31,8 +31,8 @@ export function CrmSidebar({ title, subtitle, items, footer }: SidebarProps) {
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-card h-screen sticky top-0">
       <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[var(--gradient-primary)] flex items-center justify-center text-primary-foreground shadow-[var(--shadow-md)]">
-            <Briefcase className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-lg bg-[var(--gradient-primary)] flex items-center justify-center text-primary-foreground shadow-[var(--shadow-md)]">
+            <Briefcase className="w-5 h-5 text-blue-500" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-foreground text-sm truncate">{title}</p>
