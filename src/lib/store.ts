@@ -264,3 +264,16 @@ export function updateTask(state: AppState, id: string, patch: Partial<Task>): A
 export function deleteTask(state: AppState, id: string): AppState {
   return { ...state, tasks: (state.tasks ?? []).filter((t) => t.id !== id) };
 }
+
+export function clearSensitiveState() {
+  const state = loadState();
+  const cleared: AppState = {
+    ...state,
+    attendance: [],
+    clients: [],
+    employees: [],
+    forms: [],
+    tasks: [],
+  };
+  saveState(cleared);
+}

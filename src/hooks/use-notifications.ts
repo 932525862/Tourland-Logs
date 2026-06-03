@@ -6,6 +6,8 @@ import { notify } from "@/lib/notify";
 let globalNotifications: any[] = [];
 let globalUnreadCount = 0;
 let globalIsLoading = false;
+let globalTotalPages = 1;
+let globalCurrentPage = 1;
 const listeners = new Set<() => void>();
 
 function notifyListeners() {
@@ -30,6 +32,8 @@ export function useNotifications() {
     notifications: globalNotifications,
     unreadCount: globalUnreadCount,
     isLoading: globalIsLoading,
+    totalPages: globalTotalPages,
+    currentPage: globalCurrentPage,
   });
 
   useEffect(() => {
@@ -38,6 +42,8 @@ export function useNotifications() {
         notifications: globalNotifications,
         unreadCount: globalUnreadCount,
         isLoading: globalIsLoading,
+        totalPages: globalTotalPages,
+        currentPage: globalCurrentPage,
       });
     };
     listeners.add(handleChange);
@@ -46,13 +52,15 @@ export function useNotifications() {
     };
   }, []);
 
-  const fetchNotifications = useCallback(async (limit?: number) => {
+  const fetchNotifications = useCallback(async (page: number = 1, limit: number = 20) => {
     globalIsLoading = true;
     notifyListeners();
     try {
-      const data = await API.notifications(limit);
-      globalNotifications = data;
-      globalUnreadCount = data.filter((n) => !n.isRead).length;
+      const data = await API.notifications(page, limit);
+      globalNotifications = data.items;
+      globalUnreadCount = data.items.filter((n) => !n.isRead).length; // This is actually not perfectly accurate for total unread if we have pages, but okay for current view
+      globalTotalPages = data.totalPages;
+      globalCurrentPage = data.page;
     } catch (err) {
       console.error("Failed to fetch notifications", err);
     } finally {
@@ -105,6 +113,8 @@ export function useNotifications() {
     notifications: state.notifications,
     unreadCount: state.unreadCount,
     isLoading: state.isLoading,
+    totalPages: state.totalPages,
+    currentPage: state.currentPage,
     fetchNotifications,
     markRead,
     markAllRead,

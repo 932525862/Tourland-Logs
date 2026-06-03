@@ -151,8 +151,8 @@ export const API = {
       method: "PATCH",
       json: { ...data, phoneNumber: cleanPhone(data.phoneNumber) }
     }),
-  changePassword: (oldPassword: string, newPassword: string) =>
-    api("/users/director/change-password", { method: "PATCH", json: { oldPassword, newPassword } }),
+  changePassword: (data: { oldPassword: string; newPassword: string }) =>
+    api("/users/director/change-password", { method: "PATCH", json: data }),
   activateUser: (id: string) => api(`/users/${id}/activate`, { method: "POST" }),
   deactivateUser: (id: string) => api(`/users/${id}/deactivate`, { method: "POST" }),
 
@@ -421,7 +421,8 @@ export const API = {
   tgSend: (chatId: number, text: string) => Promise.resolve(),
 
   // notifications
-  notifications: (limit?: number) => api<any[]>(`/notifications${limit ? `?limit=${limit}` : ""}`),
+  notifications: (page: number = 1, limit: number = 20) => 
+    api<{ items: any[], total: number, page: number, limit: number, totalPages: number }>(`/notifications?page=${page}&limit=${limit}`),
   markNotificationRead: (id: string) => api(`/notifications/${id}/read`, { method: "PATCH" }),
   markAllNotificationsRead: () => api("/notifications/read-all", { method: "POST" }),
   subscribePush: (subscription: any) => api("/notifications/push-subscribe", { method: "POST", json: subscription }),

@@ -46,7 +46,9 @@ interface NotificationListProps {
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
   unreadCount: number;
-  onRefresh: (limit?: number) => void;
+  onRefresh: (page: number, limit?: number) => void;
+  currentPage: number;
+  totalPages: number;
 }
 
 const typeConfig: Record<string, { icon: any; color: string; label: string; bg: string }> = {
@@ -69,6 +71,8 @@ export function NotificationList({
   onMarkAllRead,
   unreadCount,
   onRefresh,
+  currentPage,
+  totalPages,
 }: NotificationListProps) {
   const navigate = useNavigate();
   const session = useSession();
@@ -239,14 +243,24 @@ export function NotificationList({
                   );
                 })}
                 
-                {notifications.length >= 50 && (
-                  <div className="pt-4 flex justify-center">
+                {totalPages > 1 && (
+                  <div className="pt-8 flex items-center justify-center gap-4">
                     <button
-                      onClick={() => onRefresh(1000)}
-                      className="inline-flex items-center gap-2 px-8 py-3 rounded-2xl bg-secondary text-primary font-bold text-sm hover:bg-primary/10 transition-all active:scale-95"
+                      disabled={currentPage <= 1}
+                      onClick={() => onRefresh(currentPage - 1)}
+                      className="px-4 py-2 rounded-xl bg-secondary text-foreground font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-secondary/80 transition-all active:scale-95 border border-border/40"
                     >
-                      <BellRing className="w-4 h-4" />
-                      Hammasini ko'rish
+                      Oldingi
+                    </button>
+                    <div className="text-sm font-bold text-muted-foreground bg-secondary/50 px-4 py-2 rounded-xl border border-border/20">
+                      {currentPage} / {totalPages}
+                    </div>
+                    <button
+                      disabled={currentPage >= totalPages}
+                      onClick={() => onRefresh(currentPage + 1)}
+                      className="px-4 py-2 rounded-xl bg-secondary text-foreground font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-secondary/80 transition-all active:scale-95 border border-border/40"
+                    >
+                      Keyingi
                     </button>
                   </div>
                 )}

@@ -73,9 +73,10 @@ export function ClientDetailDialog({
 
   const [showPurchase, setShowPurchase] = useState(false);
   const [purchaseMode, setPurchaseMode] = useState<"choose" | "full" | "partial">("choose");
-  const [fullAmount, setFullAmount] = useState("");
+  const [fullBase, setFullBase] = useState("");
   const [fullAdditional, setFullAdditional] = useState("");
-  const [partialTotal, setPartialTotal] = useState(sale.totalAmount?.toString() ?? "");
+  const [partialBase, setPartialBase] = useState("");
+  const [partialAdditional, setPartialAdditional] = useState("");
   const [partialPaid, setPartialPaid] = useState("");
   const [partialNextDate, setPartialNextDate] = useState("");
   const [extraAmount, setExtraAmount] = useState("");
@@ -110,10 +111,10 @@ export function ClientDetailDialog({
   };
 
   const handleFullPurchase = async () => {
-    const amt = parseFloat(fullAmount);
+    const baseAmt = parseFloat(fullBase || "0");
     const addAmt = parseFloat(fullAdditional || "0");
-    const total = amt + addAmt;
-    if (!amt || amt <= 0) {
+    const total = baseAmt + addAmt;
+    if (total <= 0) {
       toast.error("To'lov summasini kiriting");
       return;
     }
@@ -139,9 +140,12 @@ export function ClientDetailDialog({
   };
 
   const handlePartialPurchase = async () => {
-    const total = parseFloat(partialTotal);
-    const paid = parseFloat(partialPaid);
-    if (!total || total <= 0 || !paid || paid <= 0) {
+    const baseAmt = parseFloat(partialBase || "0");
+    const addAmt = parseFloat(partialAdditional || "0");
+    const total = baseAmt + addAmt;
+    const paid = parseFloat(partialPaid || "0");
+
+    if (total <= 0 || paid <= 0) {
       toast.error("To'liq summa va to'langan summani kiriting");
       return;
     }
@@ -163,6 +167,7 @@ export function ClientDetailDialog({
         status: "partial",
         totalAmount: total,
         paidAmount: paid,
+        additionalPrice: addAmt,
         nextPaymentAt: new Date(partialNextDate).toISOString()
       });
       await API.updateClient(localClient.id, { stage: "sold" });
@@ -505,8 +510,8 @@ export function ClientDetailDialog({
                       <input
                         type="text"
                         inputMode="numeric"
-                        value={formatPrice(fullAmount)}
-                        onChange={(e) => setFullAmount(parsePrice(e.target.value))}
+                        value={formatPrice(fullBase)}
+                        onChange={(e) => setFullBase(parsePrice(e.target.value))}
                         placeholder="0"
                         className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
                       />
@@ -528,7 +533,7 @@ export function ClientDetailDialog({
                     <input
                       type="text"
                       readOnly
-                      value={formatPrice(((parseFloat(fullAmount || "0") + parseFloat(fullAdditional || "0")) || "").toString())}
+                      value={formatPrice(((parseFloat(fullBase || "0") + parseFloat(fullAdditional || "0")) || "").toString())}
                       placeholder="0"
                       className="w-full px-3 py-2 rounded-lg border border-transparent bg-secondary/50 text-foreground font-bold cursor-not-allowed text-sm"
                     />
@@ -548,12 +553,28 @@ export function ClientDetailDialog({
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-muted-foreground">To'liq summa</label>
-                      <input type="text" inputMode="numeric" value={formatPrice(partialTotal)} onChange={(e) => setPartialTotal(parsePrice(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                      <label className="text-xs text-muted-foreground">To'lov summasi</label>
+                      <input type="text" inputMode="numeric" value={formatPrice(partialBase)} onChange={(e) => setPartialBase(parsePrice(e.target.value))} placeholder="0" className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Qo'shimcha summa</label>
+                      <input type="text" inputMode="numeric" value={formatPrice(partialAdditional)} onChange={(e) => setPartialAdditional(parsePrice(e.target.value))} placeholder="0" className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Umumiy summa</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={formatPrice(((parseFloat(partialBase || "0") + parseFloat(partialAdditional || "0")) || "").toString())}
+                        placeholder="0"
+                        className="w-full px-3 py-2 rounded-lg border border-transparent bg-secondary/50 text-foreground font-bold cursor-not-allowed text-sm"
+                      />
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground">To'langan summa</label>
-                      <input type="text" inputMode="numeric" value={formatPrice(partialPaid)} onChange={(e) => setPartialPaid(parsePrice(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
+                      <input type="text" inputMode="numeric" value={formatPrice(partialPaid)} onChange={(e) => setPartialPaid(parsePrice(e.target.value))} placeholder="0" className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" />
                     </div>
                   </div>
                   <div>

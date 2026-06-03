@@ -54,17 +54,21 @@ function DirectorStats() {
       return sum + (c.sale?.payments?.reduce((s, p) => s + (p.amount || 0), 0) ?? 0)
     }, 0);
 
-    const byEmployee = new Map<string, { name: string; count: number; revenue: number; additional: number }>();
+    const byEmployee = new Map<string, { name: string; count: number; revenue: number; fullAdditional: number; partialAdditional: number }>();
     for (const c of clients.filter(c => c.sale?.status === "full" || c.sale?.status === "partial")) {
       const name = c.sale?.completedByName ?? "Noma'lum";
       if (employeeFilter !== "all" && name !== employeeFilter) continue;
       
-      const rev = c.sale?.payments?.reduce((s, p) => s + (p.amount || 0), 0) ?? 0;
+      const rev = c.sale?.payments?.reduce((s: number, p: any) => s + (p.amount || 0), 0) ?? 0;
       const additional = c.sale?.additionalPrice || 0;
-      const cur = byEmployee.get(name) ?? { name, count: 0, revenue: 0, additional: 0 };
-      if (c.sale?.status === "full") cur.count += 1;
+      const cur = byEmployee.get(name) ?? { name, count: 0, revenue: 0, fullAdditional: 0, partialAdditional: 0 };
+      if (c.sale?.status === "full") {
+        cur.count += 1;
+        cur.fullAdditional += additional;
+      } else {
+        cur.partialAdditional += additional;
+      }
       cur.revenue += rev;
-      cur.additional += additional;
       byEmployee.set(name, cur);
     }
 
@@ -73,10 +77,11 @@ function DirectorStats() {
       const withSale = inCat.filter((c) => (c.sale?.status === "full" || c.sale?.status === "partial") && (employeeFilter === "all" || c.sale?.completedByName === employeeFilter));
       
       const revenue = withSale.reduce(
-        (s, c) => s + (c.sale?.payments?.reduce((a, p) => a + (p.amount || 0), 0) ?? 0),
+        (s: number, c: any) => s + (c.sale?.payments?.reduce((a: number, p: any) => a + (p.amount || 0), 0) ?? 0),
         0
       );
-      const additional = withSale.reduce((s, c) => s + (c.sale?.additionalPrice || 0), 0);
+      const fullAdditional = withSale.filter((c: any) => c.sale?.status === "full").reduce((s: number, c: any) => s + (c.sale?.additionalPrice || 0), 0);
+      const partialAdditional = withSale.filter((c: any) => c.sale?.status === "partial").reduce((s: number, c: any) => s + (c.sale?.additionalPrice || 0), 0);
       const soldCount = withSale.filter(c => c.sale?.status === "full").length;
 
       return {
@@ -85,7 +90,8 @@ function DirectorStats() {
         clients: inCat.length,
         sold: soldCount,
         revenue,
-        additional,
+        fullAdditional,
+        partialAdditional,
       };
     });
 
@@ -101,10 +107,19 @@ function DirectorStats() {
       }))
       .sort((a, b) => +new Date(b.date) - +new Date(a.date));
 
-    const additionalRevenue = clients.reduce((sum, c) => {
+    const fullAdditionalRevenue = clients.reduce((sum, c) => {
+      if (c.sale?.status !== "full") return sum;
       if (employeeFilter !== "all" && c.sale?.completedByName !== employeeFilter) return sum;
       return sum + (c.sale?.additionalPrice || 0);
     }, 0);
+
+    const partialAdditionalRevenue = clients.reduce((sum, c) => {
+      if (c.sale?.status !== "partial") return sum;
+      if (employeeFilter !== "all" && c.sale?.completedByName !== employeeFilter) return sum;
+      return sum + (c.sale?.additionalPrice || 0);
+    }, 0);
+
+    const additionalRevenue = fullAdditionalRevenue + partialAdditionalRevenue;
 
     return {
       totalClients,
@@ -118,7 +133,9 @@ function DirectorStats() {
       ).length,
       totalRevenue,
       additionalRevenue,
-      byEmployee: Array.from(byEmployee.values()).sort((a, b) => (b.revenue + b.additional) - (a.revenue + a.additional)),
+      fullAdditionalRevenue,
+      partialAdditionalRevenue,
+      byEmployee: Array.from(byEmployee.values()).sort((a, b) => (b.revenue + b.fullAdditional + b.partialAdditional) - (a.revenue + a.fullAdditional + a.partialAdditional)),
       byCategory,
       sales,
     };
@@ -179,7 +196,15 @@ function DirectorStats() {
         <KpiCard icon={Users} label="Jami mijozlar" value={String(stats.totalClients)} tone="primary"  delta="+12%" />
         <KpiCard icon={ShoppingCart} label="Sotildi" value={String(stats.soldCount)} tone="success" delta="+5%" />
         <KpiCard icon={ShoppingCart} label="Nasiya sotuv" value={String(stats.partialCount)} tone="warning" delta="-2%" />
-        <KpiCard icon={ArrowUpRight} label="Qo'shimcha daromad" value={fmt(stats.additionalRevenue)} tone="success" delta="+15%" />
+        <KpiCard 
+          icon={ArrowUpRight} 
+          label="Qo'shimcha daromad" 
+          value={fmt(stats.additionalRevenue)} 
+          tone="success" 
+          delta="+15%" 
+          subValue={`To'liq: ${stats.fullAdditionalRevenue.toLocaleString()} so'm`}
+          subValue2={`Nasiya: ${stats.partialAdditionalRevenue.toLocaleString()} so'm`}
+        />
         <KpiCard icon={Wallet} label="Umumiy tushum" value={fmt(stats.totalRevenue)} tone="info" delta="+18%" />
       </div>
 
@@ -198,7 +223,8 @@ function DirectorStats() {
                   <th className="text-right px-6 py-4">Mijoz</th>
                   <th className="text-right px-6 py-4">Sotuv</th>
                   <th className="text-right px-6 py-4">Umumiy tushum</th>
-                  <th className="text-right px-6 py-4">Qo'shimcha daromad</th>
+                  <th className="text-right px-6 py-4">Qo'sh. (To'liq)</th>
+                  <th className="text-right px-6 py-4">Qo'sh. (Nasiya)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -208,12 +234,13 @@ function DirectorStats() {
                     <td className="px-6 py-4 text-right text-muted-foreground font-medium">{c.clients}</td>
                     <td className="px-6 py-4 text-right text-success font-black">{c.sold}</td>
                     <td className="px-6 py-4 text-right text-foreground font-bold">{fmt(c.revenue)}</td>
-                    <td className="px-6 py-4 text-right text-primary font-bold">{fmt(c.additional)}</td>
+                    <td className="px-6 py-4 text-right text-success font-bold">{fmt(c.fullAdditional)}</td>
+                    <td className="px-6 py-4 text-right text-warning font-bold">{fmt(c.partialAdditional)}</td>
                   </tr>
                 ))}
                 {stats.byCategory.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-10 text-center text-muted-foreground italic">Ma'lumot yo'q</td>
+                    <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground italic">Ma'lumot yo'q</td>
                   </tr>
                 )}
               </tbody>
@@ -234,7 +261,8 @@ function DirectorStats() {
                   <th className="text-left px-6 py-4">Xodim</th>
                   <th className="text-right px-6 py-4">Sotuvlar</th>
                   <th className="text-right px-6 py-4">Umumiy tushum</th>
-                  <th className="text-right px-6 py-4">Qo'shimcha daromad</th>
+                  <th className="text-right px-6 py-4">Qo'sh. (To'liq)</th>
+                  <th className="text-right px-6 py-4">Qo'sh. (Nasiya)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -243,12 +271,13 @@ function DirectorStats() {
                     <td className="px-6 py-4 text-foreground font-bold">{e.name}</td>
                     <td className="px-6 py-4 text-right text-primary font-black">{e.count}</td>
                     <td className="px-6 py-4 text-right text-foreground font-bold">{fmt(e.revenue)}</td>
-                    <td className="px-6 py-4 text-right text-success font-bold">{fmt(e.additional)}</td>
+                    <td className="px-6 py-4 text-right text-success font-bold">{fmt(e.fullAdditional)}</td>
+                    <td className="px-6 py-4 text-right text-warning font-bold">{fmt(e.partialAdditional)}</td>
                   </tr>
                 ))}
                 {stats.byEmployee.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-6 py-10 text-center text-muted-foreground italic">Hodimlar natijasi yo'q</td>
+                    <td colSpan={5} className="px-6 py-10 text-center text-muted-foreground italic">Hodimlar natijasi yo'q</td>
                   </tr>
                 )}
               </tbody>
@@ -349,13 +378,17 @@ function KpiCard({
   label,
   value,
   tone,
-  delta
+  delta,
+  subValue,
+  subValue2
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
   tone: "primary" | "success" | "warning" | "info";
   delta?: string;
+  subValue?: string;
+  subValue2?: string;
 }) {
   const isUp = delta?.startsWith("+");
   const toneClass = {
@@ -380,6 +413,16 @@ function KpiCard({
       </div>
       <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">{label}</p>
       <p className="text-2xl font-black text-foreground tracking-tight">{value}</p>
+      {subValue && (
+        <p className="text-[10px] font-bold text-success mt-1 bg-success/10 px-2 py-0.5 rounded-md inline-block">
+          {subValue}
+        </p>
+      )}
+      {subValue2 && (
+        <p className="text-[10px] font-bold text-warning mt-0.5 bg-warning/10 px-2 py-0.5 rounded-md inline-block">
+          {subValue2}
+        </p>
+      )}
     </div>
   );
 }
