@@ -5,11 +5,12 @@ import { toast } from "sonner";
 
 interface Props {
   selectedTelegramIds: string[];
+  clientId?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function TelegramMessageModal({ selectedTelegramIds, onClose, onSuccess }: Props) {
+export function TelegramMessageModal({ selectedTelegramIds, clientId, onClose, onSuccess }: Props) {
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
   const [sending, setSending] = useState(false);
@@ -23,11 +24,20 @@ export function TelegramMessageModal({ selectedTelegramIds, onClose, onSuccess }
 
     setSending(true);
     try {
-      await API.telegramBroadcast({
-        telegramIds: selectedTelegramIds,
-        description,
-        link: link.trim() || undefined,
-      });
+      if (clientId && selectedTelegramIds.length === 1) {
+        await API.telegramClientMessage({
+          clientId,
+          telegramId: selectedTelegramIds[0],
+          description,
+          link: link.trim() || undefined,
+        });
+      } else {
+        await API.telegramBroadcast({
+          telegramIds: selectedTelegramIds,
+          description,
+          link: link.trim() || undefined,
+        });
+      }
       toast.success("Xabarlar muvaffaqiyatli yuborildi");
       onSuccess();
     } catch (err) {

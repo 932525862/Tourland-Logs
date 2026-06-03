@@ -109,6 +109,7 @@ function DirectorAttendance() {
   const [search, setSearch] = useState("");
   const [monthFilter, setMonthFilter] = useState(currentYM());
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [isBackfilling, setIsBackfilling] = useState(false);
   const [tick, setTick] = useState(0);
 
   // Live update ticker for active hours
@@ -122,12 +123,36 @@ function DirectorAttendance() {
     try {
       const list = await API.attendance();
       update((s) => ({ ...s, attendance: list }));
+
+      // If current month is empty but there is data, select the latest month with data
+      if (list.length > 0) {
+        const ym = currentYM();
+        const hasCurrentMonth = list.some(r => r.date.startsWith(ym));
+        if (!hasCurrentMonth) {
+          const latest = list.reduce((a, b) => a.date > b.date ? a : b);
+          setMonthFilter(latest.date.substring(0, 7));
+        }
+      }
     } catch (err: any) {
       toast.error(err.message || "Davomat ma'lumotlarini yuklashda xatolik");
     } finally {
       setLoading(false);
     }
   }, [update]);
+
+  const handleBackfill = async () => {
+    setIsBackfilling(true);
+    const toastId = toast.loading("O'tgan kunlar davomati tiklanmoqda (backfill)...");
+    try {
+      await API.backfillAttendance(30);
+      toast.success("O'tgan kunlar davomati muvaffaqiyatli tiklandi", { id: toastId });
+      fetchAttendance();
+    } catch (err: any) {
+      toast.error(err.message || "Backfill xatolik", { id: toastId });
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
 
   useEffect(() => {
     fetchAttendance();
@@ -178,6 +203,13 @@ function DirectorAttendance() {
   // ─── Detail view for one employee ───────────────────────────────────────────
   if (selected) {
     const emp = state.employees.find((e) => e.id === selected);
+    // Warning for duplicate names
+    const duplicates = state.employees.filter(e => 
+      e.id !== selected && 
+      e.firstName === emp?.firstName && 
+      e.lastName === emp?.lastName
+    );
+
     const allRecs = (recordsByEmp[selected] ?? [])
       .slice()
       .sort((a, b) => b.date.localeCompare(a.date));
@@ -217,6 +249,27 @@ function DirectorAttendance() {
               </div>
             </div>
           </div>
+
+          {duplicates.length > 0 && (
+            <div className="w-full mt-4 p-4 rounded-2xl bg-warning/10 border border-warning/20 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-warning shrink-0" />
+              <div className="text-sm text-warning-foreground">
+                <p className="font-bold">E'tibor bering!</p>
+                <p>Ushbu ismli yana {duplicates.length} ta hodim mavjud. Davomat ma'lumotlari boshqa hisobda ham bo'lishi mumkin.</p>
+                <div className="mt-1 flex gap-2 flex-wrap">
+                  {duplicates.map(d => (
+                    <button 
+                      key={d.id} 
+                      onClick={() => setSelected(d.id)}
+                      className="px-2 py-0.5 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-[10px] font-bold uppercase transition-colors"
+                    >
+                      Boshqasini ko'rish ({d.phone})
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Month filter */}
           <div className="flex items-center gap-2">
@@ -432,14 +485,25 @@ function DirectorAttendance() {
             {formatUzDate(new Date(), { includeYear: true, includeWeekday: true })}
           </p>
         </div>
-        <button
-          onClick={fetchAttendance}
-          disabled={loading}
-          className="p-3 rounded-2xl border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary/30 transition-all disabled:opacity-50"
-          title="Yangilash"
-        >
-          <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleBackfill}
+            disabled={loading || isBackfilling}
+            className="flex items-center gap-2 px-4 py-3 rounded-2xl border border-warning/30 bg-warning/5 text-warning hover:bg-warning/10 transition-all disabled:opacity-50 text-sm font-bold"
+            title="O'tgan kunlar davomatini tiklash"
+          >
+            <RefreshCw className={`w-4 h-4 ${isBackfilling ? "animate-spin" : ""}`} />
+            Gaplarni to'ldirish
+          </button>
+          <button
+            onClick={fetchAttendance}
+            disabled={loading}
+            className="p-3 rounded-2xl border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary/30 transition-all disabled:opacity-50"
+            title="Yangilash"
+          >
+            <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </header>
 
       {/* Today's stats */}

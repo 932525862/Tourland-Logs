@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Menu, X, LogOut, Briefcase } from "lucide-react";
+import { Menu, X, LogOut, Briefcase, User, LayoutDashboard } from "lucide-react";
 import { Drawer } from "vaul";
 import { saveSession } from "@/lib/store";
 import { setToken } from "@/lib/api/client";
@@ -34,7 +34,7 @@ export function MobileNav({ title, subtitle, items }: MobileNavProps) {
     <div className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card sticky top-0 z-40">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-[var(--gradient-primary)] flex items-center justify-center text-primary-foreground shadow-sm">
-          <Briefcase className="w-4 h-4 text-blue-500" />
+          <LayoutDashboard className="w-4 h-4 text-blue-500" />
         </div>
         <div className="min-w-0">
           <p className="font-semibold text-foreground text-sm truncate">{title}</p>
@@ -57,7 +57,12 @@ export function MobileNav({ title, subtitle, items }: MobileNavProps) {
                 <div className="flex items-center justify-between mb-8">
                   <div>
                     <h2 className="text-xl font-bold">{title}</h2>
-                    {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+                    {subtitle && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">{subtitle}</p>
+                      </div>
+                    )}
                   </div>
                   <Drawer.Close asChild>
                     <button className="p-2 rounded-lg hover:bg-secondary">

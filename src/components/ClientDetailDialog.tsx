@@ -809,6 +809,7 @@ export function ClientDetailDialog({
       {showTelegramModal && (
         <TelegramMessageModal
           selectedTelegramIds={singleTelegramId ? [singleTelegramId] : []}
+          clientId={localClient.id}
           onClose={() => {
             setShowTelegramModal(false);
             setSingleTelegramId(null);

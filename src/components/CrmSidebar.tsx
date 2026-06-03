@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { LogOut, Briefcase } from "lucide-react";
+import { LogOut, Briefcase, User, LayoutDashboard } from "lucide-react";
 import { saveSession, clearSensitiveState } from "@/lib/store";
 import { setToken } from "@/lib/api/client";
 import { toast } from "sonner";
@@ -33,11 +33,16 @@ export function CrmSidebar({ title, subtitle, items, footer }: SidebarProps) {
       <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[var(--gradient-primary)] flex items-center justify-center text-primary-foreground shadow-[var(--shadow-md)]">
-            <Briefcase className="w-5 h-5 text-blue-500" />
+            <LayoutDashboard className="w-5 h-5 text-blue-500" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-foreground text-sm truncate">{title}</p>
-            {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
+            {subtitle && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <User className="w-3 h-3 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

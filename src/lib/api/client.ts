@@ -337,6 +337,7 @@ export const API = {
       })(),
     })));
   },
+  backfillAttendance: (days: number = 30) => api(`/attendance/backfill?days=${days}`, { method: "POST" }),
   myAttendance: () => {
     return api<any[]>("/attendance/my").then(list => list.map(a => ({
       ...a,
@@ -421,7 +422,7 @@ export const API = {
   tgSend: (chatId: number, text: string) => Promise.resolve(),
 
   // notifications
-  notifications: (page: number = 1, limit: number = 20) => 
+  notifications: (page: number = 1, limit: number = 20) =>
     api<{ items: any[], total: number, page: number, limit: number, totalPages: number }>(`/notifications?page=${page}&limit=${limit}`),
   markNotificationRead: (id: string) => api(`/notifications/${id}/read`, { method: "PATCH" }),
   markAllNotificationsRead: () => api("/notifications/read-all", { method: "POST" }),
@@ -433,8 +434,10 @@ export const API = {
 
   // Telegram
   telegramUsers: () => api<any[]>("/telegram/users"),
-  telegramBroadcast: (dto: { telegramIds: string[]; description: string; link?: string }) => 
+  telegramBroadcast: (dto: { telegramIds: string[]; description: string; link?: string }) =>
     api("/telegram/broadcast", { method: "POST", json: dto }),
+  telegramClientMessage: (dto: { clientId: string; telegramId: string; description: string; link?: string }) =>
+    api("/telegram/client-message", { method: "POST", json: dto }),
 
   // tours
   tours: () => api<any[]>("/tours"),
