@@ -123,6 +123,7 @@ function EmployeeAttendance() {
   const [openIn, setOpenIn] = useState(false);
   const [openOut, setOpenOut] = useState(false);
   const [openConfirmOut, setOpenConfirmOut] = useState(false);
+  const [confirmChallenge, setConfirmChallenge] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [monthFilter, setMonthFilter] = useState(currentYM());
@@ -257,7 +258,10 @@ function EmployeeAttendance() {
 
             {activeRec && (
               <button
-                onClick={() => setOpenConfirmOut(true)}
+                onClick={() => {
+                  setConfirmChallenge("");
+                  setOpenConfirmOut(true);
+                }}
                 className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-destructive text-destructive-foreground font-black shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 <LogOut className="w-5 h-5" /> Ishdan ketdim
@@ -547,9 +551,13 @@ function EmployeeAttendance() {
       />
       <ConfirmModal
         isOpen={openConfirmOut}
-        onClose={() => setOpenConfirmOut(false)}
+        onClose={() => {
+          setOpenConfirmOut(false);
+          setConfirmChallenge("");
+        }}
         onConfirm={() => {
           setOpenConfirmOut(false);
+          setConfirmChallenge("");
           setOpenOut(true);
         }}
         title="Ish vaqtini yakunlash"
@@ -557,7 +565,29 @@ function EmployeeAttendance() {
         confirmLabel="Ha"
         cancelLabel="Yo'q"
         tone="destructive"
-      />
+        confirmDisabled={confirmChallenge.trim() !== "56"}
+      >
+        <div className="mt-4 w-full text-left rounded-3xl border border-border/70 bg-secondary/40 p-4">
+          <div className="text-sm font-medium text-foreground mb-3">
+            Quyidagi misolni yeching va javobni kiriting:
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <span className="text-xl font-black text-foreground">7 × 8 =</span>
+            <input
+              type="text"
+              value={confirmChallenge}
+              onChange={(e) => setConfirmChallenge(e.target.value)}
+              className="w-full sm:max-w-40 rounded-2xl border border-border bg-card px-4 py-3 text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+              placeholder="Javob"
+            />
+          </div>
+          {confirmChallenge.length > 0 && confirmChallenge.trim() !== "56" ? (
+            <p className="mt-3 text-sm text-destructive">
+              Javob noto'g'ri, iltimos to'g'ri kiriting.
+            </p>
+          ) : null}
+        </div>
+      </ConfirmModal>
     </div>
   );
 }

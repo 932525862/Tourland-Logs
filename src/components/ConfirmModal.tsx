@@ -1,5 +1,5 @@
 import { X, AlertTriangle, Info, CheckCircle2, AlertCircle } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 
 export type ConfirmTone = "destructive" | "warning" | "success" | "info" | "primary";
 
@@ -11,6 +11,8 @@ interface Props {
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  confirmDisabled?: boolean;
+  children?: ReactNode;
   tone?: ConfirmTone;
   loading?: boolean;
 }
@@ -73,6 +75,8 @@ export function ConfirmModal({
   description,
   confirmLabel = "Tasdiqlash",
   cancelLabel = "Bekor qilish",
+  confirmDisabled = false,
+  children,
   tone = "primary",
   loading = false
 }: Props) {
@@ -106,11 +110,13 @@ export function ConfirmModal({
             
             <h3 className="text-xl font-bold text-foreground mb-2">{title}</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
+            {children}
           </div>
         </div>
 
         <div className="p-4 bg-secondary/30 grid grid-cols-2 gap-3 border-t border-border">
           <button
+            type="button"
             onClick={onClose}
             disabled={loading}
             className="w-full py-3 rounded-xl font-bold text-muted-foreground hover:text-foreground hover:bg-secondary transition-all disabled:opacity-50"
@@ -118,8 +124,9 @@ export function ConfirmModal({
             {cancelLabel}
           </button>
           <button
+            type="button"
             onClick={onConfirm}
-            disabled={loading}
+            disabled={loading || confirmDisabled}
             className={`w-full py-3 rounded-xl font-bold transition-all disabled:opacity-50 ${config.btnBg} ${config.btnText} ${config.btnHover}`}
           >
             {loading ? "Yuklanmoqda..." : confirmLabel}

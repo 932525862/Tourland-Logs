@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { API } from "@/lib/api/client";
 import { formatUzbekPhone } from "@/lib/utils";
 import type { FormTemplate } from "@/lib/types";
-
+import logo from "../logo.png"
 export const Route = createFileRoute("/f/$formId")({
   head: () => ({ meta: [{ title: "Forma" }] }),
   component: PublicForm,
@@ -78,7 +78,8 @@ function PublicForm() {
           <div className="w-16 h-16 rounded-full bg-success/15 flex items-center justify-center text-success mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Rahmat!</h1>
+          <h1 className="text-2xl text-[#04df3b] font-bold ">TOURLAND.UZ</h1>
+           <h1 className="text-2xl font-bold text-foreground">Rahmat!</h1>
           <p className="text-muted-foreground mt-2">Ma'lumotlaringiz qabul qilindi. Tez orada siz bilan bog'lanamiz.</p>
         </div>
       </div>
@@ -89,8 +90,9 @@ function PublicForm() {
     <div className="min-h-screen bg-secondary/30 py-10 px-4">
       <div className="max-w-xl mx-auto">
         <div className="text-center mb-6">
-          <div className="inline-flex w-12 h-12 rounded-xl bg-primary items-center justify-center text-primary-foreground shadow-md">
-            <Briefcase className="w-6 h-6" />
+          <div className="inline-flex w-20 h-20 rounded-xl items-center justify-center text-primary-foreground shadow-md">
+            {/* <Briefcase className="w-6 h-6" /> */}
+            <img src={logo} alt="Logo" className="w-14 h-14" />
           </div>
         </div>
         <div className="bg-card rounded-2xl border border-border p-6 md:p-8 shadow-lg">
