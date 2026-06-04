@@ -18,15 +18,22 @@ function DirectorProfile() {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  // Sync with state on load
+  // Fetch actual profile from backend API on mount
   useEffect(() => {
-    if (state.director.name) {
-      const parts = state.director.name.split(" ");
-      setFirstName(parts[0] || "");
-      setLastName(parts.slice(1).join(" ") || "");
-    }
-    setPhone(state.director.login || "");
-  }, [state.director]);
+    API.me().then((user) => {
+      setFirstName(user.firstName || "");
+      setLastName(user.lastName || "");
+      setPhone(user.phoneNumber || "");
+    }).catch(() => {
+      // Fallback to store if API fails
+      if (state.director.name) {
+        const parts = state.director.name.split(" ");
+        setFirstName(parts[0] || "");
+        setLastName(parts.slice(1).join(" ") || "");
+      }
+      setPhone(state.director.login || "");
+    });
+  }, []);
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
