@@ -49,6 +49,9 @@ export function ClientDetailDialog({
 
   useEffect(() => {
     setLocalClient(client);
+  }, [client]);
+
+  useEffect(() => {
     setNoteText("");
     setMoveStage(client.stage);
     setCallNote("");
@@ -65,7 +68,7 @@ export function ClientDetailDialog({
     setLeaseWarningTelegramId(null);
     setSingleTelegramId(null);
     setPaymentToDelete(null);
-  }, [client]);
+  }, [client.id]);
 
   const formatPrice = (val: string) => {
     if (!val) return "";

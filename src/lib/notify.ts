@@ -95,7 +95,7 @@ export const notify = {
   },
   info: (msg: string, opts?: Opts) => {
     playNotificationSound();
-    return toast(msg, opts);
+    return toast.info(msg, opts);
   },
 };
 

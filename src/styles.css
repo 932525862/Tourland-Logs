@@ -160,3 +160,29 @@
     color: var(--color-foreground);
   }
 }
+
+@layer utilities {
+  .glass-toast {
+    @apply backdrop-blur-md rounded-2xl border border-white/20 shadow-lg transition-all duration-300;
+  }
+  
+  .glass-toast-success {
+    background: linear-gradient(135deg, oklch(0.65 0.17 150 / 0.2), oklch(0.65 0.17 150 / 0.1));
+    @apply border-success/40 shadow-success/15 !text-success font-bold;
+  }
+  
+  .glass-toast-error {
+    background: linear-gradient(135deg, oklch(0.6 0.23 25 / 0.2), oklch(0.6 0.23 25 / 0.1));
+    @apply border-destructive/40 shadow-destructive/15 !text-destructive font-bold;
+  }
+  
+  .glass-toast-warning {
+    background: linear-gradient(135deg, oklch(0.75 0.17 70 / 0.2), oklch(0.75 0.17 70 / 0.1));
+    @apply border-warning/40 shadow-warning/15 !text-warning-foreground font-bold;
+  }
+  
+  .glass-toast-info {
+    background: linear-gradient(135deg, oklch(0.55 0.22 256 / 0.2), oklch(0.55 0.22 256 / 0.1));
+    @apply border-primary/40 shadow-primary/15 !text-primary font-bold;
+  }
+}
