@@ -4,13 +4,14 @@ import { useAppState, useSession } from "@/lib/store";
 import { ClientDetailDialog } from "@/components/ClientDetailDialog";
 import { AddClientDialog } from "@/components/AddClientDialog";
 import { ClientCard } from "@/components/ClientCard";
-import { UserPlus, Search, RefreshCw, Layers, ChevronDown, Download } from "lucide-react";
+import { UserPlus, Search, RefreshCw, Layers, ChevronDown, Download, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import type { Client, ClientStage } from "@/lib/types";
 import { API } from "@/lib/api/client";
 import { playNotificationSound, showBrowserNotification } from "@/lib/notify";
 import { TelegramUserSelect } from "@/components/TelegramUserSelect";
 import { TelegramMessageModal } from "@/components/TelegramMessageModal";
+import { ImportExcelDialog } from "@/components/ImportExcelDialog";
 
 const STAGES: { id: ClientStage; label: string }[] = [
   { id: "new", label: "Yangi" },
@@ -30,6 +31,7 @@ function DirectorClients() {
   const [stage, setStage] = useState<ClientStage>("new");
   const [openClient, setOpenClient] = useState<Client | null>(null);
   const [showAddClient, setShowAddClient] = useState(false);
+  const [showImportExcel, setShowImportExcel] = useState(false);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [search, setSearch] = useState("");
@@ -265,12 +267,21 @@ function DirectorClients() {
             <Download className={`w-6 h-6 ${exporting ? 'animate-spin' : ''}`} />
           </button>
           {session?.isActive !== false && (
-            <button
-              onClick={() => setShowAddClient(true)}
-              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              <UserPlus className="w-5 h-5" /> Yangi mijoz
-            </button>
+            <>
+              <button
+                onClick={() => setShowImportExcel(true)}
+                title="Exceldan import qilish"
+                className="inline-flex items-center justify-center p-3 rounded-2xl border border-border bg-card text-muted-foreground hover:text-green-500 hover:border-green-500/30 hover:shadow-sm transition-all"
+              >
+                <FileSpreadsheet className="w-6 h-6" />
+              </button>
+              <button
+                onClick={() => setShowAddClient(true)}
+                className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <UserPlus className="w-5 h-5" /> Yangi mijoz
+              </button>
+            </>
           )}
         </div>
       </header>
@@ -366,6 +377,15 @@ function DirectorClients() {
           viewerRole="director"
           viewerName={state.director.name}
           viewerId={session?.id}
+        />
+      )}
+
+      {showImportExcel && (
+        <ImportExcelDialog
+          state={state}
+          defaultCategoryId={currentCat?.id}
+          onImported={fetchAll}
+          onClose={() => setShowImportExcel(false)}
         />
       )}
 

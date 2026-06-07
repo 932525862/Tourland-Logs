@@ -64,9 +64,11 @@ export async function api<T = unknown>(
   init: RequestInit & { json?: unknown } = {},
 ): Promise<T> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(init.headers as Record<string, string> | undefined),
   };
+  if (!headers["Content-Type"] && !(init.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${apiBase()}${path}`, {
@@ -320,6 +322,20 @@ export const API = {
   deletePayment: (id: string) => api(`/clients/payments/${id}`, { method: "DELETE" }),
   setSale: (id: string, data: any) => api(`/clients/${id}/sale`, { method: "PATCH", json: { ...data, status: data.status?.toLowerCase() } }),
   warnClient: (id: string, remindAt: string) => api(`/clients/${id}/warn`, { method: "POST", json: { remindAt } }),
+
+  importExcel: (file: File, departmentId: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('departmentId', departmentId);
+    
+    return api<{ imported: number; skipped: number; total: number }>("/clients/import-excel", {
+      method: "POST",
+      body: formData,
+      headers: {
+        // Leave Content-Type empty so fetch sets it automatically with the boundary for FormData
+      }
+    } as any); // Type cast because api() expects json or body
+  },
 
   // attendance
   attendance: (q: { employeeId?: string; date?: string } = {}) => {
