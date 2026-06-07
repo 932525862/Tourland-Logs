@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSession } from "@/lib/store";
-import { X, Phone, MessageSquare, Bell, Trash2, ShoppingCart, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, Phone, MessageSquare, Bell, Trash2, ShoppingCart, CheckCircle2, AlertCircle, Pencil, Check, ChevronRight } from "lucide-react";
 import type { Client, AppState, SaleInfo, ClientStage } from "@/lib/types";
 import { toast } from "sonner";
 import { API } from "@/lib/api/client";
@@ -106,6 +106,10 @@ export function ClientDetailDialog({
   const [partialPaid, setPartialPaid] = useState("");
   const [partialNextDate, setPartialNextDate] = useState("");
   const [extraAmount, setExtraAmount] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [editedName, setEditedName] = useState(client.name || "");
+  const [editedPhone, setEditedPhone] = useState(client.phone || "");
 
   const handleAddNote = async () => {
     if (!noteText.trim()) return;
@@ -114,6 +118,26 @@ export function ClientDetailDialog({
       await API.addNote(localClient.id, noteText.trim());
       setNoteText("");
       toast.success("Izoh qo'shildi");
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateDetails = async (field: "name" | "phone") => {
+    const val = field === "name" ? editedName : editedPhone;
+    if (!val.trim()) {
+      toast.error("Maydon bo'sh bo'lishi mumkin emas");
+      return;
+    }
+    setLoading(true);
+    try {
+      await API.updateClient(localClient.id, { [field]: val.trim() });
+      toast.success("Ma'lumotlar yangilandi");
+      if (field === "name") setIsEditingName(false);
+      else setIsEditingPhone(false);
       onRefresh();
     } catch (err: any) {
       toast.error(err.message || "Xatolik yuz berdi");
@@ -417,13 +441,73 @@ export function ClientDetailDialog({
           <section>
             <h3 className="text-sm font-semibold text-foreground mb-2">Mijoz ma'lumotlari</h3>
             <div className="bg-secondary/50 rounded-xl p-4 space-y-2">
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <span className="text-muted-foreground">Ism familya</span>
-                <span className="col-span-2 text-foreground font-medium">{localClient.name}</span>
+              <div className="grid grid-cols-3 gap-2 text-sm items-center min-h-[40px]">
+                <span className="text-muted-foreground whitespace-nowrap">Ism familya</span>
+                <div className="col-span-2 flex items-center justify-between group">
+                  {isEditingName ? (
+                    <div className="flex-1 flex gap-2">
+                       <input
+                         autoFocus
+                         value={editedName}
+                         onChange={e => setEditedName(e.target.value)}
+                         className="flex-1 bg-background border border-primary/20 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+                       />
+                       <button 
+                         onClick={() => handleUpdateDetails("name")} 
+                         disabled={loading}
+                         className="p-1 rounded bg-success/10 text-success hover:bg-success/20"
+                       >
+                         <Check className="w-4 h-4" />
+                       </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-foreground font-medium truncate">{localClient.name}</span>
+                      {viewerRole === "director" && (
+                        <button 
+                          onClick={() => setIsEditingName(true)}
+                          className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-secondary rounded-lg transition-all"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <span className="text-muted-foreground">Tel raqam</span>
-                <span className="col-span-2 text-foreground font-medium">{localClient.phone}</span>
+              <div className="grid grid-cols-3 gap-2 text-sm items-center min-h-[40px]">
+                <span className="text-muted-foreground whitespace-nowrap">Tel raqam</span>
+                <div className="col-span-2 flex items-center justify-between group">
+                  {isEditingPhone ? (
+                    <div className="flex-1 flex gap-2">
+                       <input
+                         autoFocus
+                         value={editedPhone}
+                         onChange={e => setEditedPhone(e.target.value)}
+                         className="flex-1 bg-background border border-primary/20 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+                       />
+                       <button 
+                         onClick={() => handleUpdateDetails("phone")} 
+                         disabled={loading}
+                         className="p-1 rounded bg-success/10 text-success hover:bg-success/20"
+                       >
+                         <Check className="w-4 h-4" />
+                       </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-foreground font-medium truncate">{localClient.phone}</span>
+                      {viewerRole === "director" && (
+                        <button 
+                          onClick={() => setIsEditingPhone(true)}
+                          className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-secondary rounded-lg transition-all"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               {localClient.description && (
                 <div className="grid grid-cols-3 gap-2 text-sm">
