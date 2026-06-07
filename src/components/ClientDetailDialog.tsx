@@ -110,6 +110,8 @@ export function ClientDetailDialog({
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [editedName, setEditedName] = useState(client.name || "");
   const [editedPhone, setEditedPhone] = useState(client.phone || "");
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState(client.description || "");
 
   const handleAddNote = async () => {
     if (!noteText.trim()) return;
@@ -126,9 +128,13 @@ export function ClientDetailDialog({
     }
   };
 
-  const handleUpdateDetails = async (field: "name" | "phone") => {
-    const val = field === "name" ? editedName : editedPhone;
-    if (!val.trim()) {
+  const handleUpdateDetails = async (field: "name" | "phone" | "description") => {
+    let val = "";
+    if (field === "name") val = editedName;
+    else if (field === "phone") val = editedPhone;
+    else if (field === "description") val = editedDescription;
+
+    if (!val.trim() && field !== "description") {
       toast.error("Maydon bo'sh bo'lishi mumkin emas");
       return;
     }
@@ -137,7 +143,8 @@ export function ClientDetailDialog({
       await API.updateClient(localClient.id, { [field]: val.trim() });
       toast.success("Ma'lumotlar yangilandi");
       if (field === "name") setIsEditingName(false);
-      else setIsEditingPhone(false);
+      else if (field === "phone") setIsEditingPhone(false);
+      else setIsEditingDescription(false);
       onRefresh();
     } catch (err: any) {
       toast.error(err.message || "Xatolik yuz berdi");
@@ -509,12 +516,40 @@ export function ClientDetailDialog({
                   )}
                 </div>
               </div>
-              {localClient.description && (
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <span className="text-muted-foreground">Izoh (Boshlang'ich)</span>
-                  <span className="col-span-2 text-foreground font-medium break-words">{localClient.description}</span>
+              <div className="grid grid-cols-3 gap-2 text-sm items-center min-h-[40px]">
+                <span className="text-muted-foreground whitespace-nowrap">Izoh</span>
+                <div className="col-span-2 flex items-center justify-between group">
+                  {isEditingDescription ? (
+                    <div className="flex-1 flex gap-2">
+                       <textarea
+                         autoFocus
+                         value={editedDescription}
+                         onChange={e => setEditedDescription(e.target.value)}
+                         className="flex-1 bg-background border border-primary/20 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/10 min-h-[60px]"
+                       />
+                       <button 
+                         onClick={() => handleUpdateDetails("description")} 
+                         disabled={loading}
+                         className="p-1 rounded bg-success/10 text-success hover:bg-success/20 self-start mt-1"
+                       >
+                         <Check className="w-4 h-4" />
+                       </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-foreground font-medium break-words">{localClient.description || "—"}</span>
+                      {viewerRole === "director" && (
+                        <button 
+                          onClick={() => setIsEditingDescription(true)}
+                          className="p-1.5 hover:bg-secondary rounded-lg transition-all"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
               {Object.entries(localClient.data || {}).map(([key, value]) => {
                 if (key === "Ism familya" || key === "Tel raqam") return null;
                 return (

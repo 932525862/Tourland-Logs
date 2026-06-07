@@ -158,10 +158,27 @@ export function ImportExcelDialog({ state, defaultCategoryId, onClose, onImporte
             </div>
           </div>
 
-          <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl flex gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-700 leading-relaxed">
-              Excel faylida kamida <b>Ism</b> va <b>Telefon</b> ustunlari bo'lishi kerak. 
+          <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl flex flex-col gap-2">
+            <div className="flex gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 leading-relaxed font-bold">
+                Excel faylida kamida Ism va Telefon ustunlari bo'lishi kerak.
+              </p>
+            </div>
+            
+            <div className="space-y-2 ml-8 border-l-2 border-blue-500/20 pl-3">
+              <div className="text-[11px] text-blue-800/70">
+                <span className="font-bold">Ism:</span> full_name, ism, name, f.i.o, fish
+              </div>
+              <div className="text-[11px] text-blue-800/70">
+                <span className="font-bold">Telefon:</span> phone, telefon, raqam, number
+              </div>
+              <div className="text-[11px] text-blue-800/70">
+                <span className="font-bold">Izoh (ixtiyoriy):</span> description, izoh, note, malumot
+              </div>
+            </div>
+
+            <p className="text-[10px] text-blue-600/70 mt-1 ml-8 italic">
               Mavjud telefon raqamlari avtomatik ravishda tashlab ketiladi.
             </p>
           </div>
