@@ -13,6 +13,7 @@ import type { Client, ClientStage } from "@/lib/types";
 import { TelegramUserSelect } from "@/components/TelegramUserSelect";
 import { TelegramMessageModal } from "@/components/TelegramMessageModal";
 import { ImportExcelDialog } from "@/components/ImportExcelDialog";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 const STAGES: { id: ClientStage; label: string }[] = [
   { id: "new", label: "Yangi" },
@@ -37,6 +38,7 @@ function EmployeeClients() {
   const [search, setSearch] = useState("");
   const [selectedTelegramIds, setSelectedTelegramIds] = useState<string[]>([]);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
 
   const meName = session?.name || "Hodim";
 
@@ -171,7 +173,7 @@ function EmployeeClients() {
           {session?.isActive !== false && (
             <>
               <button
-                onClick={() => setShowImportExcel(true)}
+                onClick={() => setShowImportConfirm(true)}
                 title="Exceldan import qilish"
                 className="inline-flex items-center justify-center p-3 rounded-2xl border border-border bg-card text-muted-foreground hover:text-green-500 hover:border-green-500/30 hover:shadow-sm transition-all"
               >
@@ -269,6 +271,19 @@ function EmployeeClients() {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showImportConfirm}
+        onClose={() => setShowImportConfirm(false)}
+        onConfirm={() => {
+          setShowImportConfirm(false);
+          setShowImportExcel(true);
+        }}
+        title="Import qilish"
+        description="Excel fayldan mijozlarni import qilishni tasdiqlaysizmi?"
+        confirmLabel="Import"
+        tone="primary"
+      />
 
       {openClient && (
         <ClientDetailDialog

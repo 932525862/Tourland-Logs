@@ -466,7 +466,7 @@ export function ClientDetailDialog({
                       {viewerRole === "director" && (
                         <button 
                           onClick={() => setIsEditingName(true)}
-                          className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-secondary rounded-lg transition-all"
+                          className="p-1.5 hover:bg-secondary rounded-lg transition-all"
                         >
                           <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                         </button>
@@ -500,7 +500,7 @@ export function ClientDetailDialog({
                       {viewerRole === "director" && (
                         <button 
                           onClick={() => setIsEditingPhone(true)}
-                          className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-secondary rounded-lg transition-all"
+                          className="p-1.5 hover:bg-secondary rounded-lg transition-all"
                         >
                           <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                         </button>

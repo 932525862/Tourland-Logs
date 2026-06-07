@@ -12,6 +12,7 @@ import { playNotificationSound, showBrowserNotification } from "@/lib/notify";
 import { TelegramUserSelect } from "@/components/TelegramUserSelect";
 import { TelegramMessageModal } from "@/components/TelegramMessageModal";
 import { ImportExcelDialog } from "@/components/ImportExcelDialog";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 const STAGES: { id: ClientStage; label: string }[] = [
   { id: "new", label: "Yangi" },
@@ -37,6 +38,8 @@ function DirectorClients() {
   const [search, setSearch] = useState("");
   const [selectedTelegramIds, setSelectedTelegramIds] = useState<string[]>([]);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [showExportConfirm, setShowExportConfirm] = useState(false);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -260,7 +263,7 @@ function DirectorClients() {
             <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button
-            onClick={exportLeads}
+            onClick={() => setShowExportConfirm(true)}
             disabled={exporting}
             className="p-3 rounded-2xl border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary/30 hover:shadow-sm transition-all"
           >
@@ -269,7 +272,7 @@ function DirectorClients() {
           {session?.isActive !== false && (
             <>
               <button
-                onClick={() => setShowImportExcel(true)}
+                onClick={() => setShowImportConfirm(true)}
                 title="Exceldan import qilish"
                 className="inline-flex items-center justify-center p-3 rounded-2xl border border-border bg-card text-muted-foreground hover:text-green-500 hover:border-green-500/30 hover:shadow-sm transition-all"
               >
@@ -367,6 +370,32 @@ function DirectorClients() {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showExportConfirm}
+        onClose={() => setShowExportConfirm(false)}
+        onConfirm={() => {
+          setShowExportConfirm(false);
+          exportLeads();
+        }}
+        title="Eksport qilish"
+        description="Ma'lumotlarni CSV formatida yuklab olishni tasdiqlaysizmi?"
+        confirmLabel="Eksport"
+        tone="info"
+      />
+
+      <ConfirmModal
+        isOpen={showImportConfirm}
+        onClose={() => setShowImportConfirm(false)}
+        onConfirm={() => {
+          setShowImportConfirm(false);
+          setShowImportExcel(true);
+        }}
+        title="Import qilish"
+        description="Excel fayldan mijozlarni import qilishni tasdiqlaysizmi?"
+        confirmLabel="Import"
+        tone="primary"
+      />
 
       {openClient && (
         <ClientDetailDialog
