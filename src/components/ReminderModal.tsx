@@ -6,9 +6,20 @@ interface Props {
   onClose: () => void;
   onConfirm: (reminderTime: string) => void;
   loading?: boolean;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
 }
 
-export function ReminderModal({ isOpen, onClose, onConfirm, loading }: Props) {
+export function ReminderModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  loading,
+  title = "Qayta qo'ng'iroq qilish",
+  description = "Keyingi safar qachon bog'lanish kerak?",
+  confirmLabel = "Saqlash va yakunlash"
+}: Props) {
   const [callReminder, setCallReminder] = useState("");
 
   if (!isOpen) return null;
@@ -21,8 +32,8 @@ export function ReminderModal({ isOpen, onClose, onConfirm, loading }: Props) {
             <Bell className="w-6 h-6 text-amber-500" />
           </div>
           <div className="text-center">
-            <h3 className="text-lg font-bold text-foreground">Qayta qo'ng'iroq qilish</h3>
-            <p className="text-sm text-muted-foreground mt-1">Keyingi safar qachon bog'lanish kerak?</p>
+            <h3 className="text-lg font-bold text-foreground">{title}</h3>
+            <p className="text-sm text-muted-foreground mt-1">{description}</p>
           </div>
           
           <div className="space-y-1.5">
@@ -40,7 +51,7 @@ export function ReminderModal({ isOpen, onClose, onConfirm, loading }: Props) {
               disabled={!callReminder || loading}
               className="w-full py-3 bg-amber-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-all disabled:opacity-50"
             >
-              Saqlash va yakunlash
+              {confirmLabel}
             </button>
             <button
               onClick={onClose}

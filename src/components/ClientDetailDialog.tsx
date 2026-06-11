@@ -90,6 +90,7 @@ export function ClientDetailDialog({
   const [singleTelegramId, setSingleTelegramId] = useState<string | null>(null);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
+  const [showTalkedReminderModal, setShowTalkedReminderModal] = useState(false);
   const [leaseWarningTelegramId, setLeaseWarningTelegramId] = useState<string | null>(null);
 
   // Sale state
@@ -336,6 +337,10 @@ export function ClientDetailDialog({
       setShowReminderModal(true);
       return;
     }
+    if (action === "talked" && !callReminder && !showTalkedReminderModal) {
+      setShowTalkedReminderModal(true);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -361,6 +366,7 @@ export function ClientDetailDialog({
 
       onRefresh();
       setShowReminderModal(false);
+      setShowTalkedReminderModal(false);
     } catch (err: any) {
       toast.error(err.message || "Xatolik yuz berdi");
     } finally {
@@ -974,6 +980,19 @@ export function ClientDetailDialog({
             setCallReminder(time);
             handleCompleteCall("no_answer");
           }}
+          loading={loading}
+        />
+      )}
+      {showTalkedReminderModal && (
+        <ReminderModal
+          isOpen={showTalkedReminderModal}
+          onClose={() => setShowTalkedReminderModal(false)}
+          onConfirm={(time) => {
+            setCallReminder(time);
+            handleCompleteCall("talked");
+          }}
+          title="Keyingi aloqa"
+          description="Mijoz bilan yana qachon bog'lanishni rejalashtiramiz?"
           loading={loading}
         />
       )}
