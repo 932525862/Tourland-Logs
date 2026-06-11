@@ -407,6 +407,10 @@ export function ClientDetailDialog({
   };
 
   const handleClose = () => {
+    if (localClient.call?.inCallByEmployeeId === viewerId) {
+      toast.warning("Ma'lum bir bo'limga biriktiring!");
+      return;
+    }
     if (showSaleFlow) {
       setShowCloseConfirm(true);
       return;
