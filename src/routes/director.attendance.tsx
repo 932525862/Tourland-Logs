@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useAppState } from "@/lib/store";
 import { API, assetUrl } from "@/lib/api/client";
-import { formatUzDate, formatUzMonth, formatUzDateTable, formatUzTime } from "@/lib/date-utils";
+import { formatUzDate, formatUzMonth, formatUzDateTable, formatUzTime, getTashkentDayjs } from "@/lib/date-utils";
 import { toast } from "sonner";
 import type { AttendanceStatus } from "@/lib/types";
 import {
@@ -36,9 +36,9 @@ function fmtDate(dateStr: string) {
 
 function hoursWorked(rec: { checkInAt?: string | null; checkOutAt?: string | null }) {
   if (!rec.checkInAt || !rec.checkOutAt) return 0;
-  const ci = new Date(rec.checkInAt).getTime();
-  const co = new Date(rec.checkOutAt).getTime();
-  return Math.max(0, (co - ci) / 3600000);
+  const ci = getTashkentDayjs(rec.checkInAt);
+  const co = getTashkentDayjs(rec.checkOutAt);
+  return Math.max(0, co.diff(ci, "hour", true));
 }
 
 function formatHumanDuration(hours: number) {
@@ -81,7 +81,7 @@ function StatusBadge({ status, rec }: { status?: AttendanceStatus; rec: { date: 
 
   if (isToday && (status === "PRESENT" || (!status && rec.checkInAt && !rec.checkOutAt))) {
     const hrsNum = rec.checkInAt
-      ? (Date.now() - new Date(rec.checkInAt).getTime()) / 3600000
+      ? getTashkentDayjs().diff(getTashkentDayjs(rec.checkInAt), "hour", true)
       : 0;
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold border border-primary/20 animate-pulse">
@@ -399,7 +399,7 @@ function DirectorAttendance() {
                               </span>
                               {r.checkInAt && (
                                 <span className="text-[10px] text-muted-foreground font-black ml-1">
-                                  {formatHumanDuration((Date.now() - new Date(r.checkInAt).getTime()) / 3600000)} ishladi
+                                  {formatHumanDuration(getTashkentDayjs().diff(getTashkentDayjs(r.checkInAt), "hour", true))} ishladi
                                 </span>
                               )}
                             </div>

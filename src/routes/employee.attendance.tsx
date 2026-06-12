@@ -20,7 +20,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { API, assetUrl } from "@/lib/api/client";
-import { formatUzDate, formatUzDateTable, formatUzTime } from "@/lib/date-utils";
+import { formatUzDate, formatUzDateTable, formatUzTime, getTashkentDayjs } from "@/lib/date-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/employee/attendance")({
@@ -43,11 +43,9 @@ function fmtTime(iso?: string | null) {
 
 function hoursWorked(rec: { checkInAt?: string | null; checkOutAt?: string | null }) {
   if (!rec.checkInAt || !rec.checkOutAt) return 0;
-  return Math.max(
-    0,
-    (new Date(rec.checkOutAt).getTime() - new Date(rec.checkInAt).getTime()) /
-      3600000
-  );
+  const ci = getTashkentDayjs(rec.checkInAt);
+  const co = getTashkentDayjs(rec.checkOutAt);
+  return Math.max(0, co.diff(ci, "hour", true));
 }
 
 function formatHumanDuration(hours: number) {
@@ -108,7 +106,7 @@ function useLiveElapsed(startIso?: string | null) {
       return;
     }
     const tick = () =>
-      setMs(Date.now() - new Date(startIso).getTime());
+      setMs(getTashkentDayjs().diff(getTashkentDayjs(startIso)));
     tick();
     ref.current = setInterval(tick, 30_000);
     return () => { if (ref.current) clearInterval(ref.current); };
@@ -478,7 +476,7 @@ function EmployeeAttendance() {
                         <>
                           <div className="text-foreground font-black text-lg">
                             {r.status === "PRESENT" && r.checkInAt
-                              ? formatHumanDuration((Date.now() - new Date(r.checkInAt).getTime()) / 3600000)
+                              ? formatHumanDuration(getTashkentDayjs().diff(getTashkentDayjs(r.checkInAt), "hour", true))
                               : formatHumanDuration(hoursWorked(r))}
                           </div>
                         </>
