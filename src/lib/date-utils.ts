@@ -21,7 +21,7 @@ const WEEKDAYS_UZ = [
 ];
 
 const WEEKDAYS_SHORT_UZ = [
-  "Yak", "Du", "Se", "Chor", "Pay", "Ju", "Sha"
+  "Yak", "Du", "Se", "Chor", "Pay", "Ju", "Sha" 
 ];
 
 /**
