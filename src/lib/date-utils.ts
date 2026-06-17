@@ -21,7 +21,7 @@ const WEEKDAYS_UZ = [
 ];
 
 const WEEKDAYS_SHORT_UZ = [
-  "Yak", "Du", "Se", "Chor", "Pay", "Ju", "Sha" 
+  "Yak", "Du", "Se", "Chor", "Pay", "Ju", "Sha"
 ];
 
 /**
@@ -30,7 +30,7 @@ const WEEKDAYS_SHORT_UZ = [
  */
 export function getTashkentDayjs(date?: string | Date | number) {
   if (!date) return dayjs.utc().utcOffset(300);  // UTC+5 = 300 minutes
-  
+
   // Always parse as UTC first, then shift to UTC+5 (Tashkent).
   // This avoids dependency on the IANA timezone database which may not be available in the browser bundle.
   return dayjs.utc(date).utcOffset(300);
@@ -46,10 +46,10 @@ export function formatUzDate(date: string | Date, options: { includeYear?: boole
   const day = d.date();
   const month = MONTHS_UZ[d.month()];
   const year = d.year();
-  
+
   let res = `${day} ${month}`;
   if (options.includeYear) res += `, ${year}`;
-  
+
   if (options.includeWeekday) {
     const wdIndex = d.day();
     const wd = options.shortWeekday ? WEEKDAYS_SHORT_UZ[wdIndex] : WEEKDAYS_UZ[wdIndex];
@@ -107,7 +107,7 @@ export function formatUzStatus(status: string) {
 export function formatUzDateTime(date: string | Date) {
   const d = getTashkentDayjs(date);
   if (!d.isValid()) return "—";
-  
+
   const day = d.date();
   const month = MONTHS_UZ[d.month()];
   const hour = d.format("HH");

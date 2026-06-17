@@ -205,6 +205,7 @@ export function ClientDetailDialog({
     const total = baseAmt + addAmt;
     const paid = parseFloat(partialPaid || "0");
 
+
     if (total <= 0 || paid <= 0) {
       toast.error("To'liq summa va to'langan summani kiriting");
       return;
@@ -465,25 +466,25 @@ export function ClientDetailDialog({
                 <div className="col-span-2 flex items-center justify-between group">
                   {isEditingName ? (
                     <div className="flex-1 flex gap-2">
-                       <input
-                         autoFocus
-                         value={editedName}
-                         onChange={e => setEditedName(e.target.value)}
-                         className="flex-1 bg-background border border-primary/20 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/10"
-                       />
-                       <button 
-                         onClick={() => handleUpdateDetails("name")} 
-                         disabled={loading}
-                         className="p-1 rounded bg-success/10 text-success hover:bg-success/20"
-                       >
-                         <Check className="w-4 h-4" />
-                       </button>
+                      <input
+                        autoFocus
+                        value={editedName}
+                        onChange={e => setEditedName(e.target.value)}
+                        className="flex-1 bg-background border border-primary/20 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+                      />
+                      <button
+                        onClick={() => handleUpdateDetails("name")}
+                        disabled={loading}
+                        className="p-1 rounded bg-success/10 text-success hover:bg-success/20"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
                     </div>
                   ) : (
                     <>
                       <span className="text-foreground font-medium truncate">{localClient.name}</span>
                       {viewerRole === "director" && !readOnly && (
-                        <button 
+                        <button
                           onClick={() => setIsEditingName(true)}
                           className="p-1.5 hover:bg-secondary rounded-lg transition-all"
                         >
@@ -499,25 +500,25 @@ export function ClientDetailDialog({
                 <div className="col-span-2 flex items-center justify-between group">
                   {isEditingPhone ? (
                     <div className="flex-1 flex gap-2">
-                       <input
-                         autoFocus
-                         value={editedPhone}
-                         onChange={e => setEditedPhone(e.target.value)}
-                         className="flex-1 bg-background border border-primary/20 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/10"
-                       />
-                       <button 
-                         onClick={() => handleUpdateDetails("phone")} 
-                         disabled={loading}
-                         className="p-1 rounded bg-success/10 text-success hover:bg-success/20"
-                       >
-                         <Check className="w-4 h-4" />
-                       </button>
+                      <input
+                        autoFocus
+                        value={editedPhone}
+                        onChange={e => setEditedPhone(e.target.value)}
+                        className="flex-1 bg-background border border-primary/20 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+                      />
+                      <button
+                        onClick={() => handleUpdateDetails("phone")}
+                        disabled={loading}
+                        className="p-1 rounded bg-success/10 text-success hover:bg-success/20"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
                     </div>
                   ) : (
                     <>
                       <span className="text-foreground font-medium truncate">{localClient.phone}</span>
                       {viewerRole === "director" && !readOnly && (
-                        <button 
+                        <button
                           onClick={() => setIsEditingPhone(true)}
                           className="p-1.5 hover:bg-secondary rounded-lg transition-all"
                         >
@@ -533,25 +534,25 @@ export function ClientDetailDialog({
                 <div className="col-span-2 flex items-center justify-between group">
                   {isEditingDescription ? (
                     <div className="flex-1 flex gap-2">
-                       <textarea
-                         autoFocus
-                         value={editedDescription}
-                         onChange={e => setEditedDescription(e.target.value)}
-                         className="flex-1 bg-background border border-primary/20 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/10 min-h-[60px]"
-                       />
-                       <button 
-                         onClick={() => handleUpdateDetails("description")} 
-                         disabled={loading}
-                         className="p-1 rounded bg-success/10 text-success hover:bg-success/20 self-start mt-1"
-                       >
-                         <Check className="w-4 h-4" />
-                       </button>
+                      <textarea
+                        autoFocus
+                        value={editedDescription}
+                        onChange={e => setEditedDescription(e.target.value)}
+                        className="flex-1 bg-background border border-primary/20 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/10 min-h-[60px]"
+                      />
+                      <button
+                        onClick={() => handleUpdateDetails("description")}
+                        disabled={loading}
+                        className="p-1 rounded bg-success/10 text-success hover:bg-success/20 self-start mt-1"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
                     </div>
                   ) : (
                     <>
                       <span className="text-foreground font-medium break-words">{localClient.description || "—"}</span>
                       {viewerRole === "director" && !readOnly && (
-                        <button 
+                        <button
                           onClick={() => setIsEditingDescription(true)}
                           className="p-1.5 hover:bg-secondary rounded-lg transition-all"
                         >
@@ -583,38 +584,39 @@ export function ClientDetailDialog({
 
               {/* If no one is calling and it's NOT sold, show the start button */}
               {!localClient.call?.inCallByEmployeeId && localClient.stage !== "sold" && (
-              <button
-                onClick={handleStartCall}
-                disabled={loading || session?.isActive === false}
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-black shadow-lg hover:shadow-glow transition-all"
-              >
-                Qo'ng'iroq qilinyapti
-              </button>
-            )}
+                <button
+                  onClick={handleStartCall}
+                  disabled={loading || session?.isActive === false}
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-black shadow-lg hover:shadow-glow transition-all"
+                >
+                  Qo'ng'iroq qilinyapti
+                </button>
+              )}
 
-            {localClient.call?.inCallByEmployeeId && localClient.call.inCallByEmployeeId !== viewerId && (
-              <div className="bg-warning/10 text-warning-foreground p-3 rounded-lg text-sm text-center">
-                Ushbu mijoz bilan xozirda <strong>{localClient.call.inCallByName || "boshqa xodim"}</strong> gaplashmoqda.
-              </div>
-            )}
-
-            {localClient.call?.inCallByEmployeeId === viewerId && (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">Siz hozir bu mijoz bilan bog'lanmoqdasiz. Yakunlang:</p>
-                <textarea
-                  value={callNote}
-                  onChange={(e) => setCallNote(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm min-h-[80px]"
-                  placeholder="Ertaga o'ylab ko'raman dedi..."
-                />
-                <div className="flex gap-2">
-                  <button onClick={() => handleCompleteCall("talked")} className="flex-[2] py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium transition-colors hover:bg-[#0F172A] hover:text-white">Gaplashildi</button>
-                  <button onClick={() => handleCompleteCall("no_answer")} className="flex-[1.5] py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium transition-colors hover:bg-[#0F172A] hover:text-white">Ko'tarmadi</button>
-                  <button onClick={handleStartSaleFlow} className="flex-[1] py-2.5 bg-success text-success-foreground rounded-lg text-sm font-medium hover:bg-success/90">Sotildi</button>
+              {localClient.call?.inCallByEmployeeId && localClient.call.inCallByEmployeeId !== viewerId && (
+                <div className="bg-warning/10 text-warning-foreground p-3 rounded-lg text-sm text-center">
+                  Ushbu mijoz bilan xozirda <strong>{localClient.call.inCallByName || "boshqa xodim"}</strong> gaplashmoqda.
                 </div>
-              </div>
-            )}
-          </section>
+              )}
+
+
+              {localClient.call?.inCallByEmployeeId === viewerId && (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Siz hozir bu mijoz bilan bog'lanmoqdasiz. Yakunlang:</p>
+                  <textarea
+                    value={callNote}
+                    onChange={(e) => setCallNote(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm min-h-[80px]"
+                    placeholder="Ertaga o'ylab ko'raman dedi..."
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => handleCompleteCall("talked")} className="flex-[2] py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium transition-colors hover:bg-[#0F172A] hover:text-white">Gaplashildi</button>
+                    <button onClick={() => handleCompleteCall("no_answer")} className="flex-[1.5] py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium transition-colors hover:bg-[#0F172A] hover:text-white">Ko'tarmadi</button>
+                    <button onClick={handleStartSaleFlow} className="flex-[1] py-2.5 bg-success text-success-foreground rounded-lg text-sm font-medium hover:bg-success/90">Sotildi</button>
+                  </div>
+                </div>
+              )}
+            </section>
           )}
 
           {/* Sale section - only show if sold or already has sale. Hide action buttons if readOnly. */}
@@ -703,6 +705,7 @@ export function ClientDetailDialog({
                   </div>
                 </div>
               )}
+
 
               {sale.status === "none" && purchaseMode === "partial" && (
                 <div className="space-y-2">
@@ -801,19 +804,19 @@ export function ClientDetailDialog({
                       {sale.payments.map((p) => (
                         <div key={p.id} className="flex items-center justify-between text-xs bg-secondary/30 rounded-lg p-2 group/pay">
                           <div className="flex items-center gap-2">
-                             <span className="text-muted-foreground">{formatUzDate(p.createdAt)}</span>
-                             <span className="font-bold text-foreground">{p.amount.toLocaleString()}</span>
+                            <span className="text-muted-foreground">{formatUzDate(p.createdAt)}</span>
+                            <span className="font-bold text-foreground">{p.amount.toLocaleString()}</span>
                           </div>
                           {!readOnly && (
                             <div className="flex items-center gap-1 opacity-0 group-hover/pay:opacity-100 transition-opacity">
-                              <button 
+                              <button
                                 onClick={() => { setSingleTelegramId(null); setShowTelegramModal(true); }}
                                 className="p-1 hover:bg-primary/10 text-primary rounded"
                               >
                                 <MessageSquare className="w-3.5 h-3.5" />
                               </button>
                               {viewerRole === "director" && (
-                                <button 
+                                <button
                                   onClick={() => setPaymentToDelete(p.id)}
                                   className="p-1 hover:bg-destructive/10 text-destructive rounded"
                                 >
@@ -826,6 +829,7 @@ export function ClientDetailDialog({
                       ))}
                     </div>
                   </div>
+
 
                   {sale.status === "partial" && (
                     <div className="space-y-2 border-t border-border pt-3">

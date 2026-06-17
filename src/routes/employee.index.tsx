@@ -67,7 +67,7 @@ function EmployeeClients() {
         return state.clients || [];
       });
       const [cats, clients] = await Promise.all([catsReq, clientsReq]);
-      
+
       update(s => ({ ...s, categories: cats, clients }));
       setOpenClient(prev => prev ? (clients.find(c => c.id === prev.id) || prev) : null);
       if (!activeCat && cats.length > 0) {
@@ -87,48 +87,48 @@ function EmployeeClients() {
         if (event === "clientCallStarted") {
           update(s => ({
             ...s,
-            clients: s.clients.map(c => c.id === data.clientId ? { 
-                ...c, 
-                call: { 
-                  ...c.call, 
-                  inCallByEmployeeId: data.employeeId, 
-                  inCallByName: data.employeeName, 
-                  callStartedAt: getTashkentDayjs().toISOString() 
-                } 
-              } : c)
+            clients: s.clients.map(c => c.id === data.clientId ? {
+              ...c,
+              call: {
+                ...c.call,
+                inCallByEmployeeId: data.employeeId,
+                inCallByName: data.employeeName,
+                callStartedAt: getTashkentDayjs().toISOString()
+              }
+            } : c)
           }));
         }
         if (event === "clientCallEnded") {
           update(s => ({
             ...s,
-            clients: s.clients.map(c => c.id === data.clientId ? { 
-              ...c, 
-              call: { ...c.call, inCallByEmployeeId: undefined, inCallByName: undefined, callStartedAt: undefined } 
+            clients: s.clients.map(c => c.id === data.clientId ? {
+              ...c,
+              call: { ...c.call, inCallByEmployeeId: undefined, inCallByName: undefined, callStartedAt: undefined }
             } : c)
           }));
         }
         if (event === "clientUpdated") {
-           // We could do a partial update here, but for simplicity we fetch all or update the specific one
-           // Better to just refresh the specific category or all for now
-           fetchAll(); 
+          // We could do a partial update here, but for simplicity we fetch all or update the specific one
+          // Better to just refresh the specific category or all for now
+          fetchAll();
         }
         if (event === "clientReminder") {
-           playNotificationSound();
-           showBrowserNotification("Qayta qo'ng'iroq", {
-             body: `${data.name || "Mijoz"} bilan bog'lanish vaqti keldi`,
-             icon: "/favicon.ico"
-           });
-           toast.info(`Eslatma: ${data.name} bilan bog'lanish vaqti keldi`);
+          playNotificationSound();
+          showBrowserNotification("Qayta qo'ng'iroq", {
+            body: `${data.name || "Mijoz"} bilan bog'lanish vaqti keldi`,
+            icon: "/favicon.ico"
+          });
+          toast.info(`Eslatma: ${data.name} bilan bog'lanish vaqti keldi`);
         }
         if (event === "paymentReminder") {
-           playNotificationSound();
-           showBrowserNotification("To'lov eslatmasi", {
-             body: `${data.name || "Mijoz"} uchun to'lov vaqti o'tdi`,
-             icon: "/favicon.ico"
-           });
-           toast.warning(`To'lov: ${data.name} uchun to'lov vaqti o'tdi`, {
-             duration: 10000,
-           });
+          playNotificationSound();
+          showBrowserNotification("To'lov eslatmasi", {
+            body: `${data.name || "Mijoz"} uchun to'lov vaqti o'tdi`,
+            icon: "/favicon.ico"
+          });
+          toast.warning(`To'lov: ${data.name} uchun to'lov vaqti o'tdi`, {
+            duration: 10000,
+          });
         }
       });
     }
@@ -141,13 +141,13 @@ function EmployeeClients() {
 
   const visibleCats = state.categories.filter((c) => !c.isArchive);
   const currentCat = visibleCats.find((c) => c.id === activeCat) || visibleCats[0];
-  
+
   const filtered = useMemo(() => {
     return state.clients.filter((c) => {
       const matchesCat = c.categoryId === currentCat?.id;
       const matchesStage = stage === "all" || c.stage === stage;
-      const matchesSearch = !search || 
-        (c.name || "").toLowerCase().includes(search.toLowerCase()) || 
+      const matchesSearch = !search ||
+        (c.name || "").toLowerCase().includes(search.toLowerCase()) ||
         (c.phone || "").includes(search);
       return matchesCat && matchesStage && matchesSearch;
     });
@@ -177,6 +177,7 @@ function EmployeeClients() {
 
   if (!session || session.role !== "employee") return null;
 
+
   return (
     <div className="p-6 md:p-10">
       <header className="mb-10 flex items-start justify-between flex-wrap gap-6">
@@ -185,9 +186,9 @@ function EmployeeClients() {
           <p className="text-muted-foreground mt-1.5 font-medium">Lidlar oqimi bilan ishlash va qaydlar</p>
         </div>
         <div className="flex gap-3">
-          <TelegramUserSelect 
-            onSelected={setSelectedTelegramIds} 
-            onSendMessage={() => setShowTelegramModal(true)} 
+          <TelegramUserSelect
+            onSelected={setSelectedTelegramIds}
+            onSendMessage={() => setShowTelegramModal(true)}
           />
           <button
             onClick={fetchAll}
@@ -263,11 +264,10 @@ function EmployeeClients() {
           <button
             key={s.id}
             onClick={() => setStage(s.id)}
-            className={`px-6 py-2.5 rounded-[16px] text-sm font-black uppercase tracking-widest transition-all ${
-              stage === s.id 
-                ? "bg-card text-foreground shadow-sm scale-[1.02]" 
+            className={`px-6 py-2.5 rounded-[16px] text-sm font-black uppercase tracking-widest transition-all ${stage === s.id
+                ? "bg-card text-foreground shadow-sm scale-[1.02]"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/30"
-            }`}
+              }`}
           >
             {s.label} <span className="ml-2 text-[10px] text-destructive bg-destructive/10 px-2 py-0.5 rounded-full font-bold">{countsForCat[s.id]}</span>
           </button>
@@ -276,7 +276,7 @@ function EmployeeClients() {
 
       {loading && state.clients.length === 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {[1,2,3,4,5,6,7,8].map(i => (
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
             <div key={i} className="h-44 rounded-[28px] bg-secondary/40 animate-pulse border border-border/50" />
           ))}
         </div>
@@ -301,19 +301,19 @@ function EmployeeClients() {
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
-                    <PaginationPrevious 
+                    <PaginationPrevious
                       href="#"
                       onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }}
                       className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     />
                   </PaginationItem>
-                  
+
                   {[...Array(totalPages)].map((_, i) => {
                     const page = i + 1;
                     // Show first page, last page, current page, and pages around current
                     if (
-                      page === 1 || 
-                      page === totalPages || 
+                      page === 1 ||
+                      page === totalPages ||
                       (page >= currentPage - 1 && page <= currentPage + 1)
                     ) {
                       return (
@@ -340,8 +340,9 @@ function EmployeeClients() {
                     return null;
                   })}
 
+
                   <PaginationItem>
-                    <PaginationNext 
+                    <PaginationNext
                       href="#"
                       onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
                       className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}

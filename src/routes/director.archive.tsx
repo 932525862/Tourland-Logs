@@ -171,6 +171,7 @@ function DirectorArchive() {
     });
   }, [logs, category, selectedEmployee, search]);
 
+
   const openTaskDetail = async (log: ActivityLog) => {
     const taskId = log.details?.taskId || log.details?.id;
     if (!taskId) return;
@@ -328,6 +329,7 @@ function DirectorArchive() {
                     </p>
                   )}
 
+
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     {log.details?.oldStage && (
                       <>
@@ -481,6 +483,7 @@ function TaskHistory({ templateId, currentInstanceId }: { templateId: string, cu
           const isDone = s === "DONE" || s === "APPROVED";
           const isIncomplete = s === "INCOMPLETE" || s === "REJECTED";
           const isSelected = selected?.id === inst.id;
+
 
           return (
             <button

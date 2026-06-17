@@ -142,7 +142,7 @@ function DirectorClients() {
       };
 
       const rows = clientsInCat.map(c => {
-        const notes = (c.notes || []).map(n => `${n.authorName || n.authorRole}: ${n.text.replace(/\s+/g,' ')}`).join(' | ');
+        const notes = (c.notes || []).map(n => `${n.authorName || n.authorRole}: ${n.text.replace(/\s+/g, ' ')}`).join(' | ');
         const rowBase = [
           c.name || "",
           normalizePhone(c.phone),
@@ -162,7 +162,7 @@ function DirectorClients() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       const fileNameSafe = (currentCat.name || "leads").replace(/[^a-z0-9_-]/gi, "_");
-      const date = new Date().toISOString().slice(0,10);
+      const date = new Date().toISOString().slice(0, 10);
       link.href = url;
       link.setAttribute("download", `leads_${fileNameSafe}_${date}.csv`);
       document.body.appendChild(link);
@@ -178,29 +178,30 @@ function DirectorClients() {
     }
   };
 
+
   useEffect(() => {
     fetchAll();
     const unsub = API.initSocket((event: string, data: any) => {
       if (event === "clientCallStarted") {
         update(s => ({
           ...s,
-          clients: s.clients.map(c => c.id === data.clientId ? { 
-              ...c, 
-              call: { 
-                ...c.call, 
-                inCallByEmployeeId: data.employeeId, 
-                inCallByName: data.employeeName, 
-                callStartedAt: new Date().toISOString() 
-              } 
-            } : c)
+          clients: s.clients.map(c => c.id === data.clientId ? {
+            ...c,
+            call: {
+              ...c.call,
+              inCallByEmployeeId: data.employeeId,
+              inCallByName: data.employeeName,
+              callStartedAt: new Date().toISOString()
+            }
+          } : c)
         }));
       }
       if (event === "clientCallEnded") {
         update(s => ({
           ...s,
-          clients: s.clients.map(c => c.id === data.clientId ? { 
-            ...c, 
-            call: { ...c.call, inCallByEmployeeId: undefined, inCallByName: undefined, callStartedAt: undefined } 
+          clients: s.clients.map(c => c.id === data.clientId ? {
+            ...c,
+            call: { ...c.call, inCallByEmployeeId: undefined, inCallByName: undefined, callStartedAt: undefined }
           } : c)
         }));
       }
@@ -234,13 +235,13 @@ function DirectorClients() {
 
   const visibleCats = state.categories.filter(c => !c.isArchive);
   const currentCat = visibleCats.find((c) => c.id === activeCat) || visibleCats[0];
-  
+
   const filtered = useMemo(() => {
     return state.clients.filter((c) => {
       const matchesCat = c.categoryId === currentCat?.id;
       const matchesStage = c.stage === stage;
-      const matchesSearch = !search || 
-        (c.name || "").toLowerCase().includes(search.toLowerCase()) || 
+      const matchesSearch = !search ||
+        (c.name || "").toLowerCase().includes(search.toLowerCase()) ||
         (c.phone || "").includes(search);
       return matchesCat && matchesStage && matchesSearch;
     });
@@ -275,9 +276,9 @@ function DirectorClients() {
           <p className="text-muted-foreground mt-1.5 font-medium">Lidlar oqimi va sotuv operatsiyalari</p>
         </div>
         <div className="flex gap-3">
-          <TelegramUserSelect 
-            onSelected={setSelectedTelegramIds} 
-            onSendMessage={() => setShowTelegramModal(true)} 
+          <TelegramUserSelect
+            onSelected={setSelectedTelegramIds}
+            onSendMessage={() => setShowTelegramModal(true)}
           />
           <button
             onClick={fetchAll}
@@ -355,17 +356,17 @@ function DirectorClients() {
         </div>
       </div>
 
+
       {/* Stage selector */}
       <div className="flex flex-wrap gap-1.5 mb-10 p-1.5 bg-secondary/50 rounded-[22px] w-fit border border-border/40">
         {STAGES.map((s) => (
           <button
             key={s.id}
             onClick={() => setStage(s.id)}
-            className={`px-6 py-2.5 rounded-[16px] text-sm font-black uppercase tracking-widest transition-all ${
-              stage === s.id 
-                ? "bg-card text-foreground shadow-sm scale-[1.02]" 
+            className={`px-6 py-2.5 rounded-[16px] text-sm font-black uppercase tracking-widest transition-all ${stage === s.id
+                ? "bg-card text-foreground shadow-sm scale-[1.02]"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/30"
-            }`}
+              }`}
           >
             {s.label} <span className="ml-2 text-[10px] text-destructive bg-destructive/10 px-2 py-0.5 rounded-full font-bold">{counts[s.id]}</span>
           </button>
@@ -374,7 +375,7 @@ function DirectorClients() {
 
       {loading && state.clients.length === 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {[1,2,3,4,5,6,7,8].map(i => (
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
             <div key={i} className="h-44 rounded-[28px] bg-secondary/40 animate-pulse border border-border/50" />
           ))}
         </div>
@@ -399,18 +400,18 @@ function DirectorClients() {
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
-                    <PaginationPrevious 
+                    <PaginationPrevious
                       href="#"
                       onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }}
                       className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     />
                   </PaginationItem>
-                  
+
                   {[...Array(totalPages)].map((_, i) => {
                     const page = i + 1;
                     if (
-                      page === 1 || 
-                      page === totalPages || 
+                      page === 1 ||
+                      page === totalPages ||
                       (page >= currentPage - 1 && page <= currentPage + 1)
                     ) {
                       return (
@@ -437,7 +438,7 @@ function DirectorClients() {
                   })}
 
                   <PaginationItem>
-                    <PaginationNext 
+                    <PaginationNext
                       href="#"
                       onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
                       className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
@@ -457,9 +458,9 @@ function DirectorClients() {
           setShowExportConfirm(false);
           exportLeads();
         }}
-        title="Yuklab olish"
+        title="Eksport qilish"
         description="Ma'lumotlarni CSV formatida yuklab olishni tasdiqlaysizmi?"
-        confirmLabel="Yuklab olish"
+        confirmLabel="Eksport"
         tone="info"
       />
 

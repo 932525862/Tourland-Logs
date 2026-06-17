@@ -152,7 +152,7 @@ function EmployeeArchive() {
         const data = await API.taskDetail(log.details.taskId);
         const template = data.template || data;
         const rawStatus = (data.status || "TODO").toUpperCase();
-        
+
         setViewTask({
           id: data.id,
           title: template.title || "Nomsiz",
@@ -174,6 +174,7 @@ function EmployeeArchive() {
       }
     }
   };
+
 
   return (
     <div className="p-6 md:p-10">
@@ -212,11 +213,10 @@ function EmployeeArchive() {
           <button
             key={value}
             onClick={() => setCategory(value)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-              category === value
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${category === value
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
-            }`}
+              }`}
           >
             <Icon className="w-4 h-4" />
             {label}
@@ -250,11 +250,10 @@ function EmployeeArchive() {
               <div
                 key={log.id}
                 onClick={() => handleRowClick(log)}
-                className={`group bg-card border border-border/50 rounded-2xl p-4 transition-all flex items-center gap-4 ${
-                  getCategory(log.actionType) === "TASK" && log.details?.taskId
+                className={`group bg-card border border-border/50 rounded-2xl p-4 transition-all flex items-center gap-4 ${getCategory(log.actionType) === "TASK" && log.details?.taskId
                     ? "hover:border-primary/30 hover:shadow-sm cursor-pointer active:scale-[0.99]"
                     : "cursor-default"
-                }`}
+                  }`}
               >
                 <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center ${style.text} shrink-0 transition-colors`}>
                   <IconComponent className="w-5 h-5" />
@@ -286,7 +285,7 @@ function EmployeeArchive() {
                   )}
                   {log.details?.text && (
                     <p className="text-sm italic text-foreground/70 mb-1 border-l-2 border-border pl-2">
-                       "{log.details.text.length > 60 ? log.details.text.slice(0, 60) + "..." : log.details.text}"
+                      "{log.details.text.length > 60 ? log.details.text.slice(0, 60) + "..." : log.details.text}"
                     </p>
                   )}
 
@@ -294,14 +293,14 @@ function EmployeeArchive() {
                     {log.details?.oldStage && (
                       <>
                         <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusColor(log.details.oldStage)}`}>
-                           {formatUzStatus(log.details.oldStage)}
+                          {formatUzStatus(log.details.oldStage)}
                         </span>
                         <span className="text-muted-foreground text-[10px]">→</span>
                       </>
                     )}
                     {log.details?.newStage && (
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusColor(log.details.newStage)}`}>
-                         {formatUzStatus(log.details.newStage)}
+                        {formatUzStatus(log.details.newStage)}
                       </span>
                     )}
 
@@ -337,7 +336,8 @@ function EmployeeArchive() {
         </div>
       )}
 
-      <Dialog open={!!viewTaskId} onOpenChange={(o) => { if(!o) setViewTaskId(null); setViewTask(null); }}>
+
+      <Dialog open={!!viewTaskId} onOpenChange={(o) => { if (!o) setViewTaskId(null); setViewTask(null); }}>
         <DialogContent className="max-w-xl rounded-[40px] border-border bg-card p-0 overflow-hidden max-h-[85vh] overflow-y-auto">
           {!viewTask ? (
             <div className="p-12 flex justify-center items-center">
@@ -349,13 +349,13 @@ function EmployeeArchive() {
                 <DialogHeader className="mb-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 rounded-2xl bg-primary-soft flex items-center justify-center text-primary">
-                       <ListChecks className="w-6 h-6" />
+                      <ListChecks className="w-6 h-6" />
                     </div>
                     {statusBadge(viewTask.status)}
                   </div>
                   <DialogTitle className="text-2xl font-black text-foreground">{viewTask.title}</DialogTitle>
                 </DialogHeader>
-                
+
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2 px-1">Topshiriq tavsifi</h4>
@@ -366,22 +366,22 @@ function EmployeeArchive() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-border/50">
-                    <div className="flex items-center gap-3">
-                       <Calendar className="w-5 h-5 text-primary" />
-                       <div>
-                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Muddat</p>
-                          <p className="text-xs font-bold text-foreground">
-                            {formatUzDate(viewTask.startDate)} — {formatUzDate(viewTask.endDate)}
-                          </p>
-                       </div>
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Muddat</p>
+                      <p className="text-xs font-bold text-foreground">
+                        {formatUzDate(viewTask.startDate)} — {formatUzDate(viewTask.endDate)}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-3">
-                       <Clock className="w-5 h-5 text-primary" />
-                       <div>
-                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Eslatma</p>
-                         <p className="text-xs font-bold text-foreground">{viewTask.notifyAt}</p>
-                       </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Eslatma</p>
+                      <p className="text-xs font-bold text-foreground">{viewTask.notifyAt}</p>
                     </div>
+                  </div>
                 </div>
 
                 <div className="mt-8 p-6 rounded-[32px] border border-border/50 bg-secondary/5">
@@ -433,23 +433,21 @@ function TaskHistory({ templateId, currentInstanceId }: { templateId: string, cu
           const isDone = s === "DONE" || s === "APPROVED";
           const isIncomplete = s === "INCOMPLETE" || s === "REJECTED";
           const isSelected = selected?.id === inst.id;
-          
+
           return (
-            <button 
-              key={inst.id} 
+            <button
+              key={inst.id}
               onClick={() => setSelected(inst)}
               className="flex flex-col items-center gap-2 group relative transition-all"
             >
-              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border-2 transition-all transform hover:scale-110 shadow-sm ${
-                 isSelected ? 'scale-110 ring-4 ring-primary/20' : ''
-              } ${
-                 isDone ? (isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-emerald-50 border-emerald-200 text-emerald-600') :
-                 isIncomplete ? (isSelected ? 'bg-destructive border-destructive text-white' : 'bg-destructive/5 border-destructive/10 text-destructive') :
-                 (isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'bg-blue-50 border-blue-100 text-blue-500')
-              }`}>
-                 {isDone ? <CheckCheck className="w-6 h-6" /> : 
-                  isIncomplete ? <X className="w-6 h-6" /> : 
-                  <Clock className="w-6 h-6" />}
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border-2 transition-all transform hover:scale-110 shadow-sm ${isSelected ? 'scale-110 ring-4 ring-primary/20' : ''
+                } ${isDone ? (isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-emerald-50 border-emerald-200 text-emerald-600') :
+                  isIncomplete ? (isSelected ? 'bg-destructive border-destructive text-white' : 'bg-destructive/5 border-destructive/10 text-destructive') :
+                    (isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'bg-blue-50 border-blue-100 text-blue-500')
+                }`}>
+                {isDone ? <CheckCheck className="w-6 h-6" /> :
+                  isIncomplete ? <X className="w-6 h-6" /> :
+                    <Clock className="w-6 h-6" />}
               </div>
               <span className={`text-[10px] font-black uppercase tracking-tight ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
                 {getTashkentDayjs(inst.dueDate).format("DD MMM")}
@@ -461,47 +459,47 @@ function TaskHistory({ templateId, currentInstanceId }: { templateId: string, cu
 
       {selected && (
         <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-           <div className="flex items-center justify-between border-b border-border/50 pb-3">
-              <div className="flex items-center gap-2">
-                 <Calendar className="w-4 h-4 text-primary" />
-                 <span className="text-sm font-black text-foreground">{formatUzDate(selected.dueDate)}</span>
-              </div>
-              <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${
-                selected.status === 'done' || selected.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+          <div className="flex items-center justify-between border-b border-border/50 pb-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-primary" />
+              <span className="text-sm font-black text-foreground">{formatUzDate(selected.dueDate)}</span>
+            </div>
+            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${selected.status === 'done' || selected.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                 selected.status === 'incomplete' || selected.status === 'rejected' ? 'bg-destructive/5 text-destructive border-destructive/10' :
-                'bg-blue-50 text-blue-600 border-blue-100'
-             }`}>
-                {formatUzStatus(selected.status)}
-             </span>
-           </div>
+                  'bg-blue-50 text-blue-600 border-blue-100'
+              }`}>
+              {formatUzStatus(selected.status)}
+            </span>
+          </div>
 
-           {(selected.completionDescription || selected.rejectionReason) ? (
-             <div className="space-y-4">
-                {selected.completionDescription && (
-                  <div className="p-5 rounded-3xl bg-secondary/10 border border-border/50">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase mb-2.5 flex items-center gap-2">
-                       <FileText className="w-3.5 h-3.5" /> Hisobot
-                    </p>
-                    <p className="text-sm font-medium text-foreground leading-relaxed italic">"{selected.completionDescription}"</p>
-                    {selected.completionLink && (
-                       <a href={selected.completionLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-4">
-                         <ExternalLink className="w-3.5 h-3.5" /> Havola
-                       </a>
-                    )}
-                  </div>
-                )}
-                {selected.rejectionReason && (
-                   <div className="p-5 rounded-3xl bg-destructive/5 border border-destructive/20">
-                      <p className="text-[10px] font-black text-destructive uppercase mb-2.5 flex items-center gap-2">
-                         <X className="w-4 h-4 text-destructive" /> Rad etish sababi
-                      </p>
-                      <p className="text-sm font-bold text-foreground">{selected.rejectionReason}</p>
-                   </div>
-                ) }
-             </div>
-           ) : (
-             <p className="text-xs text-muted-foreground text-center py-4 italic">Ma'lumot topilmadi</p>
-           )}
+
+          {(selected.completionDescription || selected.rejectionReason) ? (
+            <div className="space-y-4">
+              {selected.completionDescription && (
+                <div className="p-5 rounded-3xl bg-secondary/10 border border-border/50">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase mb-2.5 flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5" /> Hisobot
+                  </p>
+                  <p className="text-sm font-medium text-foreground leading-relaxed italic">"{selected.completionDescription}"</p>
+                  {selected.completionLink && (
+                    <a href={selected.completionLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-4">
+                      <ExternalLink className="w-3.5 h-3.5" /> Havola
+                    </a>
+                  )}
+                </div>
+              )}
+              {selected.rejectionReason && (
+                <div className="p-5 rounded-3xl bg-destructive/5 border border-destructive/20">
+                  <p className="text-[10px] font-black text-destructive uppercase mb-2.5 flex items-center gap-2">
+                    <X className="w-4 h-4 text-destructive" /> Rad etish sababi
+                  </p>
+                  <p className="text-sm font-bold text-foreground">{selected.rejectionReason}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-4 italic">Ma'lumot topilmadi</p>
+          )}
         </div>
       )}
     </div>
