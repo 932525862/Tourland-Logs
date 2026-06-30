@@ -155,6 +155,8 @@ export interface KirimRecord {
   taskApiId?: string;
   products: KirimProduct[];
   dispatchedProductIds?: string[];
+  /** productId → nechta joy chiqarilgani (qisman chiqim uchun) */
+  dispatchedPlaces?: Record<string, number>;
   createdAt: string;
 }
 
@@ -200,6 +202,31 @@ export function updateKirimStatus(id: string, status: KirimRecord["taskStatus"])
     all[idx] = { ...all[idx], taskStatus: status };
     persistKirim(all);
   }
+}
+
+/**
+ * Qisman chiqimda joy sonini kamaytiradi.
+ * Barcha joylar chiqarilganda mahsulotni to'liq arxivlaydi.
+ */
+export function updateDispatchedPlaces(
+  kirimId: string,
+  productId: string,
+  placesCount: number,
+  totalPlaces: number,
+): void {
+  const all = getAllKirimRecords();
+  const idx = all.findIndex(r => r.id === kirimId);
+  if (idx === -1) return;
+  const record = all[idx];
+  const prev = (record.dispatchedPlaces ?? {})[productId] ?? 0;
+  const next = prev + placesCount;
+  const newDispatchedPlaces = { ...(record.dispatchedPlaces ?? {}), [productId]: next };
+  const newDispatchedIds = [...(record.dispatchedProductIds ?? [])];
+  if (next >= totalPlaces && !newDispatchedIds.includes(productId)) {
+    newDispatchedIds.push(productId);
+  }
+  all[idx] = { ...record, dispatchedPlaces: newDispatchedPlaces, dispatchedProductIds: newDispatchedIds };
+  persistKirim(all);
 }
 
 export function updateKirimProduct(kirimId: string, updatedProduct: KirimProduct): void {
@@ -379,6 +406,50 @@ export function addUzbDispatch(data: Omit<UzbDispatch, "id" | "createdAt">): Uzb
 
 export function deleteUzbDispatch(id: string): void {
   localStorage.setItem(UZB_DISPATCH_KEY, JSON.stringify(getAllUzbDispatches().filter(d => d.id !== id)));
+}
+
+// ─── UZB Warehouse — Transfer (ombor → ombor) ─────────────────
+
+export interface UzbTransfer {
+  id: string;
+  sourceWarehouseId: string;
+  destWarehouseId: string;
+  clientCode: string;
+  clientName?: string;
+  chiqimRecordIds: string[];
+  ratios: Record<string, number>;
+  note?: string;
+  transferredAt: string;
+  createdAt: string;
+}
+
+const UZB_TRANSFER_KEY = "crm_uzb_transfers";
+
+function getAllUzbTransfers(): UzbTransfer[] {
+  try {
+    const raw = localStorage.getItem(UZB_TRANSFER_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export function getOutgoingUzbTransfers(sourceWarehouseId: string): UzbTransfer[] {
+  return getAllUzbTransfers().filter(t => t.sourceWarehouseId === sourceWarehouseId);
+}
+
+export function getIncomingUzbTransfers(destWarehouseId: string): UzbTransfer[] {
+  return getAllUzbTransfers().filter(t => t.destWarehouseId === destWarehouseId);
+}
+
+export function addUzbTransfer(data: Omit<UzbTransfer, "id" | "createdAt">): UzbTransfer {
+  const all = getAllUzbTransfers();
+  const t: UzbTransfer = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...data };
+  all.push(t);
+  localStorage.setItem(UZB_TRANSFER_KEY, JSON.stringify(all));
+  return t;
+}
+
+export function deleteUzbTransfer(id: string): void {
+  localStorage.setItem(UZB_TRANSFER_KEY, JSON.stringify(getAllUzbTransfers().filter(t => t.id !== id)));
 }
 
 // ─── UZB Warehouse — Kirim (simple product intake) ────────────

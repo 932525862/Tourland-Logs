@@ -12,6 +12,7 @@ import {
   deleteKirimRecord,
   updateKirimProduct,
   markProductsDispatched,
+  updateDispatchedPlaces,
   getChiqimRecordsV2,
   addChiqimRecordV2,
   deleteChiqimRecordV2,
@@ -26,6 +27,11 @@ import {
   getUzbDispatches,
   addUzbDispatch,
   deleteUzbDispatch,
+  getOutgoingUzbTransfers,
+  getIncomingUzbTransfers,
+  addUzbTransfer,
+  deleteUzbTransfer,
+  getWarehouses,
   type Warehouse,
   type KirimRecord,
   type KirimProduct,
@@ -34,6 +40,7 @@ import {
   type ChiqimReceipt,
   type UzbKirimRecord,
   type UzbDispatch,
+  type UzbTransfer,
 } from "@/lib/warehouse";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { WarehouseKirimWizard } from "@/components/WarehouseKirimWizard";
@@ -106,6 +113,8 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
     setShowArchive(false);
     setShowChiqimPanel(false);
     setShowUzbKirimPanel(false);
+    setChiqimType(null);
+    setSelectedDispatchClientCode(null);
   }, [tab]);
 
   // ── Inline product edit state ─────────────────────────
@@ -166,6 +175,14 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
   const [dispatchSaving, setDispatchSaving] = useState(false);
   const [deleteDispatchId, setDeleteDispatchId] = useState<string | null>(null);
 
+  // ── UZB Transfer (ombor→ombor) state ─────────────────
+  const [chiqimType, setChiqimType] = useState<"client" | "warehouse" | null>(null);
+  const [outgoingTransfers, setOutgoingTransfers] = useState<UzbTransfer[]>([]);
+  const [incomingTransfers, setIncomingTransfers] = useState<UzbTransfer[]>([]);
+  const [allWarehouses, setAllWarehouses] = useState<Warehouse[]>([]);
+  const [selectedTransferDestId, setSelectedTransferDestId] = useState<string | null>(null);
+  const [transferSaving, setTransferSaving] = useState(false);
+
   // ── UZB Truck Reception state ─────────────────────────
   const [allChinaChiqim, setAllChinaChiqim] = useState<ChiqimRecord[]>([]);
   const [allChinaKirim, setAllChinaKirim] = useState<KirimRecord[]>([]);
@@ -185,11 +202,14 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
     setKirimRecords(getKirimRecords(warehouse.id));
     setChiqimRecords(getChiqimRecordsV2(warehouse.id));
     setUzbKirimRecords(getUzbKirimRecords(warehouse.id));
+    setAllWarehouses(getWarehouses());
     if (warehouse.type === "uzbekistan" || warehouse.type === "chegara") {
       setAllChinaChiqim(getAllChiqimRecordsGlobal());
       setAllChinaKirim(getAllKirimRecordsGlobal());
       setUzbReceipts(getChiqimReceipts(warehouse.id));
       setUzbDispatches(getUzbDispatches(warehouse.id));
+      setOutgoingTransfers(getOutgoingUzbTransfers(warehouse.id));
+      setIncomingTransfers(getIncomingUzbTransfers(warehouse.id));
     }
   };
 
@@ -226,24 +246,26 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
     return map;
   }, [kirimRecords]);
 
-  // Running calculator totals
+  // Running calculator totals (joy-based partial support)
   const chiqimTotals = useMemo(() => {
     let totalQty = 0, totalPlaces = 0, totalVolume = 0;
     for (const pid of selectedProductIds) {
       const entry = allProductMap[pid];
       if (!entry) continue;
-      const { product } = entry;
+      const { product, kirimRecord } = entry;
       const mode = productModes[pid] ?? "full";
-      let ratio = 1;
+      const fullJoys = product.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0) || 1;
+      const alreadyDispatched = (kirimRecord.dispatchedPlaces ?? {})[pid] ?? 0;
+      const remainingJoys = Math.max(0, fullJoys - alreadyDispatched);
+      let ratio = 1; // ratio of remainingJoys to take
       if (mode === "partial") {
-        const inp = partialInputs[pid];
-        const entered = parseFloat(inp?.qty || "0");
-        const total = parseFloat(product.quantity || "1") || 1;
-        if (entered > 0) ratio = Math.min(1, entered / total);
+        const entered = parseFloat(partialInputs[pid]?.qty || "0");
+        ratio = entered > 0 ? Math.min(1, entered / remainingJoys) : 0;
       }
-      totalQty    += (parseFloat(product.quantity)    || 0) * ratio;
-      totalPlaces += product.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0) * ratio;
-      totalVolume += (parseFloat(product.totalVolume) || 0) * ratio;
+      const remainingRatio = remainingJoys / fullJoys;
+      totalQty    += (parseFloat(product.quantity)    || 0) * remainingRatio * ratio;
+      totalPlaces += remainingJoys * ratio;
+      totalVolume += (parseFloat(product.totalVolume) || 0) * remainingRatio * ratio;
     }
     return {
       qty:    Math.round(totalQty    * 100) / 100,
@@ -252,13 +274,57 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
     };
   }, [selectedProductIds, productModes, partialInputs, allProductMap]);
 
+  // ── Warehouse statistics ──────────────────────────────
+  const warehouseStats = useMemo(() => {
+    let totalProducts = 0, dispatchedProducts = 0;
+    let totalJoys = 0, dispatchedJoys = 0;
+    let totalVolume = 0, dispatchedVolume = 0;
+    for (const r of kirimRecords) {
+      const doneSet = new Set(r.dispatchedProductIds ?? []);
+      for (const p of r.products) {
+        const pJoys = p.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0);
+        const pVolume = parseFloat(p.totalVolume || "0") || 0;
+        const pDispatched = doneSet.has(p.id)
+          ? pJoys
+          : (r.dispatchedPlaces ?? {})[p.id] ?? 0;
+        totalProducts++;
+        totalJoys += pJoys;
+        totalVolume += pVolume;
+        dispatchedJoys += pDispatched;
+        dispatchedVolume += pJoys > 0 ? pVolume * (pDispatched / pJoys) : 0;
+        if (doneSet.has(p.id)) dispatchedProducts++;
+      }
+    }
+    return {
+      totalProducts, dispatchedProducts, remainingProducts: totalProducts - dispatchedProducts,
+      totalJoys:      Math.round(totalJoys * 10) / 10,
+      dispatchedJoys: Math.round(dispatchedJoys * 10) / 10,
+      remainingJoys:  Math.round((totalJoys - dispatchedJoys) * 10) / 10,
+      totalVolume:      Math.round(totalVolume * 1000) / 1000,
+      dispatchedVolume: Math.round(dispatchedVolume * 1000) / 1000,
+      remainingVolume:  Math.round((totalVolume - dispatchedVolume) * 1000) / 1000,
+    };
+  }, [kirimRecords]);
+
   // ── UZB Truck Reception computed ─────────────────────
+  // Cumulative received ratios per chiqim record (summed across multiple receipts)
+  const cumulativeReceivedRatios = useMemo(() => {
+    const totals: Record<string, number> = {};
+    for (const r of uzbReceipts) {
+      for (const [crId, ratio] of Object.entries(r.receivedRatios)) {
+        totals[crId] = (totals[crId] ?? 0) + ratio;
+      }
+    }
+    return totals;
+  }, [uzbReceipts]);
+
+  // Only fully received (ratio >= 1) go to archive — partial stays in active
   const receivedChiqimIds = useMemo(
-    () => new Set(uzbReceipts.flatMap(r => Object.keys(r.receivedRatios))),
-    [uzbReceipts]
+    () => new Set(Object.entries(cumulativeReceivedRatios).filter(([, v]) => v >= 1).map(([k]) => k)),
+    [cumulativeReceivedRatios]
   );
 
-  // Group active (unreceived) chiqim records by vehicle, FIFO
+  // Group active (unreceived or partially received) chiqim records by vehicle, FIFO
   const activeTrucks = useMemo(() => {
     const byVehicle: Record<string, ChiqimRecord[]> = {};
     [...allChinaChiqim]
@@ -328,23 +394,47 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
     };
   }, [selectedTruckChiqims, vehicleMode, selectedClientIds, crModes, crPartials, globalProductMap]);
 
-  // ── UZB Dispatch computed ─────────────────────────────
+  // ── UZB Dispatch + Transfer computed ─────────────────
   const uzbDispatchedIds = useMemo(
     () => new Set(uzbDispatches.flatMap(d => d.chiqimRecordIds)),
     [uzbDispatches]
   );
 
-  // Clients who have received products not yet dispatched from this UZB warehouse
+  // IDs that were transferred OUT of this warehouse
+  const uzbTransferredOutIds = useMemo(
+    () => new Set(outgoingTransfers.flatMap(t => t.chiqimRecordIds)),
+    [outgoingTransfers]
+  );
+
+  // IDs received via transfer INTO this warehouse
+  const incomingTransferChiqimIds = useMemo(
+    () => new Set(incomingTransfers.flatMap(t => t.chiqimRecordIds)),
+    [incomingTransfers]
+  );
+
+  // Effective "received" = from trucks + from incoming transfers
+  const effectiveReceivedIds = useMemo(
+    () => new Set([...receivedChiqimIds, ...incomingTransferChiqimIds]),
+    [receivedChiqimIds, incomingTransferChiqimIds]
+  );
+
+  // Items "gone" from this warehouse = dispatched OR transferred out
+  const uzbGoneIds = useMemo(
+    () => new Set([...uzbDispatchedIds, ...uzbTransferredOutIds]),
+    [uzbDispatchedIds, uzbTransferredOutIds]
+  );
+
+  // Clients who have received products not yet dispatched/transferred from this UZB warehouse
   const activeUzbClients = useMemo(() => {
     const byClient: Record<string, { records: ChiqimRecord[]; clientName: string }> = {};
     allChinaChiqim
-      .filter(cr => receivedChiqimIds.has(cr.id) && !uzbDispatchedIds.has(cr.id))
+      .filter(cr => effectiveReceivedIds.has(cr.id) && !uzbGoneIds.has(cr.id))
       .forEach(cr => {
         if (!byClient[cr.clientCode]) byClient[cr.clientCode] = { records: [], clientName: cr.clientName || "" };
         byClient[cr.clientCode].records.push(cr);
       });
     return byClient;
-  }, [allChinaChiqim, receivedChiqimIds, uzbDispatchedIds]);
+  }, [allChinaChiqim, effectiveReceivedIds, uzbGoneIds]);
 
   const activeUzbClientList = useMemo(() => Object.entries(activeUzbClients), [activeUzbClients]);
 
@@ -389,6 +479,44 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
       volume: Math.round(volume * dispatchRatio * 1000) / 1000,
     };
   }, [selectedClientActiveRecords, dispatchRatio, globalProductMap]);
+
+  // Received (via truck or transfer) but not yet dispatched/transferred from this UZB warehouse
+  const receivedInWarehouseList = useMemo(() => {
+    return allChinaChiqim.filter(cr => effectiveReceivedIds.has(cr.id) && !uzbGoneIds.has(cr.id));
+  }, [allChinaChiqim, effectiveReceivedIds, uzbGoneIds]);
+
+  // Uzbekistan warehouse statistics
+  const uzbStats = useMemo(() => {
+    const inTransitIds = new Set(
+      allChinaChiqim.filter(cr => !effectiveReceivedIds.has(cr.id)).map(cr => cr.id)
+    );
+    let inTransitProducts = 0, inTransitJoys = 0, inTransitVol = 0;
+    let receivedProducts = 0, receivedJoys = 0, receivedVol = 0;
+    let dispatchedProducts = 0, dispatchedJoys = 0, dispatchedVol = 0;
+    for (const cr of allChinaChiqim) {
+      let prods = 0, joys = 0, vol = 0;
+      for (const pid of cr.selectedProductIds) {
+        const p = globalProductMap[pid];
+        if (p) {
+          prods += 1;
+          joys  += p.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0);
+          vol   += parseFloat(p.totalVolume || "0") || 0;
+        }
+      }
+      if (inTransitIds.has(cr.id)) {
+        inTransitProducts += prods; inTransitJoys += joys; inTransitVol += vol;
+      } else if (uzbGoneIds.has(cr.id)) {
+        dispatchedProducts += prods; dispatchedJoys += joys; dispatchedVol += vol;
+      } else {
+        receivedProducts += prods; receivedJoys += joys; receivedVol += vol;
+      }
+    }
+    return {
+      inTransitProducts, inTransitJoys,      inTransitVol:    Math.round(inTransitVol    * 1000) / 1000,
+      receivedProducts,  receivedJoys,       receivedVol:     Math.round(receivedVol     * 1000) / 1000,
+      dispatchedProducts, dispatchedJoys,    dispatchedVol:   Math.round(dispatchedVol   * 1000) / 1000,
+    };
+  }, [allChinaChiqim, effectiveReceivedIds, uzbGoneIds, globalProductMap]);
 
   const fmtDate = (iso: string) => {
     try { return new Date(iso).toLocaleDateString("uz-UZ", { day: "2-digit", month: "2-digit", year: "numeric" }); } catch { return iso; }
@@ -476,7 +604,28 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
           photos,
           note: chiqimNote.trim() || undefined,
         });
-        markProductsDispatched(kirimRecordId, productIds);
+
+        const fullIds: string[] = [];
+        for (const pid of productIds) {
+          const mode = productModes[pid] ?? "full";
+          if (mode === "partial") {
+            const product = allProductMap[pid]?.product;
+            if (product) {
+              const totalJoys = product.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0);
+              const alreadyDispatched = (kr?.dispatchedPlaces ?? {})[pid] ?? 0;
+              const remainingJoys = Math.max(0, totalJoys - alreadyDispatched);
+              const entered = Math.min(parseFloat(partialInputs[pid]?.qty || "0"), remainingJoys);
+              if (entered >= remainingJoys) {
+                fullIds.push(pid);
+              } else {
+                updateDispatchedPlaces(kirimRecordId, pid, entered, totalJoys);
+              }
+            }
+          } else {
+            fullIds.push(pid);
+          }
+        }
+        if (fullIds.length > 0) markProductsDispatched(kirimRecordId, fullIds);
       }
 
       toast.success("Chiqim saqlandi va tovarlar arxivlandi");
@@ -641,6 +790,39 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
     toast.success("O'chirildi");
     setDeleteDispatchId(null);
     refresh();
+  };
+
+  // ── UZB Transfer handler ──────────────────────────────
+  const handleSaveTransfer = () => {
+    if (!selectedDispatchClientCode) { toast.error("Mijoz tanlang"); return; }
+    if (!selectedTransferDestId) { toast.error("Manzil omborni tanlang"); return; }
+    if (dispatchMode === "partial" && parseFloat(dispatchPartialQty || "0") <= 0) {
+      toast.error("Miqdor kiriting"); return;
+    }
+    setTransferSaving(true);
+    try {
+      const ratios: Record<string, number> = {};
+      for (const cr of selectedClientActiveRecords) ratios[cr.id] = dispatchRatio;
+      addUzbTransfer({
+        sourceWarehouseId: warehouse.id,
+        destWarehouseId: selectedTransferDestId,
+        clientCode: selectedDispatchClientCode,
+        clientName: activeUzbClients[selectedDispatchClientCode]?.clientName || selectedDispatchClientCode,
+        chiqimRecordIds: selectedClientActiveRecords.map(cr => cr.id),
+        ratios,
+        note: dispatchNote.trim() || undefined,
+        transferredAt: new Date().toISOString().slice(0, 10),
+      });
+      toast.success("Tovar boshqa omborga o'tkazildi");
+      setSelectedDispatchClientCode(null);
+      setDispatchMode("full"); setDispatchPartialQty(""); setDispatchPartialUnit("dona");
+      setDispatchNote(""); setSelectedTransferDestId(null);
+      refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik");
+    } finally {
+      setTransferSaving(false);
+    }
   };
 
   // ── UZB handlers ──────────────────────────────────────
@@ -988,17 +1170,82 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
 
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
 
-            {/* ── UZB KIRIM tab — single column + archive slide-over ── */}
+            {/* ── UZB KIRIM tab ── */}
             {tab === "kirim" && (
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative bg-[#F5F6FA]">
+
+                {/* ── Statistics panel (my.gov.uz style) ── */}
+                {allChinaChiqim.length > 0 && (
+                  <div className="shrink-0 mx-4 mt-4 mb-0">
+                    <div className="bg-white rounded-2xl border border-[#DDE1EA] shadow-sm overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#EEF0F5] bg-[#F8F9FC]">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-[3px] h-4 rounded-full bg-[#005AB5]" />
+                          <span className="text-[11px] font-black uppercase tracking-widest text-[#374151]">Ombor holati</span>
+                        </div>
+                        <span className="text-[10px] text-[#9CA3AF] font-medium">{allChinaChiqim.length} ta yetkazma</span>
+                      </div>
+                      {/* Table head */}
+                      <div className="grid grid-cols-4 px-4 py-2 border-b border-[#EEF0F5]">
+                        <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">Ko'rsatkich</span>
+                        <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider text-center">Yo'lda</span>
+                        <span className="text-[10px] font-bold text-[#005AB5] uppercase tracking-wider text-center">Omborida</span>
+                        <span className="text-[10px] font-bold text-[#059669] uppercase tracking-wider text-center">Mijozlarga</span>
+                      </div>
+                      {[
+                        { icon: "📦", label: "Tovarlar", inT: uzbStats.inTransitProducts, rec: uzbStats.receivedProducts, dis: uzbStats.dispatchedProducts, unit: "ta" },
+                        { icon: "🗃️", label: "Joylar",   inT: uzbStats.inTransitJoys,     rec: uzbStats.receivedJoys,     dis: uzbStats.dispatchedJoys,     unit: "joy" },
+                        { icon: "📐", label: "Hajm",     inT: uzbStats.inTransitVol,      rec: uzbStats.receivedVol,      dis: uzbStats.dispatchedVol,      unit: "m³" },
+                      ].map((row, i) => (
+                        <div key={row.label} className={`grid grid-cols-4 items-center px-4 py-2.5 ${i < 2 ? "border-b border-[#F3F4F6]" : ""}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">{row.icon}</span>
+                            <span className="text-xs font-bold text-[#374151]">{row.label}</span>
+                          </div>
+                          <div className="text-center">
+                            <span className="text-sm font-black text-[#F59E0B]">{row.inT}</span>
+                            <span className="text-[10px] text-[#9CA3AF] ml-1">{row.unit}</span>
+                          </div>
+                          <div className="text-center">
+                            <span className="text-sm font-black text-[#005AB5]">{row.rec}</span>
+                            <span className="text-[10px] text-[#9CA3AF] ml-1">{row.unit}</span>
+                          </div>
+                          <div className="text-center">
+                            <span className={`text-sm font-black ${row.dis > 0 ? "text-[#059669]" : "text-[#D1D5DB]"}`}>{row.dis}</span>
+                            <span className="text-[10px] text-[#9CA3AF] ml-1">{row.unit}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {/* Progress bar */}
+                      {(uzbStats.receivedProducts + uzbStats.dispatchedProducts) > 0 && (
+                        <div className="px-4 py-2.5 border-t border-[#EEF0F5] bg-[#F8F9FC]">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">Qabul qilish jarayoni</span>
+                            <span className="text-[10px] font-black text-[#005AB5]">
+                              {Math.round(((uzbStats.receivedProducts + uzbStats.dispatchedProducts) / Math.max(1, uzbStats.inTransitProducts + uzbStats.receivedProducts + uzbStats.dispatchedProducts)) * 100)}%
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full bg-[#E5E7EB] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-[#005AB5] to-[#3B82F6] rounded-full transition-all duration-500"
+                              style={{ width: `${Math.round(((uzbStats.receivedProducts + uzbStats.dispatchedProducts) / Math.max(1, uzbStats.inTransitProducts + uzbStats.receivedProducts + uzbStats.dispatchedProducts)) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Active trucks (full width) */}
-                <div className="flex flex-col overflow-hidden flex-1 min-h-0">
-                  <div className="flex items-center justify-between px-4 py-3 border-b-2 border-gray-100 bg-white shrink-0">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2.5 h-2.5 rounded-full ${showUzbKirimPanel ? "bg-blue-500" : "bg-gray-300"}`} />
-                      <span className="text-xs font-black uppercase tracking-widest text-gray-700">Kirim</span>
-                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 font-black border border-blue-100">
+                <div className="flex flex-col overflow-hidden flex-1 min-h-0 mt-4">
+
+                  {/* ── Section header ── */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[#DDE1EA] bg-white shrink-0">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-2 h-2 rounded-full transition-colors ${showUzbKirimPanel ? "bg-[#005AB5]" : "bg-[#D1D5DB]"}`} />
+                      <span className="text-xs font-black uppercase tracking-widest text-[#374151]">Kutilayotgan furalar</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#EFF6FF] text-[#005AB5] font-black border border-[#BFDBFE]">
                         {activeTruckList.length}
                       </span>
                     </div>
@@ -1006,14 +1253,18 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                       {showUzbKirimPanel ? (
                         <button
                           onClick={() => { setShowUzbKirimPanel(false); setSelectedVehicle(null); setVehicleMode("full"); setSelectedClientIds(new Set()); setCrModes({}); setCrPartials({}); }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500 text-xs font-bold hover:bg-gray-50 transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#DDE1EA] text-[#6B7280] text-xs font-bold hover:bg-[#F5F6FA] transition-colors"
                         >
-                          Bekor
+                          Bekor qilish
                         </button>
                       ) : (
                         <button
                           onClick={() => setShowUzbKirimPanel(true)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors"
+                          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
+                            activeTruckList.length > 0
+                              ? "bg-[#005AB5] text-white hover:bg-[#004A96] shadow-sm shadow-blue-200"
+                              : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
+                          }`}
                           disabled={activeTruckList.length === 0}
                         >
                           <ArrowDownCircle className="w-3.5 h-3.5" /> Kirim qilish
@@ -1021,38 +1272,146 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                       )}
                       <button
                         onClick={() => setShowArchive(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary text-muted-foreground text-xs font-bold hover:bg-secondary/80 transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#DDE1EA] bg-white text-[#6B7280] text-xs font-bold hover:bg-[#F5F6FA] transition-colors"
                       >
                         Arxiv ({uzbReceipts.length})
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto bg-gray-50/50">
+                  <div className="flex-1 overflow-y-auto">
                     {!showUzbKirimPanel ? (
-                      <div className="py-20 text-center px-4">
-                        <div className="w-16 h-16 rounded-2xl bg-blue-50 border-2 border-blue-100 flex items-center justify-center mx-auto mb-4">
-                          <Truck className="w-8 h-8 text-blue-200" />
-                        </div>
-                        <p className="text-sm font-bold text-gray-400 mb-1">
-                          {activeTruckList.length > 0 ? `${activeTruckList.length} ta fura qabul qilinishini kutmoqda` : "Kutilayotgan fura yo'q"}
-                        </p>
-                        {activeTruckList.length > 0 && (
-                          <button
-                            onClick={() => setShowUzbKirimPanel(true)}
-                            className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-black hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20"
-                          >
-                            <ArrowDownCircle className="w-4 h-4" /> Kirim qilish
-                          </button>
+                      <>
+                        {/* Empty / Placeholder state */}
+                        {activeTruckList.length === 0 ? (
+                          <div className="py-16 text-center px-4">
+                            <div className="w-16 h-16 rounded-2xl bg-white border border-[#DDE1EA] flex items-center justify-center mx-auto mb-4 shadow-sm">
+                              <Truck className="w-8 h-8 text-[#D1D5DB]" />
+                            </div>
+                            <p className="text-sm font-bold text-[#9CA3AF]">Kutilayotgan fura yo'q</p>
+                            <p className="text-xs text-[#C4C9D4] mt-1">Xitoy omboridan chiqim qilinsin</p>
+                          </div>
+                        ) : (
+                          <div className="p-4">
+                            <p className="text-xs text-[#9CA3AF] font-medium mb-3">
+                              {activeTruckList.length} ta fura qabul qilinishini kutmoqda
+                            </p>
+                            <div className="space-y-2">
+                              {activeTruckList.map(([vn, chiqims]) => {
+                                const totalProd = chiqims.reduce((s, cr) => s + cr.selectedProductIds.length, 0);
+                                const hasPartial = chiqims.some(cr => (cumulativeReceivedRatios[cr.id] ?? 0) > 0);
+                                return (
+                                  <div key={vn} className="bg-white border border-[#DDE1EA] rounded-xl px-4 py-3 flex items-center gap-3 shadow-sm">
+                                    <div className="w-9 h-9 rounded-lg bg-[#EFF6FF] flex items-center justify-center shrink-0">
+                                      <Truck className="w-4.5 h-4.5 text-[#005AB5]" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-black text-[#111827] font-mono">{vn}</p>
+                                      <p className="text-[11px] text-[#6B7280] mt-0.5">{chiqims.length} mijoz · {totalProd} tovar · {chiqims[0]?.date}</p>
+                                    </div>
+                                    {hasPartial && (
+                                      <span className="text-[10px] font-bold text-[#F59E0B] bg-[#FFFBEB] border border-[#FDE68A] px-2 py-0.5 rounded-md shrink-0">
+                                        Qisman
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <button
+                              onClick={() => setShowUzbKirimPanel(true)}
+                              className="mt-4 w-full py-3 rounded-xl bg-[#005AB5] text-white text-sm font-black hover:bg-[#004A96] transition-all shadow-md shadow-blue-200 flex items-center justify-center gap-2"
+                            >
+                              <ArrowDownCircle className="w-4.5 h-4.5" /> Kirim qilish
+                            </button>
+                          </div>
                         )}
-                      </div>
+
+                        {/* ── Received in warehouse (not yet dispatched) ── */}
+                        {receivedInWarehouseList.length > 0 && (
+                          <div className="mx-4 mb-4 mt-1">
+                            <div className="bg-white border border-[#DDE1EA] rounded-2xl overflow-hidden shadow-sm">
+                              <div className="flex items-center justify-between px-4 py-2.5 bg-[#F0FDF4] border-b border-[#D1FAE5]">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-[3px] h-4 rounded-full bg-[#059669]" />
+                                  <span className="text-[11px] font-black uppercase tracking-widest text-[#065F46]">Omborida (qabul qilindi)</span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#D1FAE5] text-[#059669] font-black border border-[#A7F3D0]">
+                                    {receivedInWarehouseList.length}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-[#6EE7B7] font-bold">Chiqim tabidan jo'nating</span>
+                              </div>
+                              <div className="divide-y divide-[#F3F4F6]">
+                                {receivedInWarehouseList.map(cr => (
+                                  <div key={cr.id} className="flex items-center gap-3 px-4 py-3">
+                                    <div className="w-8 h-8 rounded-lg bg-[#ECFDF5] flex items-center justify-center shrink-0">
+                                      <Package className="w-4 h-4 text-[#059669]" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-black text-[#005AB5] bg-[#EFF6FF] px-1.5 py-0.5 rounded font-mono">
+                                          {cr.clientCode}
+                                        </span>
+                                        <span className="text-[11px] text-[#374151] font-medium truncate">{cr.clientName || cr.clientCode}</span>
+                                      </div>
+                                      <p className="text-[10px] text-[#9CA3AF] mt-0.5">
+                                        {cr.selectedProductIds.length} tovar · {cr.vehicleNumber} · {cr.date}
+                                      </p>
+                                    </div>
+                                    <div className="w-2 h-2 rounded-full bg-[#34D399] shrink-0" />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Incoming transfers section ── */}
+                        {incomingTransfers.length > 0 && (
+                          <div className="mx-4 mb-4">
+                            <div className="bg-white border border-[#DDE1EA] rounded-2xl overflow-hidden shadow-sm">
+                              <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FFFBEB] border-b border-[#FDE68A]">
+                                <div className="w-[3px] h-4 rounded-full bg-[#F59E0B]" />
+                                <span className="text-[11px] font-black uppercase tracking-widest text-[#92400E]">Boshqa ombordan keldi</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#FEF3C7] text-[#D97706] font-black border border-[#FDE68A]">
+                                  {incomingTransfers.length}
+                                </span>
+                              </div>
+                              <div className="divide-y divide-[#F3F4F6]">
+                                {incomingTransfers.map(t => {
+                                  const srcWarehouse = allWarehouses.find(w => w.id === t.sourceWarehouseId);
+                                  return (
+                                    <div key={t.id} className="flex items-start gap-3 px-4 py-3">
+                                      <div className="w-8 h-8 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-center shrink-0 mt-0.5">
+                                        <Building2 className="w-4 h-4 text-[#D97706]" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-[10px] font-black text-[#005AB5] bg-[#EFF6FF] px-1.5 py-0.5 rounded font-mono">
+                                            {t.clientCode}
+                                          </span>
+                                          <span className="text-[11px] text-[#374151] font-medium">{t.clientName || t.clientCode}</span>
+                                        </div>
+                                        <p className="text-[10px] text-[#9CA3AF] mt-0.5">
+                                          {srcWarehouse?.name ?? "Noma'lum ombor"} → {t.chiqimRecordIds.length} yetkazma · {t.transferredAt}
+                                        </p>
+                                        {t.note && <p className="text-[10px] italic text-[#9CA3AF] mt-0.5">{t.note}</p>}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : activeTruckList.length === 0 ? (
                       <div className="py-16 text-center px-4">
-                        <div className="w-16 h-16 rounded-2xl bg-white border-2 border-gray-100 flex items-center justify-center mx-auto mb-4">
-                          <Truck className="w-8 h-8 text-gray-200" />
+                        <div className="w-16 h-16 rounded-2xl bg-white border border-[#DDE1EA] flex items-center justify-center mx-auto mb-4 shadow-sm">
+                          <Truck className="w-8 h-8 text-[#D1D5DB]" />
                         </div>
-                        <p className="text-sm font-black text-gray-400">Kutilayotgan fura yo'q</p>
-                        <p className="text-xs text-gray-300 mt-1">Xitoy omboridan chiqim qilinsin</p>
+                        <p className="text-sm font-black text-[#9CA3AF]">Kutilayotgan fura yo'q</p>
+                        <p className="text-xs text-[#C4C9D4] mt-1">Xitoy omboridan chiqim qilinsin</p>
                       </div>
                     ) : (
                       <div className="p-3 space-y-2">
@@ -1065,8 +1424,8 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                             <div key={vehicleNumber}
                               className={`rounded-2xl border-2 transition-all overflow-hidden ${
                                 isSelected
-                                  ? "border-blue-300 bg-white shadow-md shadow-blue-50"
-                                  : "border-gray-200 bg-white hover:border-blue-200 hover:shadow-sm"
+                                  ? "border-[#BFDBFE] bg-white shadow-md shadow-blue-50"
+                                  : "border-[#DDE1EA] bg-white hover:border-[#93C5FD] hover:shadow-sm"
                               }`}
                             >
                               {/* Truck header row */}
@@ -1075,45 +1434,45 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                                 className="w-full flex items-center gap-3 px-4 py-3 text-left"
                               >
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                                  isSelected ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400"
+                                  isSelected ? "bg-[#005AB5] text-white" : "bg-[#F0F4FF] text-[#6B7280]"
                                 }`}>
                                   <Truck className="w-5 h-5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-sm font-black font-mono transition-colors ${isSelected ? "text-blue-600" : "text-gray-800"}`}>
+                                  <p className={`text-sm font-black font-mono transition-colors ${isSelected ? "text-[#005AB5]" : "text-[#111827]"}`}>
                                     {vehicleNumber}
                                   </p>
-                                  <p className="text-[10px] text-gray-400 font-medium mt-0.5">
+                                  <p className="text-[10px] text-[#9CA3AF] font-medium mt-0.5">
                                     {chiqims.length} mijoz · {totalProducts} tovar · {firstDate}
                                   </p>
                                 </div>
                                 {isSelected
-                                  ? <CheckSquare className="w-5 h-5 text-blue-400 shrink-0" />
-                                  : <Square className="w-5 h-5 text-gray-300 shrink-0" />
+                                  ? <CheckSquare className="w-5 h-5 text-[#005AB5] shrink-0" />
+                                  : <Square className="w-5 h-5 text-[#D1D5DB] shrink-0" />
                                 }
                               </button>
 
                               {/* Expanded: photos + info + mode buttons + client list */}
                               {isSelected && (
-                                <div className="border-t-2 border-blue-50 bg-blue-50/40 px-4 pt-3 pb-4 space-y-3">
+                                <div className="border-t border-[#BFDBFE] bg-[#F0F7FF] px-4 pt-3 pb-4 space-y-3">
 
                                   {/* Vehicle info row */}
-                                  <div className="flex items-center gap-2 bg-white rounded-xl border-2 border-blue-100 px-3 py-2">
-                                    <Truck className="w-4 h-4 text-blue-400 shrink-0" />
+                                  <div className="flex items-center gap-3 bg-white rounded-xl border border-[#BFDBFE] px-3 py-2.5 shadow-sm">
+                                    <Truck className="w-4 h-4 text-[#005AB5] shrink-0" />
                                     <div>
-                                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Fura raqami</p>
-                                      <p className="text-sm font-black text-gray-800 font-mono">{vehicleNumber}</p>
+                                      <p className="text-[10px] text-[#9CA3AF] font-bold uppercase tracking-wider">Fura raqami</p>
+                                      <p className="text-sm font-black text-[#111827] font-mono">{vehicleNumber}</p>
                                     </div>
                                     <div className="ml-auto text-right">
-                                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Sana</p>
-                                      <p className="text-sm font-bold text-gray-700">{firstDate}</p>
+                                      <p className="text-[10px] text-[#9CA3AF] font-bold uppercase tracking-wider">Sana</p>
+                                      <p className="text-sm font-bold text-[#374151]">{firstDate}</p>
                                     </div>
                                   </div>
 
                                   {/* Photos */}
                                   {allPhotos.length > 0 ? (
                                     <div>
-                                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                      <p className="text-[10px] font-black text-[#005AB5] uppercase tracking-wider mb-2 flex items-center gap-1">
                                         <ImageIcon className="w-3 h-3" /> Rasmlar ({allPhotos.length} ta)
                                       </p>
                                       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -1122,14 +1481,14 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                                             key={idx}
                                             src={photo.dataUrl}
                                             alt={photo.name}
-                                            className="w-20 h-20 rounded-xl object-cover shrink-0 border-2 border-blue-100 cursor-pointer hover:opacity-90 transition-opacity"
+                                            className="w-20 h-20 rounded-xl object-cover shrink-0 border-2 border-[#BFDBFE] cursor-pointer hover:opacity-90 transition-opacity"
                                             onClick={e => { e.stopPropagation(); window.open(photo.dataUrl, "_blank"); }}
                                           />
                                         ))}
                                       </div>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center gap-2 text-gray-300 bg-white rounded-xl border-2 border-gray-100 px-3 py-2">
+                                    <div className="flex items-center gap-2 text-[#D1D5DB] bg-white rounded-xl border border-[#E5E7EB] px-3 py-2">
                                       <ImageIcon className="w-4 h-4" />
                                       <p className="text-[10px] font-bold">Rasm yuklanmagan</p>
                                     </div>
@@ -1139,20 +1498,20 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                                   <div className="flex gap-2">
                                     <button
                                       onClick={() => handleSetVehicleMode("full")}
-                                      className={`flex-1 py-2 rounded-xl text-xs font-black border-2 transition-all ${
+                                      className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-all ${
                                         vehicleMode === "full"
-                                          ? "bg-blue-50 border-blue-300 text-blue-600"
-                                          : "bg-white border-gray-200 text-gray-500 hover:border-blue-200 hover:text-blue-500"
+                                          ? "bg-[#EFF6FF] border-[#BFDBFE] text-[#005AB5]"
+                                          : "bg-white border-[#DDE1EA] text-[#9CA3AF] hover:border-[#93C5FD] hover:text-[#005AB5]"
                                       }`}
                                     >
                                       Barchasi
                                     </button>
                                     <button
                                       onClick={() => handleSetVehicleMode("partial")}
-                                      className={`flex-1 py-2 rounded-xl text-xs font-black border-2 transition-all ${
+                                      className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-all ${
                                         vehicleMode === "partial"
-                                          ? "bg-blue-500 border-blue-500 text-white shadow-sm shadow-blue-100"
-                                          : "bg-white border-gray-200 text-gray-500 hover:border-blue-200 hover:text-blue-500"
+                                          ? "bg-[#005AB5] border-[#005AB5] text-white shadow-sm shadow-blue-200"
+                                          : "bg-white border-[#DDE1EA] text-[#9CA3AF] hover:border-[#93C5FD] hover:text-[#005AB5]"
                                       }`}
                                     >
                                       Bir qismi
@@ -1168,44 +1527,42 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                                         const cPart = crPartials[cr.id];
                                         return (
                                           <div key={cr.id}
-                                            className={`rounded-xl border-2 transition-all overflow-hidden ${
+                                            className={`rounded-xl border transition-all overflow-hidden ${
                                               isClientSelected
-                                                ? "border-blue-200 bg-white shadow-sm"
-                                                : "border-gray-200 bg-gray-50/80 opacity-60"
+                                                ? "border-[#BFDBFE] bg-white shadow-sm"
+                                                : "border-[#DDE1EA] bg-[#F9FAFB] opacity-60"
                                             }`}
                                           >
-                                            {/* Client checkbox header */}
                                             <button
                                               onClick={() => toggleClientId(cr.id)}
                                               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left"
                                             >
                                               {isClientSelected
-                                                ? <CheckSquare className="w-4.5 h-4.5 text-blue-400 shrink-0" />
-                                                : <Square className="w-4.5 h-4.5 text-gray-300 shrink-0" />
+                                                ? <CheckSquare className="w-4 h-4 text-[#005AB5] shrink-0" />
+                                                : <Square className="w-4 h-4 text-[#D1D5DB] shrink-0" />
                                               }
                                               <span className={`text-[10px] font-black px-1.5 py-0.5 rounded font-mono ${
-                                                isClientSelected ? "text-blue-600 bg-blue-50" : "text-gray-400 bg-gray-100"
+                                                isClientSelected ? "text-[#005AB5] bg-[#EFF6FF]" : "text-[#9CA3AF] bg-[#F3F4F6]"
                                               }`}>
                                                 {cr.clientCode}
                                               </span>
-                                              <span className="text-[10px] text-gray-500 font-medium flex-1 truncate">
+                                              <span className="text-[10px] text-[#6B7280] font-medium flex-1 truncate">
                                                 {cr.clientName || cr.clientCode}
                                               </span>
-                                              <span className={`text-[10px] font-bold shrink-0 ${isClientSelected ? "text-blue-400" : "text-gray-300"}`}>
+                                              <span className={`text-[10px] font-bold shrink-0 ${isClientSelected ? "text-[#005AB5]" : "text-[#D1D5DB]"}`}>
                                                 {cr.selectedProductIds.length} tovar
                                               </span>
                                             </button>
 
-                                            {/* Barchasi / Bir qismi for selected client */}
                                             {isClientSelected && (
-                                              <div className="border-t-2 border-blue-50 px-3 py-2.5 space-y-2 bg-blue-50/30">
+                                              <div className="border-t border-[#BFDBFE] px-3 py-2.5 space-y-2 bg-[#F0F7FF]">
                                                 <div className="flex gap-1.5">
                                                   <button
                                                     onClick={() => setCrModes(m => ({ ...m, [cr.id]: "full" }))}
-                                                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black border-2 transition-all ${
+                                                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black border transition-all ${
                                                       cMode === "full"
-                                                        ? "bg-blue-50 border-blue-200 text-blue-600"
-                                                        : "bg-white border-gray-200 text-gray-400 hover:border-blue-200"
+                                                        ? "bg-[#EFF6FF] border-[#BFDBFE] text-[#005AB5]"
+                                                        : "bg-white border-[#DDE1EA] text-[#9CA3AF] hover:border-[#BFDBFE]"
                                                     }`}
                                                   >
                                                     Barchasi
@@ -1215,38 +1572,26 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                                                       setCrModes(m => ({ ...m, [cr.id]: "partial" }));
                                                       setCrPartials(m => ({ ...m, [cr.id]: m[cr.id] ?? { qty: "", unit: "dona" } }));
                                                     }}
-                                                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black border-2 transition-all ${
+                                                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black border transition-all ${
                                                       cMode === "partial"
-                                                        ? "bg-blue-500 border-blue-500 text-white"
-                                                        : "bg-white border-gray-200 text-gray-400 hover:border-blue-200"
+                                                        ? "bg-[#005AB5] border-[#005AB5] text-white"
+                                                        : "bg-white border-[#DDE1EA] text-[#9CA3AF] hover:border-[#BFDBFE]"
                                                     }`}
                                                   >
                                                     Bir qismi
                                                   </button>
                                                 </div>
                                                 {cMode === "partial" && (
-                                                  <div className="flex gap-1.5">
-                                                    <input
-                                                      type="number"
-                                                      value={cPart?.qty ?? ""}
-                                                      onChange={e => setCrPartials(m => ({
-                                                        ...m,
-                                                        [cr.id]: { qty: e.target.value, unit: m[cr.id]?.unit ?? "dona" }
-                                                      }))}
-                                                      placeholder={String(cr.selectedProductIds.length)}
-                                                      className="flex-1 px-2.5 py-1.5 rounded-lg border-2 border-gray-200 bg-white text-xs font-bold text-gray-700 focus:outline-none focus:border-blue-200"
-                                                    />
-                                                    <select
-                                                      value={cPart?.unit ?? "dona"}
-                                                      onChange={e => setCrPartials(m => ({
-                                                        ...m,
-                                                        [cr.id]: { qty: m[cr.id]?.qty ?? "", unit: e.target.value }
-                                                      }))}
-                                                      className="px-2 py-1.5 rounded-lg border-2 border-gray-200 bg-white text-xs font-bold text-gray-700 focus:outline-none focus:border-blue-200"
-                                                    >
-                                                      {["dona", "kg", "g", "t", "qop", "korobka"].map(u => <option key={u}>{u}</option>)}
-                                                    </select>
-                                                  </div>
+                                                  <input
+                                                    type="number"
+                                                    value={cPart?.qty ?? ""}
+                                                    onChange={e => setCrPartials(m => ({
+                                                      ...m,
+                                                      [cr.id]: { qty: e.target.value, unit: "dona" }
+                                                    }))}
+                                                    placeholder={`Max ${cr.selectedProductIds.length} tovar`}
+                                                    className="w-full px-3 py-2 rounded-lg border border-[#BFDBFE] bg-white text-xs font-bold text-[#374151] focus:outline-none focus:ring-2 focus:ring-[#005AB5]/20 focus:border-[#005AB5]"
+                                                  />
                                                 )}
                                               </div>
                                             )}
@@ -1265,20 +1610,23 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
 
                     {/* Calculator */}
                     {selectedVehicle && (
-                      <div className="mx-3 mb-3 p-4 bg-white border-2 border-blue-100 rounded-2xl shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-3">
-                          Jami hisob · {receiptTotals.clients} mijoz
-                        </p>
-                        <div className="grid grid-cols-4 gap-2">
+                      <div className="mx-3 mb-3 bg-white border border-[#DDE1EA] rounded-2xl overflow-hidden shadow-sm">
+                        <div className="px-4 py-2.5 border-b border-[#EEF0F5] bg-[#F8F9FC] flex items-center gap-2">
+                          <div className="w-[3px] h-4 rounded-full bg-[#005AB5]" />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-[#374151]">
+                            Jami hisob · {receiptTotals.clients} mijoz
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-4 gap-px bg-[#EEF0F5]">
                           {[
                             { val: receiptTotals.products, label: "Tovar" },
                             { val: receiptTotals.qty,      label: "Paket" },
                             { val: receiptTotals.places,   label: "Joy" },
                             { val: receiptTotals.volume,   label: "m³" },
                           ].map(({ val, label }) => (
-                            <div key={label} className="text-center bg-blue-50 rounded-xl py-2.5 border border-blue-100">
-                              <p className="text-base font-black text-blue-700">{val || "—"}</p>
-                              <p className="text-[9px] text-blue-400 font-bold uppercase tracking-wider mt-0.5">{label}</p>
+                            <div key={label} className="text-center bg-white py-3">
+                              <p className="text-base font-black text-[#005AB5]">{val || "—"}</p>
+                              <p className="text-[9px] text-[#9CA3AF] font-bold uppercase tracking-wider mt-0.5">{label}</p>
                             </div>
                           ))}
                         </div>
@@ -1292,13 +1640,14 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                           value={receiptNote}
                           onChange={e => setReceiptNote(e.target.value)}
                           placeholder="Izoh (ixtiyoriy)..."
-                          className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 bg-white text-xs font-medium text-gray-700 focus:outline-none focus:border-blue-400 placeholder:text-gray-300"
+                          className="w-full px-4 py-2.5 rounded-xl border border-[#DDE1EA] bg-white text-xs font-medium text-[#374151] focus:outline-none focus:ring-2 focus:ring-[#005AB5]/20 focus:border-[#005AB5] placeholder:text-[#C4C9D4]"
                         />
                         <button
                           onClick={handleSaveReceipt}
                           disabled={receiptSaving}
-                          className="w-full py-3 rounded-xl bg-blue-500 text-white font-black text-sm hover:bg-blue-600 disabled:opacity-50 transition-all shadow-sm shadow-blue-100"
+                          className="w-full py-3.5 rounded-xl bg-[#005AB5] text-white font-black text-sm hover:bg-[#004A96] disabled:opacity-50 transition-all shadow-md shadow-blue-200 flex items-center justify-center gap-2"
                         >
+                          <ArrowDownCircle className="w-4.5 h-4.5" />
                           {receiptSaving ? "Saqlanmoqda..." : "Furani qabul qilish"}
                         </button>
                       </div>
@@ -1387,36 +1736,95 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
               </div>
             )}
 
-            {/* ── UZB CHIQIM tab (Mijoz ID bo'yicha) ── */}
+            {/* ── UZB CHIQIM tab ── */}
             {tab === "chiqim" && (
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative bg-[#F5F6FA]">
 
                 {/* Active clients (full width) */}
                 <div className="flex flex-col overflow-hidden flex-1 min-h-0">
-                  <div className="flex items-center justify-between px-4 py-3 border-b-2 border-gray-100 bg-white shrink-0">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                      <span className="text-xs font-black uppercase tracking-widest text-gray-700">Faol mijozlar</span>
-                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 font-black border border-blue-100">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[#DDE1EA] bg-white shrink-0">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-2 h-2 rounded-full bg-[#005AB5]" />
+                      <span className="text-xs font-black uppercase tracking-widest text-[#374151]">Faol mijozlar</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#EFF6FF] text-[#005AB5] font-black border border-[#BFDBFE]">
                         {activeUzbClientList.length}
                       </span>
                     </div>
                     <button
                       onClick={() => setShowArchive(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary text-muted-foreground text-xs font-bold hover:bg-secondary/80 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#DDE1EA] bg-white text-[#6B7280] text-xs font-bold hover:bg-[#F5F6FA] transition-colors"
                     >
-                      Arxiv ({uzbDispatches.length})
+                      Arxiv ({uzbDispatches.length + outgoingTransfers.length})
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto bg-gray-50/50">
-                    {activeUzbClientList.length === 0 ? (
-                      <div className="py-16 text-center px-4">
-                        <div className="w-16 h-16 rounded-2xl bg-white border-2 border-gray-100 flex items-center justify-center mx-auto mb-4">
-                          <IdCard className="w-8 h-8 text-gray-200" />
+                  {/* Chiqim type toggle */}
+                  <div className="flex gap-2 px-4 py-3 bg-white border-b border-[#EEF0F5] shrink-0">
+                    {([
+                      { key: "client",    label: "Mijoz bo'yicha",        icon: <IdCard className="w-3.5 h-3.5" /> },
+                      { key: "warehouse", label: "Boshqa omborga o'tkazish", icon: <Building2 className="w-3.5 h-3.5" /> },
+                    ] as const).map(({ key, label, icon }) => (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setChiqimType(key);
+                          setSelectedDispatchClientCode(null);
+                          setDispatchMode("full"); setDispatchPartialQty(""); setDispatchNote("");
+                          setSelectedTransferDestId(null);
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black border transition-all ${
+                          chiqimType === key
+                            ? "bg-[#005AB5] text-white border-[#005AB5] shadow-sm shadow-blue-200"
+                            : "bg-white text-[#6B7280] border-[#DDE1EA] hover:border-[#93C5FD] hover:text-[#005AB5]"
+                        }`}
+                      >
+                        {icon} {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto bg-[#F5F6FA]">
+                    {chiqimType === null ? (
+                      /* ── Placeholder: tur tanlanmagan ── */
+                      <div className="py-20 text-center px-6">
+                        <div className="w-16 h-16 rounded-2xl bg-white border border-[#DDE1EA] flex items-center justify-center mx-auto mb-5 shadow-sm">
+                          <ArrowUpCircle className="w-8 h-8 text-[#D1D5DB]" />
                         </div>
-                        <p className="text-sm font-bold text-gray-400">Chiqarilishi kerak bo'lgan tovar yo'q</p>
-                        <p className="text-xs text-gray-300 mt-1">Avval fura orqali tovar qabul qiling</p>
+                        <p className="text-sm font-black text-[#374151] mb-1">Chiqim turini tanlang</p>
+                        <p className="text-xs text-[#9CA3AF] mb-6">Quyidagi usullardan birini bosing</p>
+                        <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                          {([
+                            { key: "client" as const,    label: "Mijoz bo'yicha chiqim",   sub: "Mijoz ID bilan tovarni chiqarish",     icon: <IdCard className="w-5 h-5" />,    color: "bg-[#005AB5]" },
+                            { key: "warehouse" as const, label: "Boshqa omborga o'tkazish", sub: "Tovarni boshqa omborga yo'naltirish", icon: <Building2 className="w-5 h-5" />, color: "bg-[#059669]" },
+                          ]).map(({ key, label, sub, icon, color }) => (
+                            <button
+                              key={key}
+                              onClick={() => {
+                                setChiqimType(key);
+                                setSelectedDispatchClientCode(null);
+                                setDispatchMode("full"); setDispatchPartialQty(""); setDispatchNote("");
+                                setSelectedTransferDestId(null);
+                              }}
+                              className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl bg-white border border-[#DDE1EA] hover:border-[#93C5FD] hover:shadow-sm transition-all text-left"
+                            >
+                              <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center text-white shrink-0`}>
+                                {icon}
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-[#111827]">{label}</p>
+                                <p className="text-[11px] text-[#9CA3AF] mt-0.5">{sub}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : activeUzbClientList.length === 0 ? (
+                      <div className="py-16 text-center px-4">
+                        <div className="w-16 h-16 rounded-2xl bg-white border border-[#DDE1EA] flex items-center justify-center mx-auto mb-4 shadow-sm">
+                          <IdCard className="w-8 h-8 text-[#D1D5DB]" />
+                        </div>
+                        <p className="text-sm font-bold text-[#9CA3AF]">Chiqarilishi kerak bo'lgan tovar yo'q</p>
+                        <p className="text-xs text-[#C4C9D4] mt-1">Avval fura orqali tovar qabul qiling</p>
                       </div>
                     ) : (
                       <div className="p-3 space-y-2">
@@ -1519,24 +1927,76 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
 
                                   {/* Note */}
                                   <div onClick={e => e.stopPropagation()}>
-                                    <label className="text-[10px] font-black text-blue-700 uppercase tracking-wider">Izoh</label>
+                                    <label className="text-[10px] font-black text-[#005AB5] uppercase tracking-wider">Izoh</label>
                                     <input
                                       value={dispatchNote}
                                       onChange={e => setDispatchNote(e.target.value)}
                                       placeholder="Ixtiyoriy..."
-                                      className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-blue-100 bg-white text-sm focus:outline-none focus:border-blue-400"
+                                      className="w-full mt-1 px-4 py-2.5 rounded-xl border border-[#BFDBFE] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#005AB5]/20 focus:border-[#005AB5]"
                                     />
                                   </div>
 
-                                  {/* Save */}
-                                  <button
-                                    onClick={e => { e.stopPropagation(); handleSaveDispatch(); }}
-                                    disabled={dispatchSaving || (dispatchMode === "partial" && parseFloat(dispatchPartialQty || "0") <= 0)}
-                                    className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-black hover:bg-blue-700 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
-                                  >
-                                    <ArrowUpCircle className="w-4 h-4" />
-                                    {dispatchSaving ? "Saqlanmoqda..." : "Chiqimni saqlash"}
-                                  </button>
+                                  {/* Warehouse selector (only for "Boshqa omborga") */}
+                                  {chiqimType === "warehouse" && (
+                                    <div onClick={e => e.stopPropagation()}>
+                                      <label className="text-[10px] font-black text-[#005AB5] uppercase tracking-wider">Manzil ombor</label>
+                                      <div className="mt-1 space-y-1.5">
+                                        {allWarehouses
+                                          .filter(w => w.type === "uzbekistan" && w.id !== warehouse.id)
+                                          .map(w => (
+                                            <button
+                                              key={w.id}
+                                              onClick={e => { e.stopPropagation(); setSelectedTransferDestId(w.id); }}
+                                              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                                                selectedTransferDestId === w.id
+                                                  ? "border-[#005AB5] bg-[#EFF6FF]"
+                                                  : "border-[#DDE1EA] bg-white hover:border-[#93C5FD]"
+                                              }`}
+                                            >
+                                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                                selectedTransferDestId === w.id ? "bg-[#005AB5]" : "bg-[#F0F4FF]"
+                                              }`}>
+                                                <Building2 className={`w-3.5 h-3.5 ${selectedTransferDestId === w.id ? "text-white" : "text-[#6B7280]"}`} />
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <p className={`text-xs font-black truncate ${selectedTransferDestId === w.id ? "text-[#005AB5]" : "text-[#374151]"}`}>{w.name}</p>
+                                                {w.address && <p className="text-[10px] text-[#9CA3AF] truncate">{w.address}</p>}
+                                              </div>
+                                              {selectedTransferDestId === w.id && (
+                                                <div className="w-4 h-4 rounded-full bg-[#005AB5] flex items-center justify-center shrink-0">
+                                                  <Check className="w-2.5 h-2.5 text-white" />
+                                                </div>
+                                              )}
+                                            </button>
+                                          ))
+                                        }
+                                        {allWarehouses.filter(w => w.type === "uzbekistan" && w.id !== warehouse.id).length === 0 && (
+                                          <p className="text-xs text-[#9CA3AF] text-center py-3">Boshqa Chiqaruvchi ombor yo'q</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Save / Transfer button */}
+                                  {chiqimType === "client" ? (
+                                    <button
+                                      onClick={e => { e.stopPropagation(); handleSaveDispatch(); }}
+                                      disabled={dispatchSaving || (dispatchMode === "partial" && parseFloat(dispatchPartialQty || "0") <= 0)}
+                                      className="w-full py-3 rounded-xl bg-[#005AB5] text-white text-sm font-black hover:bg-[#004A96] disabled:opacity-40 transition-all shadow-md shadow-blue-200 flex items-center justify-center gap-2"
+                                    >
+                                      <ArrowUpCircle className="w-4 h-4" />
+                                      {dispatchSaving ? "Saqlanmoqda..." : "Chiqimni saqlash"}
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={e => { e.stopPropagation(); handleSaveTransfer(); }}
+                                      disabled={transferSaving || !selectedTransferDestId || (dispatchMode === "partial" && parseFloat(dispatchPartialQty || "0") <= 0)}
+                                      className="w-full py-3 rounded-xl bg-[#059669] text-white text-sm font-black hover:bg-[#047857] disabled:opacity-40 transition-all shadow-md shadow-emerald-200 flex items-center justify-center gap-2"
+                                    >
+                                      <Building2 className="w-4 h-4" />
+                                      {transferSaving ? "O'tkazilmoqda..." : "Omborga o'tkazish"}
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -1953,6 +2413,96 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
           {tab === "kirim" && !isChegara && (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
 
+              {/* Statistics panel */}
+              {kirimRecords.length > 0 && (
+                <div className="shrink-0 mx-4 mt-4 mb-2 rounded-2xl border border-border/60 bg-card overflow-hidden shadow-sm">
+                  {/* Panel header */}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-border/60">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-4 rounded-full bg-blue-600" />
+                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">Ombor statistikasi</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground/50 font-medium">{kirimRecords.length} ta yetkazma</span>
+                  </div>
+
+                  {/* Table header */}
+                  <div className="grid grid-cols-4 px-4 py-2 bg-slate-50/60 border-b border-border/40">
+                    <span className="text-[10px] font-black text-muted-foreground/50 uppercase tracking-wider">Ko'rsatkich</span>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider text-center">Jami keldi</span>
+                    <span className="text-[10px] font-black text-red-400/80 uppercase tracking-wider text-center">Chiqib ketdi</span>
+                    <span className="text-[10px] font-black text-emerald-600/80 uppercase tracking-wider text-center">Qoldi</span>
+                  </div>
+
+                  {/* Rows */}
+                  {[
+                    {
+                      icon: "📦",
+                      label: "Tovarlar",
+                      total: warehouseStats.totalProducts,
+                      dispatched: warehouseStats.dispatchedProducts,
+                      remaining: warehouseStats.remainingProducts,
+                      unit: "ta",
+                    },
+                    {
+                      icon: "🗃️",
+                      label: "Joylar",
+                      total: warehouseStats.totalJoys,
+                      dispatched: warehouseStats.dispatchedJoys,
+                      remaining: warehouseStats.remainingJoys,
+                      unit: "joy",
+                    },
+                    {
+                      icon: "📐",
+                      label: "Hajm",
+                      total: warehouseStats.totalVolume,
+                      dispatched: warehouseStats.dispatchedVolume,
+                      remaining: warehouseStats.remainingVolume,
+                      unit: "m³",
+                    },
+                  ].map((row, i) => (
+                    <div
+                      key={row.label}
+                      className={`grid grid-cols-4 items-center px-4 py-2.5 ${i < 2 ? "border-b border-border/30" : ""} hover:bg-slate-50/50 transition-colors`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{row.icon}</span>
+                        <span className="text-xs font-bold text-foreground/80">{row.label}</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-sm font-black text-foreground">{row.total}</span>
+                        <span className="text-[10px] text-muted-foreground ml-1">{row.unit}</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-sm font-black text-red-500">{row.dispatched}</span>
+                        <span className="text-[10px] text-muted-foreground ml-1">{row.unit}</span>
+                      </div>
+                      <div className="text-center">
+                        <span className={`text-sm font-black ${row.remaining > 0 ? "text-emerald-600" : "text-muted-foreground/40"}`}>{row.remaining}</span>
+                        <span className="text-[10px] text-muted-foreground ml-1">{row.unit}</span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Progress bar */}
+                  {warehouseStats.totalJoys > 0 && (
+                    <div className="px-4 py-2.5 bg-slate-50/40 border-t border-border/40">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">Chiqim jarayoni</span>
+                        <span className="text-[10px] font-black text-blue-600">
+                          {Math.round((warehouseStats.dispatchedJoys / warehouseStats.totalJoys) * 100)}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.round((warehouseStats.dispatchedJoys / warehouseStats.totalJoys) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Active kirim (full width) */}
               <div className="flex flex-col overflow-hidden flex-1 min-h-0">
                 {/* Header */}
@@ -2115,6 +2665,10 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                         const isSelected = selectedProductIds.has(p.id);
                         const mode = productModes[p.id] ?? "full";
                         const partial = partialInputs[p.id];
+                        const totalJoys = p.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0);
+                        const alreadyDispatched = (kr.dispatchedPlaces ?? {})[p.id] ?? 0;
+                        const remainingJoys = Math.max(0, totalJoys - alreadyDispatched);
+                        const isPartiallyDispatched = alreadyDispatched > 0;
                         return (
                           <div
                             key={p.id}
@@ -2139,15 +2693,20 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                                     {kr.clientCode}
                                   </span>
                                   <span className="text-[10px] text-muted-foreground/60">{kr.date}</span>
+                                  {isPartiallyDispatched && (
+                                    <span className="text-[10px] font-bold text-amber-600 bg-amber-600/10 px-1.5 py-0.5 rounded">
+                                      {alreadyDispatched}/{totalJoys} joy chiqarilgan
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-xs font-bold text-foreground mt-0.5">{productSummary(p)}</p>
                                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                                   {p.quantity && (
                                     <span className="text-[10px] text-muted-foreground">Soni: <strong>{p.quantity}</strong></span>
                                   )}
-                                  {p.places.some(pl => pl.count) && (
+                                  {totalJoys > 0 && (
                                     <span className="text-[10px] text-muted-foreground">
-                                      Joy: <strong>{p.places.filter(pl => pl.count).map(pl => `${pl.count} ${pl.unit}`).join(", ")}</strong>
+                                      Joy: <strong className={remainingJoys < totalJoys ? "text-amber-600" : ""}>{remainingJoys} ta qolgan</strong>
                                     </span>
                                   )}
                                   {p.totalVolume && (
@@ -2169,7 +2728,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                                         : "bg-white border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600"
                                     }`}
                                   >
-                                    Barchasi
+                                    Barchasi ({remainingJoys} joy)
                                   </button>
                                   <button
                                     onClick={() => setProductMode(p.id, "partial")}
@@ -2183,29 +2742,20 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                                   </button>
                                 </div>
                                 {mode === "partial" && (
-                                  <div className="flex gap-1.5">
+                                  <div className="flex items-center gap-2">
                                     <input
                                       type="number"
+                                      min={1}
+                                      max={remainingJoys}
                                       value={partial?.qty ?? ""}
                                       onChange={e => setPartialInputs(m => ({
                                         ...m,
-                                        [p.id]: { qty: e.target.value, unit: m[p.id]?.unit ?? "dona" }
+                                        [p.id]: { qty: e.target.value, unit: "joy" }
                                       }))}
-                                      placeholder={p.quantity || "0"}
+                                      placeholder={`Max ${remainingJoys} joy`}
                                       className="flex-1 px-2.5 py-1.5 rounded-lg border border-input bg-background text-xs focus:outline-none focus:ring-1 focus:ring-blue-600/30 focus:border-blue-600"
                                     />
-                                    <select
-                                      value={partial?.unit ?? "dona"}
-                                      onChange={e => setPartialInputs(m => ({
-                                        ...m,
-                                        [p.id]: { qty: m[p.id]?.qty ?? "", unit: e.target.value }
-                                      }))}
-                                      className="px-2 py-1.5 rounded-lg border border-input bg-background text-xs focus:outline-none"
-                                    >
-                                      {["dona", "kg", "g", "t", "qop", "korobka"].map(u => (
-                                        <option key={u}>{u}</option>
-                                      ))}
-                                    </select>
+                                    <span className="text-xs text-muted-foreground font-bold shrink-0">joy soni</span>
                                   </div>
                                 )}
                               </div>
