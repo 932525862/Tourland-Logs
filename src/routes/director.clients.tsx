@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
+import { getStoredClientIds } from "@/lib/client-ids";
 import { useAppState, useSession } from "@/lib/store";
 import { ClientDetailDialog } from "@/components/ClientDetailDialog";
 import { AddClientDialog } from "@/components/AddClientDialog";
@@ -23,11 +24,14 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-const STAGES: { id: ClientStage; label: string }[] = [
+// Add an aggregate "Umumiy" tab (id: 'all') that shows clients from all stages.
+const STAGES: { id: string; label: string }[] = [
+  { id: "all", label: "Umumiy" },
   { id: "new", label: "Yangi" },
   { id: "no_answer", label: "Ko'tarmadi" },
   { id: "talked", label: "Gaplashildi" },
   { id: "sold", label: "Sotildi" },
+  { id: "id_assigned", label: "ID" },
 ];
 
 const ITEMS_PER_PAGE = 20;
@@ -40,7 +44,8 @@ function DirectorClients() {
   const { state, update } = useAppState();
   const session = useSession();
   const [activeCat, setActiveCat] = useState("");
-  const [stage, setStage] = useState<ClientStage>("new");
+  // `stage` can be one of ClientStage values or the special 'all' value
+  const [stage, setStage] = useState<string>("new");
   const [openClient, setOpenClient] = useState<Client | null>(null);
   const [showAddClient, setShowAddClient] = useState(false);
   const [showImportExcel, setShowImportExcel] = useState(false);
@@ -52,6 +57,7 @@ function DirectorClients() {
   const [showExportConfirm, setShowExportConfirm] = useState(false);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [storedIds, setStoredIds] = useState<Record<string, string>>(() => getStoredClientIds());
 
   const fetchAll = async () => {
     setLoading(true);
@@ -69,6 +75,7 @@ function DirectorClients() {
       toast.error("Ma'lumotlarni yuklashda xatolik");
     } finally {
       setLoading(false);
+      setStoredIds(getStoredClientIds());
     }
   };
 
@@ -239,13 +246,16 @@ function DirectorClients() {
   const filtered = useMemo(() => {
     return state.clients.filter((c) => {
       const matchesCat = c.categoryId === currentCat?.id;
-      const matchesStage = c.stage === stage;
+      const matchesStage =
+        stage === "all" ? true :
+        stage === "id_assigned" ? !!storedIds[c.id] :
+        c.stage === stage;
       const matchesSearch = !search ||
         (c.name || "").toLowerCase().includes(search.toLowerCase()) ||
         (c.phone || "").includes(search);
       return matchesCat && matchesStage && matchesSearch;
     });
-  }, [state.clients, currentCat, stage, search]);
+  }, [state.clients, currentCat, stage, search, storedIds]);
 
   const paginatedClients = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -258,15 +268,17 @@ function DirectorClients() {
     setCurrentPage(1);
   }, [activeCat, stage, search]);
 
-  const counts = useMemo(() => {
+  const counts: Record<string, number> = useMemo(() => {
     const inCat = state.clients.filter(c => c.categoryId === currentCat?.id);
     return {
+      all: inCat.length,
       new: inCat.filter((c) => c.stage === "new").length,
       no_answer: inCat.filter((c) => c.stage === "no_answer").length,
       talked: inCat.filter((c) => c.stage === "talked").length,
       sold: inCat.filter((c) => c.stage === "sold").length,
+      id_assigned: inCat.filter((c) => !!storedIds[c.id]).length,
     };
-  }, [state.clients, currentCat]);
+  }, [state.clients, currentCat, storedIds]);
 
   return (
     <div className="p-6 md:p-10">

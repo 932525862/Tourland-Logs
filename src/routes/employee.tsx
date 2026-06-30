@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { CrmSidebar } from "@/components/CrmSidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { useSession, saveSession, loadSession } from "@/lib/store";
-import { Users, Archive, User as UserIcon, ClipboardCheck, ListChecks, Layers, Bell, BarChart3 } from "lucide-react";
+import { Users, Archive, User as UserIcon, ClipboardCheck, ListChecks, Layers, Bell, BarChart3, Package } from "lucide-react";
 import { useSocketEvent } from "@/lib/api/socket";
 import { API } from "@/lib/api/client";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -67,6 +67,7 @@ function EmployeeLayout() {
     { to: "/employee/departments", label: "Bo'limlar", icon: Layers },
     { to: "/employee/forms", label: "Formalar", icon: ClipboardCheck },
     { to: "/employee/tasks", label: "Topshiriqlar", icon: ListChecks },
+    { to: "/employee/warehouse", label: "Ombor", icon: Package },
     { to: "/employee/attendance", label: "Davomat", icon: ClipboardCheck },
     { to: "/employee/archive", label: "Arxiv", icon: Archive },
     { to: "/employee/notifications", label: "Bildirishnomalar", icon: Bell, badge: unreadCount },

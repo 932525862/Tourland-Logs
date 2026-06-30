@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { CrmSidebar } from "@/components/CrmSidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { useSession, useAppState } from "@/lib/store";
-import { User, Users, FileText, UserPlus, ClipboardCheck, ListChecks, BarChart3, Layers, Archive, Bell, Globe } from "lucide-react";
+import { User, Users, FileText, UserPlus, ClipboardCheck, ListChecks, BarChart3, Layers, Archive, Bell, Globe, Package } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 
 export const Route = createFileRoute("/director")({
@@ -37,6 +37,7 @@ function DirectorLayout() {
     { to: "/director/forms", label: "Formalar", icon: FileText },
     { to: "/director/attendance", label: "Davomat", icon: ClipboardCheck },
     { to: "/director/tours", label: "Turlar", icon: Globe },
+    { to: "/director/warehouse", label: "Ombor", icon: Package },
     { to: "/director/tasks", label: "Topshiriqlar", icon: ListChecks, badge: taskBadge },
     { to: "/director/stats", label: "Statistika", icon: BarChart3 },
     { to: "/director/notifications", label: "Bildirishnomalar", icon: Bell, badge: unreadCount },

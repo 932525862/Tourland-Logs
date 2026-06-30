@@ -99,6 +99,7 @@ export interface Client {
   telegramUsername?: string;
   createdAt: string;
   description?: string;
+  clientCode?: string;
 }
 
 export type AttendanceStatus = 'PRESENT' | 'ATTENDED' | 'ABSENT';

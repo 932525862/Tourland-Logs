@@ -311,7 +311,7 @@ export const API = {
       departmentId: data.categoryId || data.departmentId,
       stage: data.stage,
       remindAt: data.remindAt,
-      description: data.description
+      description: data.description,
     }
   }),
   deleteClient: (id: string) => api(`/clients/${id}`, { method: "DELETE" }),
@@ -322,6 +322,16 @@ export const API = {
   deletePayment: (id: string) => api(`/clients/payments/${id}`, { method: "DELETE" }),
   setSale: (id: string, data: any) => api(`/clients/${id}/sale`, { method: "PATCH", json: { ...data, status: data.status?.toLowerCase() } }),
   warnClient: (id: string, remindAt: string) => api(`/clients/${id}/warn`, { method: "POST", json: { remindAt } }),
+
+  uploadClientAttachments: (clientId: string, files: File[]) => {
+    const formData = new FormData();
+    files.forEach(f => formData.append("files", f));
+    return api<any[]>(`/clients/${clientId}/attachments`, {
+      method: "POST",
+      body: formData,
+      headers: {},
+    } as any);
+  },
 
   importExcel: (file: File, departmentId: string) => {
     const formData = new FormData();

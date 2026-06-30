@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as EmployeeIndexRouteImport } from './routes/employee.index'
 import { Route as DirectorIndexRouteImport } from './routes/director.index'
 import { Route as FFormIdRouteImport } from './routes/f.$formId'
+import { Route as EmployeeWarehouseRouteImport } from './routes/employee.warehouse'
 import { Route as EmployeeTasksRouteImport } from './routes/employee.tasks'
 import { Route as EmployeeStatsRouteImport } from './routes/employee.stats'
 import { Route as EmployeeProfileRouteImport } from './routes/employee.profile'
@@ -26,6 +27,7 @@ import { Route as EmployeeFormsRouteImport } from './routes/employee.forms'
 import { Route as EmployeeDepartmentsRouteImport } from './routes/employee.departments'
 import { Route as EmployeeAttendanceRouteImport } from './routes/employee.attendance'
 import { Route as EmployeeArchiveRouteImport } from './routes/employee.archive'
+import { Route as DirectorWarehouseRouteImport } from './routes/director.warehouse'
 import { Route as DirectorToursRouteImport } from './routes/director.tours'
 import { Route as DirectorTasksRouteImport } from './routes/director.tasks'
 import { Route as DirectorStatsRouteImport } from './routes/director.stats'
@@ -82,6 +84,11 @@ const FFormIdRoute = FFormIdRouteImport.update({
   path: '/f/$formId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmployeeWarehouseRoute = EmployeeWarehouseRouteImport.update({
+  id: '/warehouse',
+  path: '/warehouse',
+  getParentRoute: () => EmployeeRoute,
+} as any)
 const EmployeeTasksRoute = EmployeeTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -121,6 +128,11 @@ const EmployeeArchiveRoute = EmployeeArchiveRouteImport.update({
   id: '/archive',
   path: '/archive',
   getParentRoute: () => EmployeeRoute,
+} as any)
+const DirectorWarehouseRoute = DirectorWarehouseRouteImport.update({
+  id: '/warehouse',
+  path: '/warehouse',
+  getParentRoute: () => DirectorRoute,
 } as any)
 const DirectorToursRoute = DirectorToursRouteImport.update({
   id: '/tours',
@@ -190,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
   '/director/tours': typeof DirectorToursRoute
+  '/director/warehouse': typeof DirectorWarehouseRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
@@ -198,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/employee/profile': typeof EmployeeProfileRoute
   '/employee/stats': typeof EmployeeStatsRoute
   '/employee/tasks': typeof EmployeeTasksRoute
+  '/employee/warehouse': typeof EmployeeWarehouseRoute
   '/f/$formId': typeof FFormIdRoute
   '/director/': typeof DirectorIndexRoute
   '/employee/': typeof EmployeeIndexRoute
@@ -217,6 +231,7 @@ export interface FileRoutesByTo {
   '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
   '/director/tours': typeof DirectorToursRoute
+  '/director/warehouse': typeof DirectorWarehouseRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
@@ -225,6 +240,7 @@ export interface FileRoutesByTo {
   '/employee/profile': typeof EmployeeProfileRoute
   '/employee/stats': typeof EmployeeStatsRoute
   '/employee/tasks': typeof EmployeeTasksRoute
+  '/employee/warehouse': typeof EmployeeWarehouseRoute
   '/f/$formId': typeof FFormIdRoute
   '/director': typeof DirectorIndexRoute
   '/employee': typeof EmployeeIndexRoute
@@ -247,6 +263,7 @@ export interface FileRoutesById {
   '/director/stats': typeof DirectorStatsRoute
   '/director/tasks': typeof DirectorTasksRoute
   '/director/tours': typeof DirectorToursRoute
+  '/director/warehouse': typeof DirectorWarehouseRoute
   '/employee/archive': typeof EmployeeArchiveRoute
   '/employee/attendance': typeof EmployeeAttendanceRoute
   '/employee/departments': typeof EmployeeDepartmentsRoute
@@ -255,6 +272,7 @@ export interface FileRoutesById {
   '/employee/profile': typeof EmployeeProfileRoute
   '/employee/stats': typeof EmployeeStatsRoute
   '/employee/tasks': typeof EmployeeTasksRoute
+  '/employee/warehouse': typeof EmployeeWarehouseRoute
   '/f/$formId': typeof FFormIdRoute
   '/director/': typeof DirectorIndexRoute
   '/employee/': typeof EmployeeIndexRoute
@@ -278,6 +296,7 @@ export interface FileRouteTypes {
     | '/director/stats'
     | '/director/tasks'
     | '/director/tours'
+    | '/director/warehouse'
     | '/employee/archive'
     | '/employee/attendance'
     | '/employee/departments'
@@ -286,6 +305,7 @@ export interface FileRouteTypes {
     | '/employee/profile'
     | '/employee/stats'
     | '/employee/tasks'
+    | '/employee/warehouse'
     | '/f/$formId'
     | '/director/'
     | '/employee/'
@@ -305,6 +325,7 @@ export interface FileRouteTypes {
     | '/director/stats'
     | '/director/tasks'
     | '/director/tours'
+    | '/director/warehouse'
     | '/employee/archive'
     | '/employee/attendance'
     | '/employee/departments'
@@ -313,6 +334,7 @@ export interface FileRouteTypes {
     | '/employee/profile'
     | '/employee/stats'
     | '/employee/tasks'
+    | '/employee/warehouse'
     | '/f/$formId'
     | '/director'
     | '/employee'
@@ -334,6 +356,7 @@ export interface FileRouteTypes {
     | '/director/stats'
     | '/director/tasks'
     | '/director/tours'
+    | '/director/warehouse'
     | '/employee/archive'
     | '/employee/attendance'
     | '/employee/departments'
@@ -342,6 +365,7 @@ export interface FileRouteTypes {
     | '/employee/profile'
     | '/employee/stats'
     | '/employee/tasks'
+    | '/employee/warehouse'
     | '/f/$formId'
     | '/director/'
     | '/employee/'
@@ -422,6 +446,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FFormIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/employee/warehouse': {
+      id: '/employee/warehouse'
+      path: '/warehouse'
+      fullPath: '/employee/warehouse'
+      preLoaderRoute: typeof EmployeeWarehouseRouteImport
+      parentRoute: typeof EmployeeRoute
+    }
     '/employee/tasks': {
       id: '/employee/tasks'
       path: '/tasks'
@@ -477,6 +508,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/employee/archive'
       preLoaderRoute: typeof EmployeeArchiveRouteImport
       parentRoute: typeof EmployeeRoute
+    }
+    '/director/warehouse': {
+      id: '/director/warehouse'
+      path: '/warehouse'
+      fullPath: '/director/warehouse'
+      preLoaderRoute: typeof DirectorWarehouseRouteImport
+      parentRoute: typeof DirectorRoute
     }
     '/director/tours': {
       id: '/director/tours'
@@ -562,6 +600,7 @@ interface DirectorRouteChildren {
   DirectorStatsRoute: typeof DirectorStatsRoute
   DirectorTasksRoute: typeof DirectorTasksRoute
   DirectorToursRoute: typeof DirectorToursRoute
+  DirectorWarehouseRoute: typeof DirectorWarehouseRoute
   DirectorIndexRoute: typeof DirectorIndexRoute
 }
 
@@ -576,6 +615,7 @@ const DirectorRouteChildren: DirectorRouteChildren = {
   DirectorStatsRoute: DirectorStatsRoute,
   DirectorTasksRoute: DirectorTasksRoute,
   DirectorToursRoute: DirectorToursRoute,
+  DirectorWarehouseRoute: DirectorWarehouseRoute,
   DirectorIndexRoute: DirectorIndexRoute,
 }
 
@@ -592,6 +632,7 @@ interface EmployeeRouteChildren {
   EmployeeProfileRoute: typeof EmployeeProfileRoute
   EmployeeStatsRoute: typeof EmployeeStatsRoute
   EmployeeTasksRoute: typeof EmployeeTasksRoute
+  EmployeeWarehouseRoute: typeof EmployeeWarehouseRoute
   EmployeeIndexRoute: typeof EmployeeIndexRoute
 }
 
@@ -604,6 +645,7 @@ const EmployeeRouteChildren: EmployeeRouteChildren = {
   EmployeeProfileRoute: EmployeeProfileRoute,
   EmployeeStatsRoute: EmployeeStatsRoute,
   EmployeeTasksRoute: EmployeeTasksRoute,
+  EmployeeWarehouseRoute: EmployeeWarehouseRoute,
   EmployeeIndexRoute: EmployeeIndexRoute,
 }
 
