@@ -1,6 +1,6 @@
 const KEY = "crm_warehouses";
 
-export type WarehouseType = "china" | "uzbekistan" | "chegara";
+export type WarehouseType = "china" | "uzbekistan" | "chegara" | "ortaOmbor" | "ortaMijoz";
 
 export interface Warehouse {
   id: string;
@@ -114,6 +114,13 @@ export interface KirimPlace {
   unit: string;
 }
 
+export interface KirimManualVolume {
+  id: string;
+  value: string;
+}
+
+export type VolumeMode = "places" | "quantity" | "manual";
+
 export interface KirimProduct {
   id: string;
   measurements: KirimMeasurement[];
@@ -123,6 +130,9 @@ export interface KirimProduct {
   length: string;
   height: string;
   dimensionUnit: string;
+  /** Jami hajmni qanday hisoblash: joy soniga, tovar soniga ko'paytirib yoki qo'lda kiritib */
+  volumeMode: VolumeMode;
+  manualVolumes: KirimManualVolume[];
   totalVolume: string;
   brutto: string;
   bruttoUnit: string;

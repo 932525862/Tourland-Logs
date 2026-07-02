@@ -10,6 +10,8 @@ import {
   Globe,
   Building2,
   Shield,
+  Warehouse as WarehouseIcon,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -22,6 +24,14 @@ import {
   type Warehouse,
   type WarehouseType,
 } from "@/lib/warehouse";
+
+const WAREHOUSE_TYPE_META: Record<WarehouseType, { badge: string; icon: typeof Globe; wrap: string; text: string }> = {
+  china:      { badge: "Yaratuvchi",  icon: Globe,        wrap: "bg-orange-500/10 text-orange-500", text: "bg-orange-500/10 text-orange-500" },
+  uzbekistan: { badge: "Chiqaruvchi", icon: Building2,    wrap: "bg-blue-600/10 text-blue-600",      text: "bg-blue-600/10 text-blue-600" },
+  chegara:    { badge: "Chegara",     icon: Shield,       wrap: "bg-violet-600/10 text-violet-600",  text: "bg-violet-600/10 text-violet-600" },
+  ortaOmbor:  { badge: "O'rta ombor", icon: WarehouseIcon, wrap: "bg-amber-500/10 text-amber-600",   text: "bg-amber-500/10 text-amber-600" },
+  ortaMijoz:  { badge: "O'rta mijoz", icon: Users,        wrap: "bg-teal-600/10 text-teal-600",      text: "bg-teal-600/10 text-teal-600" },
+};
 
 export function WarehousePage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -140,29 +150,17 @@ export function WarehousePage() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {warehouses.map((w) => (
+          {warehouses.map((w) => {
+            const meta = WAREHOUSE_TYPE_META[w.type ?? "china"];
+            return (
             <div
               key={w.id}
               onClick={() => setSelectedWarehouse(w)}
               className="bg-card rounded-[28px] border border-border/60 p-6 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20 transition-all duration-300 cursor-pointer group"
             >
               <div className="flex items-start justify-between mb-5">
-                <div
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                    w.type === "uzbekistan"
-                      ? "bg-blue-600/10 text-blue-600"
-                      : w.type === "chegara"
-                        ? "bg-violet-600/10 text-violet-600"
-                        : "bg-orange-500/10 text-orange-500"
-                  }`}
-                >
-                  {w.type === "uzbekistan" ? (
-                    <Building2 className="w-6 h-6" />
-                  ) : w.type === "chegara" ? (
-                    <Shield className="w-6 h-6" />
-                  ) : (
-                    <Globe className="w-6 h-6" />
-                  )}
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${meta.wrap}`}>
+                  <meta.icon className="w-6 h-6" />
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -190,20 +188,8 @@ export function WarehousePage() {
                 <h3 className="text-xl font-black text-foreground leading-tight group-hover:text-primary transition-colors">
                   {w.name}
                 </h3>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                    w.type === "uzbekistan"
-                      ? "bg-blue-600/10 text-blue-600"
-                      : w.type === "chegara"
-                        ? "bg-violet-600/10 text-violet-600"
-                        : "bg-orange-500/10 text-orange-500"
-                  }`}
-                >
-                  {w.type === "uzbekistan"
-                    ? "Chiqaruvchi"
-                    : w.type === "chegara"
-                      ? "Chegara"
-                      : "Yaratuvchi"}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${meta.text}`}>
+                  {meta.badge}
                 </span>
               </div>
 
@@ -227,7 +213,8 @@ export function WarehousePage() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -299,10 +286,22 @@ export function WarehousePage() {
                         dot: "bg-orange-400",
                       },
                       {
+                        value: "ortaOmbor" as WarehouseType,
+                        label: "O'rta ombor",
+                        sub: "Fura qabul, fura chiqim",
+                        dot: "bg-amber-500",
+                      },
+                      {
                         value: "uzbekistan" as WarehouseType,
                         label: "Chiqaruvchi ombor",
                         sub: "Fura qabul, mijoz ID bo'yicha chiqim",
                         dot: "bg-blue-500",
+                      },
+                      {
+                        value: "ortaMijoz" as WarehouseType,
+                        label: "O'rta mijoz ombori",
+                        sub: "Fura qabul, mijoz ID yoki omborga o'tkazish",
+                        dot: "bg-teal-500",
                       },
                     ] as const
                   ).map(({ value, label, sub, dot }) => {

@@ -3,7 +3,7 @@ import {
   ChevronLeft, Plus, Trash2, Package, ArrowDownCircle, ArrowUpCircle,
   MapPin, User, FileText, ChevronDown, ChevronUp, ExternalLink, Clock,
   Search, Truck, Camera, X as XIcon, CheckSquare, Square, Scale, IdCard,
-  Building2, Globe, ImageIcon, Shield, Pencil, Check,
+  Building2, Globe, ImageIcon, Shield, Pencil, Check, Warehouse as WarehouseIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getStoredClientIds } from "@/lib/client-ids";
@@ -88,6 +88,173 @@ function productSummary(p: KirimProduct): string {
   const meas = p.measurements.filter(m => m.value).map(m => m.value).join(", ");
   const weight = p.brutto ? `${p.brutto} ${p.bruttoUnit}` : "";
   return [meas, weight].filter(Boolean).join(" · ") || "Tovar";
+}
+
+const WEIGHT_TO_KG: Record<string, number> = {
+  kg: 1,
+  g: 0.001,
+  tonna: 1000,
+  pound: 0.453592,
+};
+
+// Brutto og'irlikni kg ga o'girib beradi (statistikalarda birgalikda yig'ish uchun)
+function bruttoKg(p: KirimProduct): number {
+  const v = parseFloat(p.brutto);
+  if (!v) return 0;
+  return v * (WEIGHT_TO_KG[p.bruttoUnit] ?? 1);
+}
+
+// ── Ombor statistikasi panellari (Kirim va Chiqim ikkala bo'limda ham ko'rinadi) ──
+interface ChinaStatsData {
+  totalProducts: number; dispatchedProducts: number; remainingProducts: number;
+  totalJoys: number; dispatchedJoys: number; remainingJoys: number;
+  totalVolume: number; dispatchedVolume: number; remainingVolume: number;
+  totalWeight: number; dispatchedWeight: number; remainingWeight: number;
+}
+
+function ChinaWarehouseStatsPanel({ recordCount, stats }: { recordCount: number; stats: ChinaStatsData }) {
+  if (recordCount === 0) return null;
+  return (
+    <div className="shrink-0 mx-4 mt-4 mb-2 rounded-2xl border border-border/60 bg-card overflow-hidden shadow-sm">
+      {/* Panel header */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-border/60">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-4 rounded-full bg-blue-600" />
+          <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">Ombor statistikasi</span>
+        </div>
+        <span className="text-[10px] text-muted-foreground/50 font-medium">{recordCount} ta yetkazma</span>
+      </div>
+
+      {/* Table header */}
+      <div className="grid grid-cols-4 px-4 py-2 bg-slate-50/60 border-b border-border/40">
+        <span className="text-[10px] font-black text-muted-foreground/50 uppercase tracking-wider">Ko'rsatkich</span>
+        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider text-center">Jami keldi</span>
+        <span className="text-[10px] font-black text-red-400/80 uppercase tracking-wider text-center">Chiqib ketdi</span>
+        <span className="text-[10px] font-black text-emerald-600/80 uppercase tracking-wider text-center">Qoldi</span>
+      </div>
+
+      {/* Rows */}
+      {[
+        { icon: "📦", label: "Tovarlar", total: stats.totalProducts, dispatched: stats.dispatchedProducts, remaining: stats.remainingProducts, unit: "ta" },
+        { icon: "🗃️", label: "Joylar",   total: stats.totalJoys,     dispatched: stats.dispatchedJoys,     remaining: stats.remainingJoys,     unit: "joy" },
+        { icon: "📐", label: "Hajm",     total: stats.totalVolume,   dispatched: stats.dispatchedVolume,   remaining: stats.remainingVolume,   unit: "m³" },
+        { icon: "⚖️", label: "Og'irlik", total: stats.totalWeight,   dispatched: stats.dispatchedWeight,   remaining: stats.remainingWeight,   unit: "kg" },
+      ].map((row, i) => (
+        <div
+          key={row.label}
+          className={`grid grid-cols-4 items-center px-4 py-2.5 ${i < 3 ? "border-b border-border/30" : ""} hover:bg-slate-50/50 transition-colors`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{row.icon}</span>
+            <span className="text-xs font-bold text-foreground/80">{row.label}</span>
+          </div>
+          <div className="text-center">
+            <span className="text-sm font-black text-foreground">{row.total}</span>
+            <span className="text-[10px] text-muted-foreground ml-1">{row.unit}</span>
+          </div>
+          <div className="text-center">
+            <span className="text-sm font-black text-red-500">{row.dispatched}</span>
+            <span className="text-[10px] text-muted-foreground ml-1">{row.unit}</span>
+          </div>
+          <div className="text-center">
+            <span className={`text-sm font-black ${row.remaining > 0 ? "text-emerald-600" : "text-muted-foreground/40"}`}>{row.remaining}</span>
+            <span className="text-[10px] text-muted-foreground ml-1">{row.unit}</span>
+          </div>
+        </div>
+      ))}
+
+      {/* Progress bar */}
+      {stats.totalJoys > 0 && (
+        <div className="px-4 py-2.5 bg-slate-50/40 border-t border-border/40">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">Chiqim jarayoni</span>
+            <span className="text-[10px] font-black text-blue-600">
+              {Math.round((stats.dispatchedJoys / stats.totalJoys) * 100)}%
+            </span>
+          </div>
+          <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((stats.dispatchedJoys / stats.totalJoys) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface UzbStatsData {
+  inTransitProducts: number; receivedProducts: number; dispatchedProducts: number;
+  inTransitJoys: number; receivedJoys: number; dispatchedJoys: number;
+  inTransitVol: number; receivedVol: number; dispatchedVol: number;
+  inTransitWeight: number; receivedWeight: number; dispatchedWeight: number;
+}
+
+function UzbWarehouseStatsPanel({ recordCount, stats }: { recordCount: number; stats: UzbStatsData }) {
+  if (recordCount === 0) return null;
+  return (
+    <div className="shrink-0 mx-4 mt-4 mb-0">
+      <div className="bg-white rounded-2xl border border-[#DDE1EA] shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#EEF0F5] bg-[#F8F9FC]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-[3px] h-4 rounded-full bg-[#005AB5]" />
+            <span className="text-[11px] font-black uppercase tracking-widest text-[#374151]">Ombor holati</span>
+          </div>
+          <span className="text-[10px] text-[#9CA3AF] font-medium">{recordCount} ta yetkazma</span>
+        </div>
+        {/* Table head */}
+        <div className="grid grid-cols-4 px-4 py-2 border-b border-[#EEF0F5]">
+          <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">Ko'rsatkich</span>
+          <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider text-center">Yo'lda</span>
+          <span className="text-[10px] font-bold text-[#005AB5] uppercase tracking-wider text-center">Omborida</span>
+          <span className="text-[10px] font-bold text-[#059669] uppercase tracking-wider text-center">Mijozlarga</span>
+        </div>
+        {[
+          { icon: "📦", label: "Tovarlar", inT: stats.inTransitProducts, rec: stats.receivedProducts, dis: stats.dispatchedProducts, unit: "ta" },
+          { icon: "🗃️", label: "Joylar",   inT: stats.inTransitJoys,     rec: stats.receivedJoys,     dis: stats.dispatchedJoys,     unit: "joy" },
+          { icon: "📐", label: "Hajm",     inT: stats.inTransitVol,      rec: stats.receivedVol,      dis: stats.dispatchedVol,      unit: "m³" },
+          { icon: "⚖️", label: "Og'irlik", inT: stats.inTransitWeight,   rec: stats.receivedWeight,   dis: stats.dispatchedWeight,   unit: "kg" },
+        ].map((row, i) => (
+          <div key={row.label} className={`grid grid-cols-4 items-center px-4 py-2.5 ${i < 3 ? "border-b border-[#F3F4F6]" : ""}`}>
+            <div className="flex items-center gap-2">
+              <span className="text-sm">{row.icon}</span>
+              <span className="text-xs font-bold text-[#374151]">{row.label}</span>
+            </div>
+            <div className="text-center">
+              <span className="text-sm font-black text-[#F59E0B]">{row.inT}</span>
+              <span className="text-[10px] text-[#9CA3AF] ml-1">{row.unit}</span>
+            </div>
+            <div className="text-center">
+              <span className="text-sm font-black text-[#005AB5]">{row.rec}</span>
+              <span className="text-[10px] text-[#9CA3AF] ml-1">{row.unit}</span>
+            </div>
+            <div className="text-center">
+              <span className={`text-sm font-black ${row.dis > 0 ? "text-[#059669]" : "text-[#D1D5DB]"}`}>{row.dis}</span>
+              <span className="text-[10px] text-[#9CA3AF] ml-1">{row.unit}</span>
+            </div>
+          </div>
+        ))}
+        {/* Progress bar */}
+        {(stats.receivedProducts + stats.dispatchedProducts) > 0 && (
+          <div className="px-4 py-2.5 border-t border-[#EEF0F5] bg-[#F8F9FC]">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">Qabul qilish jarayoni</span>
+              <span className="text-[10px] font-black text-[#005AB5]">
+                {Math.round(((stats.receivedProducts + stats.dispatchedProducts) / Math.max(1, stats.inTransitProducts + stats.receivedProducts + stats.dispatchedProducts)) * 100)}%
+              </span>
+            </div>
+            <div className="h-1.5 w-full bg-[#E5E7EB] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-[#005AB5] to-[#3B82F6] rounded-full transition-all duration-500"
+                style={{ width: `${Math.round(((stats.receivedProducts + stats.dispatchedProducts) / Math.max(1, stats.inTransitProducts + stats.receivedProducts + stats.dispatchedProducts)) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function WarehouseDetailModal({ warehouse, onClose }: Props) {
@@ -203,7 +370,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
     setChiqimRecords(getChiqimRecordsV2(warehouse.id));
     setUzbKirimRecords(getUzbKirimRecords(warehouse.id));
     setAllWarehouses(getWarehouses());
-    if (warehouse.type === "uzbekistan" || warehouse.type === "chegara") {
+    if (warehouse.type !== "china") {
       setAllChinaChiqim(getAllChiqimRecordsGlobal());
       setAllChinaKirim(getAllKirimRecordsGlobal());
       setUzbReceipts(getChiqimReceipts(warehouse.id));
@@ -279,19 +446,23 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
     let totalProducts = 0, dispatchedProducts = 0;
     let totalJoys = 0, dispatchedJoys = 0;
     let totalVolume = 0, dispatchedVolume = 0;
+    let totalWeight = 0, dispatchedWeight = 0;
     for (const r of kirimRecords) {
       const doneSet = new Set(r.dispatchedProductIds ?? []);
       for (const p of r.products) {
         const pJoys = p.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0);
         const pVolume = parseFloat(p.totalVolume || "0") || 0;
+        const pWeight = bruttoKg(p);
         const pDispatched = doneSet.has(p.id)
           ? pJoys
           : (r.dispatchedPlaces ?? {})[p.id] ?? 0;
         totalProducts++;
         totalJoys += pJoys;
         totalVolume += pVolume;
+        totalWeight += pWeight;
         dispatchedJoys += pDispatched;
         dispatchedVolume += pJoys > 0 ? pVolume * (pDispatched / pJoys) : 0;
+        dispatchedWeight += pJoys > 0 ? pWeight * (pDispatched / pJoys) : 0;
         if (doneSet.has(p.id)) dispatchedProducts++;
       }
     }
@@ -303,6 +474,9 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
       totalVolume:      Math.round(totalVolume * 1000) / 1000,
       dispatchedVolume: Math.round(dispatchedVolume * 1000) / 1000,
       remainingVolume:  Math.round((totalVolume - dispatchedVolume) * 1000) / 1000,
+      totalWeight:      Math.round(totalWeight * 100) / 100,
+      dispatchedWeight: Math.round(dispatchedWeight * 100) / 100,
+      remainingWeight:  Math.round((totalWeight - dispatchedWeight) * 100) / 100,
     };
   }, [kirimRecords]);
 
@@ -485,36 +659,74 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
     return allChinaChiqim.filter(cr => effectiveReceivedIds.has(cr.id) && !uzbGoneIds.has(cr.id));
   }, [allChinaChiqim, effectiveReceivedIds, uzbGoneIds]);
 
+  // ── O'rta ombor: received-by-truck products re-dispatched onward by another truck ──
+  // Product ids this warehouse has already put on an outgoing truck itself
+  const ortaDispatchedProductIds = useMemo(() => {
+    const mine = allChinaChiqim.filter(cr => cr.warehouseId === warehouse.id);
+    return new Set(mine.flatMap(cr => cr.selectedProductIds));
+  }, [allChinaChiqim, warehouse.id]);
+
+  // Products received at this warehouse (by truck) that are still waiting to be re-dispatched
+  const ortaUndispatched = useMemo(() => {
+    return receivedInWarehouseList.flatMap(cr =>
+      cr.selectedProductIds
+        .filter(pid => !ortaDispatchedProductIds.has(pid))
+        .map(pid => ({ pid, product: globalProductMap[pid], source: cr }))
+    ).filter((x): x is { pid: string; product: KirimProduct; source: ChiqimRecord } => !!x.product);
+  }, [receivedInWarehouseList, ortaDispatchedProductIds, globalProductMap]);
+
+  const ortaSelectedIds = useMemo(
+    () => ortaUndispatched.filter(x => selectedProductIds.has(x.pid)),
+    [ortaUndispatched, selectedProductIds]
+  );
+
+  const ortaTotals = useMemo(() => {
+    let qty = 0, places = 0, volume = 0, weight = 0;
+    for (const { product: p } of ortaSelectedIds) {
+      qty    += parseFloat(p.quantity) || 0;
+      places += p.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0);
+      volume += parseFloat(p.totalVolume || "0") || 0;
+      weight += bruttoKg(p);
+    }
+    return {
+      qty:    Math.round(qty    * 100) / 100,
+      places: Math.round(places * 100) / 100,
+      volume: Math.round(volume * 1000) / 1000,
+      weight: Math.round(weight * 100) / 100,
+    };
+  }, [ortaSelectedIds]);
+
   // Uzbekistan warehouse statistics
   const uzbStats = useMemo(() => {
     const inTransitIds = new Set(
       allChinaChiqim.filter(cr => !effectiveReceivedIds.has(cr.id)).map(cr => cr.id)
     );
-    let inTransitProducts = 0, inTransitJoys = 0, inTransitVol = 0;
-    let receivedProducts = 0, receivedJoys = 0, receivedVol = 0;
-    let dispatchedProducts = 0, dispatchedJoys = 0, dispatchedVol = 0;
+    let inTransitProducts = 0, inTransitJoys = 0, inTransitVol = 0, inTransitWeight = 0;
+    let receivedProducts = 0, receivedJoys = 0, receivedVol = 0, receivedWeight = 0;
+    let dispatchedProducts = 0, dispatchedJoys = 0, dispatchedVol = 0, dispatchedWeight = 0;
     for (const cr of allChinaChiqim) {
-      let prods = 0, joys = 0, vol = 0;
+      let prods = 0, joys = 0, vol = 0, weight = 0;
       for (const pid of cr.selectedProductIds) {
         const p = globalProductMap[pid];
         if (p) {
           prods += 1;
           joys  += p.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0);
           vol   += parseFloat(p.totalVolume || "0") || 0;
+          weight += bruttoKg(p);
         }
       }
       if (inTransitIds.has(cr.id)) {
-        inTransitProducts += prods; inTransitJoys += joys; inTransitVol += vol;
+        inTransitProducts += prods; inTransitJoys += joys; inTransitVol += vol; inTransitWeight += weight;
       } else if (uzbGoneIds.has(cr.id)) {
-        dispatchedProducts += prods; dispatchedJoys += joys; dispatchedVol += vol;
+        dispatchedProducts += prods; dispatchedJoys += joys; dispatchedVol += vol; dispatchedWeight += weight;
       } else {
-        receivedProducts += prods; receivedJoys += joys; receivedVol += vol;
+        receivedProducts += prods; receivedJoys += joys; receivedVol += vol; receivedWeight += weight;
       }
     }
     return {
-      inTransitProducts, inTransitJoys,      inTransitVol:    Math.round(inTransitVol    * 1000) / 1000,
-      receivedProducts,  receivedJoys,       receivedVol:     Math.round(receivedVol     * 1000) / 1000,
-      dispatchedProducts, dispatchedJoys,    dispatchedVol:   Math.round(dispatchedVol   * 1000) / 1000,
+      inTransitProducts, inTransitJoys,      inTransitVol:    Math.round(inTransitVol    * 1000) / 1000, inTransitWeight: Math.round(inTransitWeight * 100) / 100,
+      receivedProducts,  receivedJoys,       receivedVol:     Math.round(receivedVol     * 1000) / 1000, receivedWeight: Math.round(receivedWeight * 100) / 100,
+      dispatchedProducts, dispatchedJoys,    dispatchedVol:   Math.round(dispatchedVol   * 1000) / 1000, dispatchedWeight: Math.round(dispatchedWeight * 100) / 100,
     };
   }, [allChinaChiqim, effectiveReceivedIds, uzbGoneIds, globalProductMap]);
 
@@ -633,6 +845,49 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
       setSelectedProductIds(new Set());
       setProductModes({});
       setPartialInputs({});
+      setVehicleNumber(""); setPhotos([]); setChiqimNote("");
+      setShowChiqimPanel(false);
+      refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    } finally {
+      setChiqimSaving(false);
+    }
+  };
+
+  // ── O'rta ombor: re-dispatch received products onward by a new truck ──
+  const handleSaveOrtaChiqim = async () => {
+    if (ortaSelectedIds.length === 0) { toast.error("Kamida bitta tovar tanlang"); return; }
+    if (!vehicleNumber.trim()) { toast.error("Avtomobil raqamini kiriting"); return; }
+
+    setChiqimSaving(true);
+    try {
+      // Group selected products by their original kirim record, carrying the source receipt's client info
+      const groups: Record<string, { productIds: string[]; source: ChiqimRecord }> = {};
+      for (const { pid, source } of ortaSelectedIds) {
+        const rid = source.kirimRecordId;
+        if (!groups[rid]) groups[rid] = { productIds: [], source };
+        groups[rid].productIds.push(pid);
+      }
+
+      for (const [kirimRecordId, { productIds, source }] of Object.entries(groups)) {
+        addChiqimRecordV2({
+          warehouseId: warehouse.id,
+          date: new Date().toISOString().slice(0, 10),
+          clientCode: source.clientCode,
+          clientName: source.clientName,
+          clientPhone: source.clientPhone,
+          kirimRecordId,
+          selectedProductIds: productIds,
+          vehicleNumber: vehicleNumber.trim(),
+          photos,
+          note: chiqimNote.trim() || undefined,
+        });
+      }
+
+      toast.success("Chiqim saqlandi");
+
+      setSelectedProductIds(new Set());
       setVehicleNumber(""); setPhotos([]); setChiqimNote("");
       setShowChiqimPanel(false);
       refresh();
@@ -1117,7 +1372,9 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
 
   // ══════════════════════════════════════════════════════
   // ── UZB Warehouse view ────────────────────────────────
-  if (warehouse.type === "uzbekistan") {
+  if (warehouse.type === "uzbekistan" || warehouse.type === "ortaMijoz") {
+    const isOrtaMijoz = warehouse.type === "ortaMijoz";
+    const allowTransfer = isOrtaMijoz; // "Chiqaruvchi ombor"dan omborga o'tkazish olib tashlangan
     return (
       <>
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
@@ -1126,13 +1383,15 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
             <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <div className="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center shrink-0">
-              <Building2 className="w-5 h-5 text-blue-600" />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isOrtaMijoz ? "bg-teal-600/10" : "bg-blue-600/10"}`}>
+              <Building2 className={`w-5 h-5 ${isOrtaMijoz ? "text-teal-600" : "text-blue-600"}`} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-black text-foreground truncate">{warehouse.name}</h1>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600/10 text-blue-600 shrink-0">Chiqaruvchi</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${isOrtaMijoz ? "bg-teal-600/10 text-teal-600" : "bg-blue-600/10 text-blue-600"}`}>
+                  {isOrtaMijoz ? "O'rta mijoz" : "Chiqaruvchi"}
+                </span>
               </div>
               {warehouse.address && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -1173,69 +1432,6 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
             {/* ── UZB KIRIM tab ── */}
             {tab === "kirim" && (
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative bg-[#F5F6FA]">
-
-                {/* ── Statistics panel (my.gov.uz style) ── */}
-                {allChinaChiqim.length > 0 && (
-                  <div className="shrink-0 mx-4 mt-4 mb-0">
-                    <div className="bg-white rounded-2xl border border-[#DDE1EA] shadow-sm overflow-hidden">
-                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#EEF0F5] bg-[#F8F9FC]">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-[3px] h-4 rounded-full bg-[#005AB5]" />
-                          <span className="text-[11px] font-black uppercase tracking-widest text-[#374151]">Ombor holati</span>
-                        </div>
-                        <span className="text-[10px] text-[#9CA3AF] font-medium">{allChinaChiqim.length} ta yetkazma</span>
-                      </div>
-                      {/* Table head */}
-                      <div className="grid grid-cols-4 px-4 py-2 border-b border-[#EEF0F5]">
-                        <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">Ko'rsatkich</span>
-                        <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider text-center">Yo'lda</span>
-                        <span className="text-[10px] font-bold text-[#005AB5] uppercase tracking-wider text-center">Omborida</span>
-                        <span className="text-[10px] font-bold text-[#059669] uppercase tracking-wider text-center">Mijozlarga</span>
-                      </div>
-                      {[
-                        { icon: "📦", label: "Tovarlar", inT: uzbStats.inTransitProducts, rec: uzbStats.receivedProducts, dis: uzbStats.dispatchedProducts, unit: "ta" },
-                        { icon: "🗃️", label: "Joylar",   inT: uzbStats.inTransitJoys,     rec: uzbStats.receivedJoys,     dis: uzbStats.dispatchedJoys,     unit: "joy" },
-                        { icon: "📐", label: "Hajm",     inT: uzbStats.inTransitVol,      rec: uzbStats.receivedVol,      dis: uzbStats.dispatchedVol,      unit: "m³" },
-                      ].map((row, i) => (
-                        <div key={row.label} className={`grid grid-cols-4 items-center px-4 py-2.5 ${i < 2 ? "border-b border-[#F3F4F6]" : ""}`}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">{row.icon}</span>
-                            <span className="text-xs font-bold text-[#374151]">{row.label}</span>
-                          </div>
-                          <div className="text-center">
-                            <span className="text-sm font-black text-[#F59E0B]">{row.inT}</span>
-                            <span className="text-[10px] text-[#9CA3AF] ml-1">{row.unit}</span>
-                          </div>
-                          <div className="text-center">
-                            <span className="text-sm font-black text-[#005AB5]">{row.rec}</span>
-                            <span className="text-[10px] text-[#9CA3AF] ml-1">{row.unit}</span>
-                          </div>
-                          <div className="text-center">
-                            <span className={`text-sm font-black ${row.dis > 0 ? "text-[#059669]" : "text-[#D1D5DB]"}`}>{row.dis}</span>
-                            <span className="text-[10px] text-[#9CA3AF] ml-1">{row.unit}</span>
-                          </div>
-                        </div>
-                      ))}
-                      {/* Progress bar */}
-                      {(uzbStats.receivedProducts + uzbStats.dispatchedProducts) > 0 && (
-                        <div className="px-4 py-2.5 border-t border-[#EEF0F5] bg-[#F8F9FC]">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">Qabul qilish jarayoni</span>
-                            <span className="text-[10px] font-black text-[#005AB5]">
-                              {Math.round(((uzbStats.receivedProducts + uzbStats.dispatchedProducts) / Math.max(1, uzbStats.inTransitProducts + uzbStats.receivedProducts + uzbStats.dispatchedProducts)) * 100)}%
-                            </span>
-                          </div>
-                          <div className="h-1.5 w-full bg-[#E5E7EB] rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-[#005AB5] to-[#3B82F6] rounded-full transition-all duration-500"
-                              style={{ width: `${Math.round(((uzbStats.receivedProducts + uzbStats.dispatchedProducts) / Math.max(1, uzbStats.inTransitProducts + uzbStats.receivedProducts + uzbStats.dispatchedProducts)) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 {/* Active trucks (full width) */}
                 <div className="flex flex-col overflow-hidden flex-1 min-h-0 mt-4">
@@ -1758,12 +1954,15 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                     </button>
                   </div>
 
+                  {/* ── Statistics panel (my.gov.uz style) ── */}
+                  <UzbWarehouseStatsPanel recordCount={allChinaChiqim.length} stats={uzbStats} />
+
                   {/* Chiqim type toggle */}
                   <div className="flex gap-2 px-4 py-3 bg-white border-b border-[#EEF0F5] shrink-0">
                     {([
                       { key: "client",    label: "Mijoz bo'yicha",        icon: <IdCard className="w-3.5 h-3.5" /> },
                       { key: "warehouse", label: "Boshqa omborga o'tkazish", icon: <Building2 className="w-3.5 h-3.5" /> },
-                    ] as const).map(({ key, label, icon }) => (
+                    ] as const).filter(o => allowTransfer || o.key !== "warehouse").map(({ key, label, icon }) => (
                       <button
                         key={key}
                         onClick={() => {
@@ -1796,7 +1995,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                           {([
                             { key: "client" as const,    label: "Mijoz bo'yicha chiqim",   sub: "Mijoz ID bilan tovarni chiqarish",     icon: <IdCard className="w-5 h-5" />,    color: "bg-[#005AB5]" },
                             { key: "warehouse" as const, label: "Boshqa omborga o'tkazish", sub: "Tovarni boshqa omborga yo'naltirish", icon: <Building2 className="w-5 h-5" />, color: "bg-[#059669]" },
-                          ]).map(({ key, label, sub, icon, color }) => (
+                          ]).filter(o => allowTransfer || o.key !== "warehouse").map(({ key, label, sub, icon, color }) => (
                             <button
                               key={key}
                               onClick={() => {
@@ -1942,7 +2141,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                                       <label className="text-[10px] font-black text-[#005AB5] uppercase tracking-wider">Manzil ombor</label>
                                       <div className="mt-1 space-y-1.5">
                                         {allWarehouses
-                                          .filter(w => w.type === "uzbekistan" && w.id !== warehouse.id)
+                                          .filter(w => (w.type === "uzbekistan" || w.type === "ortaMijoz") && w.id !== warehouse.id)
                                           .map(w => (
                                             <button
                                               key={w.id}
@@ -1970,8 +2169,8 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                                             </button>
                                           ))
                                         }
-                                        {allWarehouses.filter(w => w.type === "uzbekistan" && w.id !== warehouse.id).length === 0 && (
-                                          <p className="text-xs text-[#9CA3AF] text-center py-3">Boshqa Chiqaruvchi ombor yo'q</p>
+                                        {allWarehouses.filter(w => (w.type === "uzbekistan" || w.type === "ortaMijoz") && w.id !== warehouse.id).length === 0 && (
+                                          <p className="text-xs text-[#9CA3AF] text-center py-3">Boshqa ombor yo'q</p>
                                         )}
                                       </div>
                                     </div>
@@ -2095,8 +2294,11 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
   }
 
   // ══════════════════════════════════════════════════════
-  // chegara: truck reception for kirim, FIFO dispatch for chiqim (same as china)
+  // chegara / ortaOmbor: truck reception for kirim.
+  // chegara's chiqim stays FIFO dispatch (same as china); ortaOmbor's chiqim re-forwards received goods by truck.
   const isChegara = warehouse.type === "chegara";
+  const isOrtaOmbor = warehouse.type === "ortaOmbor";
+  const isTransitKirim = isChegara || isOrtaOmbor;
 
   return (
     <>
@@ -2107,14 +2309,14 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isChegara ? "bg-violet-600/10" : "bg-orange-500/10"}`}>
-            {isChegara ? <Shield className="w-5 h-5 text-violet-600" /> : <Globe className="w-5 h-5 text-orange-500" />}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isOrtaOmbor ? "bg-amber-500/10" : isChegara ? "bg-violet-600/10" : "bg-orange-500/10"}`}>
+            {isOrtaOmbor ? <WarehouseIcon className="w-5 h-5 text-amber-600" /> : isChegara ? <Shield className="w-5 h-5 text-violet-600" /> : <Globe className="w-5 h-5 text-orange-500" />}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h1 className="text-base font-black text-foreground truncate">{warehouse.name}</h1>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${isChegara ? "bg-violet-600/10 text-violet-600" : "bg-orange-500/10 text-orange-500"}`}>
-                {isChegara ? "Chegara" : "Xitoy"}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${isOrtaOmbor ? "bg-amber-500/10 text-amber-600" : isChegara ? "bg-violet-600/10 text-violet-600" : "bg-orange-500/10 text-orange-500"}`}>
+                {isOrtaOmbor ? "O'rta ombor" : isChegara ? "Chegara" : "Xitoy"}
               </span>
             </div>
             {warehouse.address && (
@@ -2140,7 +2342,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
             <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-bold ${
               tab === "kirim" ? "bg-white/20 text-white" : "bg-blue-600/10 text-blue-600"
             }`}>
-              {isChegara ? activeTruckList.length : activeKirim.length}
+              {isTransitKirim ? activeTruckList.length : activeKirim.length}
             </span>
           </button>
           <button
@@ -2164,8 +2366,8 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
         {/* ── Content ── */}
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
 
-          {/* ════ KIRIM tab — chegara: truck reception (same as UZB) ════ */}
-          {tab === "kirim" && isChegara && (
+          {/* ════ KIRIM tab — chegara/ortaOmbor: truck reception (same as UZB) ════ */}
+          {tab === "kirim" && isTransitKirim && (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
               {/* Active trucks (full width) */}
               <div className="flex flex-col overflow-hidden flex-1 min-h-0">
@@ -2410,98 +2612,8 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
           )}
 
           {/* ════ KIRIM tab — single column + archive slide-over ════ */}
-          {tab === "kirim" && !isChegara && (
+          {tab === "kirim" && !isTransitKirim && (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
-
-              {/* Statistics panel */}
-              {kirimRecords.length > 0 && (
-                <div className="shrink-0 mx-4 mt-4 mb-2 rounded-2xl border border-border/60 bg-card overflow-hidden shadow-sm">
-                  {/* Panel header */}
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-border/60">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-4 rounded-full bg-blue-600" />
-                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">Ombor statistikasi</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground/50 font-medium">{kirimRecords.length} ta yetkazma</span>
-                  </div>
-
-                  {/* Table header */}
-                  <div className="grid grid-cols-4 px-4 py-2 bg-slate-50/60 border-b border-border/40">
-                    <span className="text-[10px] font-black text-muted-foreground/50 uppercase tracking-wider">Ko'rsatkich</span>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider text-center">Jami keldi</span>
-                    <span className="text-[10px] font-black text-red-400/80 uppercase tracking-wider text-center">Chiqib ketdi</span>
-                    <span className="text-[10px] font-black text-emerald-600/80 uppercase tracking-wider text-center">Qoldi</span>
-                  </div>
-
-                  {/* Rows */}
-                  {[
-                    {
-                      icon: "📦",
-                      label: "Tovarlar",
-                      total: warehouseStats.totalProducts,
-                      dispatched: warehouseStats.dispatchedProducts,
-                      remaining: warehouseStats.remainingProducts,
-                      unit: "ta",
-                    },
-                    {
-                      icon: "🗃️",
-                      label: "Joylar",
-                      total: warehouseStats.totalJoys,
-                      dispatched: warehouseStats.dispatchedJoys,
-                      remaining: warehouseStats.remainingJoys,
-                      unit: "joy",
-                    },
-                    {
-                      icon: "📐",
-                      label: "Hajm",
-                      total: warehouseStats.totalVolume,
-                      dispatched: warehouseStats.dispatchedVolume,
-                      remaining: warehouseStats.remainingVolume,
-                      unit: "m³",
-                    },
-                  ].map((row, i) => (
-                    <div
-                      key={row.label}
-                      className={`grid grid-cols-4 items-center px-4 py-2.5 ${i < 2 ? "border-b border-border/30" : ""} hover:bg-slate-50/50 transition-colors`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">{row.icon}</span>
-                        <span className="text-xs font-bold text-foreground/80">{row.label}</span>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-sm font-black text-foreground">{row.total}</span>
-                        <span className="text-[10px] text-muted-foreground ml-1">{row.unit}</span>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-sm font-black text-red-500">{row.dispatched}</span>
-                        <span className="text-[10px] text-muted-foreground ml-1">{row.unit}</span>
-                      </div>
-                      <div className="text-center">
-                        <span className={`text-sm font-black ${row.remaining > 0 ? "text-emerald-600" : "text-muted-foreground/40"}`}>{row.remaining}</span>
-                        <span className="text-[10px] text-muted-foreground ml-1">{row.unit}</span>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Progress bar */}
-                  {warehouseStats.totalJoys > 0 && (
-                    <div className="px-4 py-2.5 bg-slate-50/40 border-t border-border/40">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">Chiqim jarayoni</span>
-                        <span className="text-[10px] font-black text-blue-600">
-                          {Math.round((warehouseStats.dispatchedJoys / warehouseStats.totalJoys) * 100)}%
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.round((warehouseStats.dispatchedJoys / warehouseStats.totalJoys) * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Active kirim (full width) */}
               <div className="flex flex-col overflow-hidden flex-1 min-h-0">
@@ -2589,7 +2701,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
           )}
 
           {/* ════ CHIQIM tab — single column + archive slide-over ════ */}
-          {tab === "chiqim" && (
+          {tab === "chiqim" && !isOrtaOmbor && (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
 
               {/* Active products (full width) */}
@@ -2632,6 +2744,9 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                     </button>
                   </div>
                 </div>
+
+                {/* Statistics panel */}
+                <ChinaWarehouseStatsPanel recordCount={kirimRecords.length} stats={warehouseStats} />
 
                 <div className="flex-1 overflow-y-auto">
                   {!showChiqimPanel ? (
@@ -2951,6 +3066,297 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
               )}
             </div>
           )}
+
+          {/* ════ CHIQIM tab — O'rta ombor: re-forward received goods by a new truck ════ */}
+          {tab === "chiqim" && isOrtaOmbor && (
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+              <div className="flex flex-col overflow-hidden flex-1 min-h-0">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${showChiqimPanel ? "bg-amber-500" : "bg-muted-foreground/30"}`} />
+                    <span className="text-xs font-black uppercase tracking-wider text-foreground">Chiqim</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 font-bold">
+                      {ortaUndispatched.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {showChiqimPanel && selectedProductIds.size > 0 && (
+                      <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-md">
+                        {selectedProductIds.size} tanlandi
+                      </span>
+                    )}
+                    {showChiqimPanel ? (
+                      <button
+                        onClick={() => { setShowChiqimPanel(false); setSelectedProductIds(new Set()); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border text-muted-foreground text-xs font-bold hover:bg-secondary transition-colors"
+                      >
+                        Bekor
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowChiqimPanel(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition-colors"
+                        disabled={ortaUndispatched.length === 0}
+                      >
+                        <ArrowUpCircle className="w-3.5 h-3.5" /> Chiqim qilish
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowArchive(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary text-muted-foreground text-xs font-bold hover:bg-secondary/80 transition-colors"
+                    >
+                      Arxiv ({chiqimRecords.length})
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  {!showChiqimPanel ? (
+                    <div className="py-20 text-center px-4">
+                      <div className="w-16 h-16 rounded-2xl bg-amber-500/5 border-2 border-amber-500/10 flex items-center justify-center mx-auto mb-4">
+                        <ArrowUpCircle className="w-8 h-8 text-amber-500/30" />
+                      </div>
+                      <p className="text-sm font-bold text-muted-foreground mb-1">
+                        {ortaUndispatched.length > 0 ? `${ortaUndispatched.length} ta tovar chiqimga tayyor` : "Chiqarilishi kerak bo'lgan tovar yo'q"}
+                      </p>
+                      {ortaUndispatched.length > 0 && (
+                        <button
+                          onClick={() => setShowChiqimPanel(true)}
+                          className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-black hover:bg-amber-600 transition-colors shadow-md shadow-amber-500/20"
+                        >
+                          <ArrowUpCircle className="w-4 h-4" /> Chiqim qilish
+                        </button>
+                      )}
+                    </div>
+                  ) : ortaUndispatched.length === 0 ? (
+                    <div className="py-14 text-center px-4">
+                      <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-3">
+                        <Package className="w-7 h-7 text-muted-foreground/20" />
+                      </div>
+                      <p className="text-sm font-bold text-muted-foreground">Faol tovarlar yo'q</p>
+                      <p className="text-xs text-muted-foreground/50 mt-1">Kirim tabida fura qabul qiling</p>
+                    </div>
+                  ) : (
+                    <div className="p-3 space-y-2">
+                      {ortaUndispatched.map(({ pid, product: p, source }, idx) => {
+                        const isSelected = selectedProductIds.has(pid);
+                        const totalJoys = p.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0);
+                        return (
+                          <button
+                            key={pid}
+                            onClick={() => toggleProduct(pid)}
+                            className={`w-full flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all ${
+                              isSelected ? "border-amber-500 bg-amber-500/5" : "border-border bg-card hover:border-amber-300/60"
+                            }`}
+                          >
+                            <div className={`w-5 h-5 rounded shrink-0 mt-0.5 flex items-center justify-center ${isSelected ? "text-amber-600" : "text-muted-foreground"}`}>
+                              {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] font-black text-muted-foreground uppercase">#{idx + 1}</span>
+                                <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded font-mono">
+                                  {source.clientCode}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground/60 flex items-center gap-0.5">
+                                  <Truck className="w-2.5 h-2.5" />{source.vehicleNumber}
+                                </span>
+                              </div>
+                              <p className="text-xs font-bold text-foreground mt-0.5">{productSummary(p)}</p>
+                              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                                {p.quantity && (
+                                  <span className="text-[10px] text-muted-foreground">Soni: <strong>{p.quantity}</strong></span>
+                                )}
+                                {totalJoys > 0 && (
+                                  <span className="text-[10px] text-muted-foreground">Joy: <strong>{totalJoys}</strong></span>
+                                )}
+                                {p.totalVolume && (
+                                  <span className="text-[10px] text-muted-foreground">Vol: <strong>{p.totalVolume} m³</strong></span>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* ── Calculator ── */}
+                  {ortaSelectedIds.length > 0 && (
+                    <div className="mx-3 mb-3 p-3 bg-amber-500/8 border border-amber-500/20 rounded-xl">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-amber-600 mb-2">
+                        Jami hisob · {ortaSelectedIds.length} ta tovar
+                      </p>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="text-center bg-white rounded-lg py-2 border border-amber-500/10">
+                          <p className="text-lg font-black text-amber-700">{ortaTotals.qty || "—"}</p>
+                          <p className="text-[10px] text-gray-400 font-medium">Paket soni</p>
+                        </div>
+                        <div className="text-center bg-white rounded-lg py-2 border border-amber-500/10">
+                          <p className="text-lg font-black text-amber-700">{ortaTotals.places || "—"}</p>
+                          <p className="text-[10px] text-gray-400 font-medium">Joy soni</p>
+                        </div>
+                        <div className="text-center bg-white rounded-lg py-2 border border-amber-500/10">
+                          <p className="text-lg font-black text-amber-700">{ortaTotals.volume || "—"}</p>
+                          <p className="text-[10px] text-gray-400 font-medium">Kuba (m³)</p>
+                        </div>
+                        <div className="text-center bg-white rounded-lg py-2 border border-amber-500/10">
+                          <p className="text-lg font-black text-amber-700">{ortaTotals.weight || "—"}</p>
+                          <p className="text-[10px] text-gray-400 font-medium">Og'irlik (kg)</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Vehicle / Photos / Note / Save ── */}
+                  {ortaSelectedIds.length > 0 && (
+                    <div className="mx-3 mb-3 bg-white rounded-xl border border-amber-500/15 p-3 space-y-3">
+                      <p className="text-[10px] font-black text-amber-600 uppercase tracking-wider">Chiqim ma'lumotlari</p>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 mb-1">
+                          <Truck className="w-3 h-3" /> Avtomobil raqami <span className="text-destructive">*</span>
+                        </label>
+                        <input
+                          value={vehicleNumber}
+                          onChange={e => setVehicleNumber(e.target.value)}
+                          placeholder="01 A 123 AA"
+                          className="w-full px-2.5 py-2 rounded-lg border border-input bg-background text-xs focus:outline-none focus:ring-1 focus:ring-amber-500/30 focus:border-amber-500 uppercase font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 mb-1">
+                          <Camera className="w-3 h-3" /> Rasmlar
+                          <span className="ml-1 text-[10px] px-1 py-0.5 rounded font-bold bg-secondary text-muted-foreground">
+                            {photos.length}/20
+                          </span>
+                        </label>
+                        {photos.length < 20 && (
+                          <label className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-dashed border-amber-200 bg-amber-500/5 hover:border-amber-400 text-xs text-amber-500 hover:text-amber-600 cursor-pointer transition-colors">
+                            <Camera className="w-3.5 h-3.5" /> Rasm qo'shish
+                            <input type="file" accept="image/*" multiple onChange={handlePhotos} className="hidden" />
+                          </label>
+                        )}
+                        {photos.length > 0 && (
+                          <div className="grid grid-cols-4 gap-1.5 mt-1.5">
+                            {photos.map((ph, i) => (
+                              <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-border group">
+                                <img src={ph.dataUrl} alt={ph.name} className="w-full h-full object-cover" />
+                                <button
+                                  onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
+                                  className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/40 flex items-center justify-center transition-colors"
+                                >
+                                  <XIcon className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground block mb-1">Izoh</label>
+                        <textarea
+                          value={chiqimNote}
+                          onChange={e => setChiqimNote(e.target.value)}
+                          placeholder="Qo'shimcha..."
+                          rows={2}
+                          className="w-full px-2.5 py-2 rounded-lg border border-input bg-background text-xs focus:outline-none focus:ring-1 focus:ring-amber-500/30 focus:border-amber-500 resize-none"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleSaveOrtaChiqim}
+                        disabled={chiqimSaving}
+                        className="w-full py-2.5 rounded-xl bg-amber-500 text-white font-black text-xs hover:bg-amber-600 disabled:opacity-50 transition-colors"
+                      >
+                        {chiqimSaving ? "Saqlanmoqda..." : `Chiqimni saqlash (${ortaSelectedIds.length} ta tovar)`}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Archive slide-over */}
+              {showArchive && (
+                <div className="absolute inset-0 z-10 flex">
+                  <button
+                    className="flex-1 bg-foreground/10"
+                    onClick={() => setShowArchive(false)}
+                  />
+                  <div className="w-80 bg-card border-l border-border flex flex-col shadow-2xl">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-muted-foreground/40" />
+                        <span className="text-xs font-black uppercase tracking-wider text-foreground">Arxiv</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground font-bold">
+                          {chiqimRecords.length}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setShowArchive(false)}
+                        className="p-1 rounded-lg hover:bg-secondary text-muted-foreground transition-colors"
+                      >
+                        <XIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                      {chiqimRecords.length === 0 ? (
+                        <div className="py-14 text-center">
+                          <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-3">
+                            <ArrowUpCircle className="w-7 h-7 text-muted-foreground/20" />
+                          </div>
+                          <p className="text-sm font-bold text-muted-foreground/50">Arxiv bo'sh</p>
+                          <p className="text-xs text-muted-foreground/40 mt-1">Chiqarilgan tovarlar bu yerda</p>
+                        </div>
+                      ) : (
+                        [...chiqimRecords].reverse().map(record => (
+                          <div key={record.id} className="bg-card rounded-xl border border-border p-3 group">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center shrink-0">
+                                  <ArrowUpCircle className="w-4 h-4 text-amber-600" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-black text-foreground truncate">
+                                    {record.clientName || record.clientCode}
+                                  </p>
+                                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                                    <span className="text-[10px] font-bold text-amber-600 flex items-center gap-0.5">
+                                      <Truck className="w-2.5 h-2.5" />{record.vehicleNumber}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {record.selectedProductIds.length} tovar
+                                    </span>
+                                    {record.photos.length > 0 && (
+                                      <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                        <Camera className="w-2.5 h-2.5" />{record.photos.length}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {record.note && (
+                                    <p className="text-[10px] text-muted-foreground mt-0.5 italic truncate">{record.note}</p>
+                                  )}
+                                  <p className="text-[10px] text-muted-foreground/40 mt-0.5">{fmtDateTime(record.createdAt)}</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => setDeleteChiqimId(record.id)}
+                                className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -2973,12 +3379,12 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
         tone="destructive"
       />
 
-      {isChegara && (
+      {isTransitKirim && (
         <ConfirmModal isOpen={!!deleteReceiptId} onClose={() => setDeleteReceiptId(null)} onConfirm={handleDeleteReceipt}
           title="Qabul yozuvini o'chirish" description="Ushbu fura qabul yozuvini o'chirishni tasdiqlaysizmi?" confirmLabel="O'chirish" tone="destructive" />
       )}
 
-      {!isChegara && showKirimWizard && (
+      {!isTransitKirim && showKirimWizard && (
         <WarehouseKirimWizard
           warehouseId={warehouse.id}
           onClose={() => setShowKirimWizard(false)}

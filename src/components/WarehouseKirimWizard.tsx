@@ -40,6 +40,8 @@ function makeProduct(): KirimProduct {
     quantity: "",
     width: "", length: "", height: "",
     dimensionUnit: "sm",
+    volumeMode: "places",
+    manualVolumes: [{ id: crypto.randomUUID(), value: "" }],
     totalVolume: "",
     brutto: "", bruttoUnit: "kg",
     netto: "", nettoUnit: "kg",
@@ -47,20 +49,43 @@ function makeProduct(): KirimProduct {
   };
 }
 
-function calcVolume(p: KirimProduct): string {
+// Bitta birlik (1 joy / 1 tovar) hajmi, m³ da — width×length×height dan
+function calcUnitCube(p: KirimProduct): number {
   const w = parseFloat(p.width);
   const l = parseFloat(p.length);
   const h = parseFloat(p.height);
-  if (!w || !l || !h) return "";
+  if (!w || !l || !h) return 0;
   const raw = w * l * h;
   // Convert to m³: mm → ÷1_000_000_000, sm(cm) → ÷1_000_000, m → ÷1
   const divisor =
     p.dimensionUnit === "m" ? 1 :
     p.dimensionUnit === "mm" ? 1_000_000_000 :
     1_000_000;
-  const m3 = raw / divisor;
-  const formatted = parseFloat(m3.toFixed(6)).toString();
-  return `${formatted} m³`;
+  return raw / divisor;
+}
+
+function formatM3(value: number): string {
+  if (!value) return "";
+  return `${parseFloat(value.toFixed(6)).toString()} m³`;
+}
+
+// Jami hajm: tanlangan usulga ko'ra hisoblanadi
+// - "places"   → 1 birlik hajmi × joylar soni
+// - "quantity" → 1 birlik hajmi × tovar soni
+// - "manual"   → qo'lda kiritilgan hajmlar yig'indisi
+function calcVolume(p: KirimProduct): string {
+  const mode = p.volumeMode || "places";
+  if (mode === "manual") {
+    const total = (p.manualVolumes || []).reduce((s, m) => s + (parseFloat(m.value) || 0), 0);
+    return formatM3(total);
+  }
+  const unitCube = calcUnitCube(p);
+  if (!unitCube) return "";
+  const multiplier = mode === "quantity"
+    ? (parseFloat(p.quantity) || 0)
+    : p.places.reduce((s, pl) => s + (parseFloat(pl.count) || 0), 0);
+  if (!multiplier) return "";
+  return formatM3(unitCube * multiplier);
 }
 
 // ─── Section header ───────────────────────────────────────
@@ -131,8 +156,12 @@ export function WarehouseKirimWizard({ warehouseId, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
 
   const storedIds = useMemo(() => getStoredClientIds(), []);
-  const volume = useMemo(() => calcVolume(cur),
+  const unitCube = useMemo(() => calcUnitCube(cur),
     [cur.width, cur.length, cur.height, cur.dimensionUnit]);
+  const volume = useMemo(() => calcVolume(cur), [
+    cur.width, cur.length, cur.height, cur.dimensionUnit,
+    cur.volumeMode, cur.places, cur.quantity, cur.manualVolumes,
+  ]);
 
   // Fetch employees from API on mount
   useEffect(() => {
@@ -181,6 +210,14 @@ export function WarehouseKirimWizard({ warehouseId, onClose, onSaved }: Props) {
   const delP = (id: string) => {
     if (cur.places.length <= 1) return;
     upd({ places: cur.places.filter(p => p.id !== id) });
+  };
+
+  const updMV = (id: string, v: string) =>
+    upd({ manualVolumes: cur.manualVolumes.map(m => m.id === id ? { ...m, value: v } : m) });
+  const addMV = () => upd({ manualVolumes: [...cur.manualVolumes, { id: crypto.randomUUID(), value: "" }] });
+  const delMV = (id: string) => {
+    if (cur.manualVolumes.length <= 1) return;
+    upd({ manualVolumes: cur.manualVolumes.filter(m => m.id !== id) });
   };
 
   const addCustomUnit = () => {
@@ -757,42 +794,108 @@ export function WarehouseKirimWizard({ warehouseId, onClose, onSaved }: Props) {
       {/* ── Section 4: O'lchamlari + Jami hajmi ── */}
       <div className="bg-secondary/30 rounded-2xl border border-border/60 p-4">
         <SectionLabel icon={Ruler} title="O'lchamlari" />
-        <div className="space-y-2 mb-3">
-          <div>
-            <label className="text-[10px] font-bold text-muted-foreground mb-1 block">O'lchov birligi</label>
-            <select
-              value={cur.dimensionUnit}
-              onChange={e => upd({ dimensionUnit: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+
+        {/* Hisoblash usuli */}
+        <div className="flex gap-1.5 mb-3">
+          {([
+            { key: "places", label: "Joy soni bo'yicha" },
+            { key: "quantity", label: "Tovar soni bo'yicha" },
+            { key: "manual", label: "Qo'lda kiritish" },
+          ] as const).map(opt => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => upd({ volumeMode: opt.key })}
+              className={`flex-1 px-1.5 py-2 rounded-xl text-[10.5px] font-bold leading-tight transition-colors border ${
+                cur.volumeMode === opt.key
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-background text-muted-foreground border-input hover:border-blue-300"
+              }`}
             >
-              {DIMENSION_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Eni", field: "width" as const },
-              { label: "Uzunligi", field: "length" as const },
-              { label: "Balandligi", field: "height" as const },
-            ].map(({ label, field }) => (
-              <div key={field}>
-                <label className="text-[10px] font-bold text-muted-foreground mb-1 block">{label}</label>
-                <input
-                  type="number" min="0" step="any"
-                  value={cur[field]}
-                  onChange={e => upd({ [field]: e.target.value })}
-                  placeholder="0"
-                  className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                />
-              </div>
-            ))}
-          </div>
+              {opt.label}
+            </button>
+          ))}
         </div>
+
+        {cur.volumeMode === "manual" ? (
+          <>
+            {/* Qo'lda kiritiladigan hajmlar ro'yxati */}
+            <div className="space-y-2 mb-3">
+              {cur.manualVolumes.map(mv => (
+                <div key={mv.id} className="flex gap-2 items-center">
+                  <input
+                    type="number" min="0" step="any"
+                    value={mv.value}
+                    onChange={e => updMV(mv.id, e.target.value)}
+                    placeholder="Hajm"
+                    className="flex-1 px-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                  <span className="text-xs font-bold text-muted-foreground shrink-0">m³</span>
+                  <button onClick={() => delMV(mv.id)} disabled={cur.manualVolumes.length <= 1}
+                    className="p-2 text-muted-foreground hover:text-destructive disabled:opacity-30 rounded-lg transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              <button onClick={addMV} className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700">
+                <Plus className="w-3.5 h-3.5" /> Yana o'lcham qo'shish
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="space-y-2 mb-3">
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground mb-1 block">O'lchov birligi</label>
+                <select
+                  value={cur.dimensionUnit}
+                  onChange={e => upd({ dimensionUnit: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                >
+                  {DIMENSION_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Eni", field: "width" as const },
+                  { label: "Uzunligi", field: "length" as const },
+                  { label: "Balandligi", field: "height" as const },
+                ].map(({ label, field }) => (
+                  <div key={field}>
+                    <label className="text-[10px] font-bold text-muted-foreground mb-1 block">{label}</label>
+                    <input
+                      type="number" min="0" step="any"
+                      value={cur[field]}
+                      onChange={e => upd({ [field]: e.target.value })}
+                      placeholder="0"
+                      className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-between px-4 py-2 rounded-xl border bg-secondary/50 border-border/50 mb-1.5">
+              <span className="text-[11px] font-bold text-muted-foreground">Bitta birlik hajmi</span>
+              <span className="text-xs font-black text-foreground">
+                {unitCube ? formatM3(unitCube) : "—"}
+              </span>
+            </div>
+          </>
+        )}
+
         <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl border ${
           volume
             ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
             : "bg-secondary/50 border-border/50"
         }`}>
-          <span className="text-xs font-bold text-muted-foreground">Jami hajmi</span>
+          <span className="text-xs font-bold text-muted-foreground">
+            Jami hajmi
+            {cur.volumeMode !== "manual" && (
+              <span className="text-muted-foreground/60 font-normal normal-case ml-1">
+                ({cur.volumeMode === "quantity" ? "tovar soniga" : "joy soniga"} ko'paytirilgan)
+              </span>
+            )}
+          </span>
           <span className={`text-sm font-black ${volume ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground/40"}`}>
             {volume || "—"}
           </span>
