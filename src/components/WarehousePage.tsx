@@ -45,7 +45,7 @@ export function WarehousePage() {
   const [formDescription, setFormDescription] = useState("");
   const [formType, setFormType] = useState<WarehouseType>("china");
 
-  const refresh = () => setWarehouses(getWarehouses());
+  const refresh = async () => setWarehouses(await getWarehouses());
 
   useEffect(() => {
     refresh();
@@ -69,13 +69,13 @@ export function WarehousePage() {
     setShowForm(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formName.trim()) {
       toast.error("Ombor nomini kiriting");
       return;
     }
     if (editingWarehouse) {
-      updateWarehouse(editingWarehouse.id, {
+      await updateWarehouse(editingWarehouse.id, {
         name: formName.trim(),
         address: formAddress.trim() || undefined,
         description: formDescription.trim() || undefined,
@@ -83,7 +83,7 @@ export function WarehousePage() {
       });
       toast.success("Ombor yangilandi");
     } else {
-      createWarehouse({
+      await createWarehouse({
         name: formName.trim(),
         address: formAddress.trim() || undefined,
         description: formDescription.trim() || undefined,
@@ -95,9 +95,9 @@ export function WarehousePage() {
     refresh();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteId) return;
-    deleteWarehouse(deleteId);
+    await deleteWarehouse(deleteId);
     toast.success("Ombor o'chirildi");
     setDeleteId(null);
     refresh();

@@ -1,5 +1,3 @@
-// Lightweight REST + WebSocket client for the NestJS backend.
-// Reads VITE_API_URL (e.g. https://api.example.com). Falls back to same origin /api.
 import { Role, TaskStatus } from "../types";
 import { io, Socket } from "socket.io-client";
 
@@ -116,7 +114,8 @@ export async function api<T = unknown>(
     throw new Error(msg);
   }
   if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  const text = await res.text();
+  return text ? JSON.parse(text) : (undefined as T);
 }
 
 const cleanPhone = (phone: string | undefined) => phone ? phone.replace(/\s+/g, "") : "";
@@ -294,7 +293,7 @@ export const API = {
       completedByName: c.soldByName
     }
   })),
-  createClient: (data: any) => api("/clients", {
+  createClient: (data: any) => api<any>("/clients", {
     method: "POST",
     json: {
       fullName: data.name || data.fullName,
@@ -312,6 +311,7 @@ export const API = {
       stage: data.stage,
       remindAt: data.remindAt,
       description: data.description,
+      clientCode: data.clientCode,
     }
   }),
   deleteClient: (id: string) => api(`/clients/${id}`, { method: "DELETE" }),
