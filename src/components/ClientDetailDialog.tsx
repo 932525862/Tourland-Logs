@@ -509,7 +509,7 @@ export function ClientDetailDialog({
         await API.addNote(localClient.id, callNote.trim());
         setCallNote("");
       }
-      await API.updateClient(localClient.id, { stage: "talked" });
+      await API.updateClient(localClient.id, { stage: "talked", clientCode: nextId });
       storeClientId(localClient.id, nextId);
       setAssignedCode(nextId);
       setLocalClient(prev => ({

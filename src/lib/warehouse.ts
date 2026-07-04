@@ -1,3 +1,5 @@
+import { api } from "./api/client";
+
 const KEY = "crm_warehouses";
 
 export type WarehouseType = "china" | "uzbekistan" | "chegara" | "ortaOmbor" | "ortaMijoz";
@@ -11,45 +13,28 @@ export interface Warehouse {
   createdAt: string;
 }
 
-export function getWarehouses(): Warehouse[] {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+export async function getWarehouses(): Promise<Warehouse[]> {
+  return await api<Warehouse[]>("/warehouses");
 }
 
-function persist(warehouses: Warehouse[]): void {
-  localStorage.setItem(KEY, JSON.stringify(warehouses));
+export async function createWarehouse(data: Omit<Warehouse, "id" | "createdAt">): Promise<Warehouse> {
+  return await api<Warehouse>("/warehouses", {
+    method: "POST",
+    json: data
+  });
 }
 
-export function createWarehouse(data: Omit<Warehouse, "id" | "createdAt">): Warehouse {
-  const list = getWarehouses();
-  const warehouse: Warehouse = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    name: data.name,
-    type: data.type ?? "china",
-    ...(data.address ? { address: data.address } : {}),
-    ...(data.description ? { description: data.description } : {}),
-  };
-  list.push(warehouse);
-  persist(list);
-  return warehouse;
+export async function updateWarehouse(id: string, data: Partial<Pick<Warehouse, "name" | "address" | "description" | "type">>): Promise<void> {
+  await api(`/warehouses/${id}`, {
+    method: "PATCH",
+    json: data
+  });
 }
 
-export function updateWarehouse(id: string, data: Partial<Pick<Warehouse, "name" | "address" | "description" | "type">>): void {
-  const list = getWarehouses();
-  const idx = list.findIndex(w => w.id === id);
-  if (idx !== -1) {
-    list[idx] = { ...list[idx], ...data };
-    persist(list);
-  }
-}
-
-export function deleteWarehouse(id: string): void {
-  persist(getWarehouses().filter(w => w.id !== id));
+export async function deleteWarehouse(id: string): Promise<void> {
+  await api(`/warehouses/${id}`, {
+    method: "DELETE"
+  });
 }
 
 // --- Kirim / Chiqim entries ---
@@ -130,7 +115,6 @@ export interface KirimProduct {
   length: string;
   height: string;
   dimensionUnit: string;
-  /** Jami hajmni qanday hisoblash: joy soniga, tovar soniga ko'paytirib yoki qo'lda kiritib */
   volumeMode: VolumeMode;
   manualVolumes: KirimManualVolume[];
   totalVolume: string;
@@ -145,6 +129,7 @@ export interface KirimAttachment {
   name: string;
   type: string;
   size: number;
+  dataUrl?: string;
 }
 
 export interface KirimRecord {
@@ -185,58 +170,40 @@ function persistKirim(records: KirimRecord[]): void {
   localStorage.setItem(KIRIM_KEY, JSON.stringify(records));
 }
 
-export function getKirimRecords(warehouseId: string): KirimRecord[] {
-  return getAllKirimRecords().filter(r => r.warehouseId === warehouseId);
+export async function getKirimRecords(warehouseId: string): Promise<KirimRecord[]> {
+  return await api<KirimRecord[]>(`/warehouses/${warehouseId}/kirim`);
 }
 
-export function addKirimRecord(data: Omit<KirimRecord, "id" | "createdAt">): KirimRecord {
-  const all = getAllKirimRecords();
-  const record: KirimRecord = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    ...data,
-  };
-  all.push(record);
-  persistKirim(all);
-  return record;
+export async function addKirimRecord(data: Omit<KirimRecord, "id" | "createdAt">): Promise<KirimRecord> {
+  return await api<KirimRecord>(`/warehouses/${data.warehouseId}/kirim`, {
+    method: "POST",
+    json: data
+  });
 }
 
-export function deleteKirimRecord(id: string): void {
-  persistKirim(getAllKirimRecords().filter(r => r.id !== id));
+export async function deleteKirimRecord(id: string): Promise<void> {
+  await api(`/warehouses/kirim/${id}`, {
+    method: "DELETE"
+  });
 }
 
-export function updateKirimStatus(id: string, status: KirimRecord["taskStatus"]): void {
-  const all = getAllKirimRecords();
-  const idx = all.findIndex(r => r.id === id);
-  if (idx !== -1) {
-    all[idx] = { ...all[idx], taskStatus: status };
-    persistKirim(all);
-  }
+export async function updateKirimStatus(id: string, status: KirimRecord["taskStatus"]): Promise<void> {
+  await api(`/warehouses/kirim/${id}/status`, {
+    method: "PATCH",
+    json: { status }
+  });
 }
 
-/**
- * Qisman chiqimda joy sonini kamaytiradi.
- * Barcha joylar chiqarilganda mahsulotni to'liq arxivlaydi.
- */
-export function updateDispatchedPlaces(
+export async function updateDispatchedPlaces(
   kirimId: string,
   productId: string,
   placesCount: number,
   totalPlaces: number,
-): void {
-  const all = getAllKirimRecords();
-  const idx = all.findIndex(r => r.id === kirimId);
-  if (idx === -1) return;
-  const record = all[idx];
-  const prev = (record.dispatchedPlaces ?? {})[productId] ?? 0;
-  const next = prev + placesCount;
-  const newDispatchedPlaces = { ...(record.dispatchedPlaces ?? {}), [productId]: next };
-  const newDispatchedIds = [...(record.dispatchedProductIds ?? [])];
-  if (next >= totalPlaces && !newDispatchedIds.includes(productId)) {
-    newDispatchedIds.push(productId);
-  }
-  all[idx] = { ...record, dispatchedPlaces: newDispatchedPlaces, dispatchedProductIds: newDispatchedIds };
-  persistKirim(all);
+): Promise<void> {
+  await api(`/warehouses/kirim/${kirimId}/dispatch-places`, {
+    method: "PATCH",
+    json: { productId, placesCount, totalPlaces }
+  });
 }
 
 export function updateKirimProduct(kirimId: string, updatedProduct: KirimProduct): void {
@@ -251,20 +218,17 @@ export function updateKirimProduct(kirimId: string, updatedProduct: KirimProduct
   }
 }
 
-export function markProductsDispatched(kirimRecordId: string, productIds: string[]): void {
-  const all = getAllKirimRecords();
-  const idx = all.findIndex(r => r.id === kirimRecordId);
-  if (idx !== -1) {
-    const prev = all[idx].dispatchedProductIds ?? [];
-    const next = Array.from(new Set([...prev, ...productIds]));
-    all[idx] = { ...all[idx], dispatchedProductIds: next };
-    persistKirim(all);
-  }
+export async function markProductsDispatched(kirimRecordId: string, productIds: string[]): Promise<void> {
+  await api(`/warehouses/kirim/${kirimRecordId}/mark-dispatched`, {
+    method: "PATCH",
+    json: { productIds }
+  });
 }
 
-export function getUndispatchedKirimForClient(warehouseId: string, clientCode: string): KirimRecord[] {
-  return getAllKirimRecords()
-    .filter(r => r.warehouseId === warehouseId && r.clientCode === clientCode)
+export async function getUndispatchedKirimForClient(warehouseId: string, clientCode: string): Promise<KirimRecord[]> {
+  const records = await getKirimRecords(warehouseId);
+  return records
+    .filter(r => r.clientCode === clientCode)
     .filter(r => {
       const done = new Set(r.dispatchedProductIds ?? []);
       return r.products.some(p => !done.has(p.id));
@@ -293,52 +257,31 @@ export interface ChiqimRecord {
   createdAt: string;
 }
 
-const CHIQIM_V2_KEY = "crm_warehouse_chiqim_v2";
-
-function getAllChiqimV2(): ChiqimRecord[] {
-  try {
-    const raw = localStorage.getItem(CHIQIM_V2_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+export async function getChiqimRecordsV2(warehouseId: string): Promise<ChiqimRecord[]> {
+  return await api<ChiqimRecord[]>(`/warehouses/${warehouseId}/chiqim`);
 }
 
-function persistChiqimV2(records: ChiqimRecord[]): void {
-  localStorage.setItem(CHIQIM_V2_KEY, JSON.stringify(records));
+export async function addChiqimRecordV2(data: Omit<ChiqimRecord, "id" | "createdAt">): Promise<ChiqimRecord> {
+  return await api<ChiqimRecord>(`/warehouses/${data.warehouseId}/chiqim`, {
+    method: "POST",
+    json: data
+  });
 }
 
-export function getChiqimRecordsV2(warehouseId: string): ChiqimRecord[] {
-  return getAllChiqimV2().filter(r => r.warehouseId === warehouseId);
-}
-
-export function addChiqimRecordV2(data: Omit<ChiqimRecord, "id" | "createdAt">): ChiqimRecord {
-  const all = getAllChiqimV2();
-  const record: ChiqimRecord = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    ...data,
-  };
-  all.push(record);
-  persistChiqimV2(all);
-  return record;
-}
-
-export function deleteChiqimRecordV2(id: string): void {
-  persistChiqimV2(getAllChiqimV2().filter(r => r.id !== id));
+export async function deleteChiqimRecordV2(id: string): Promise<void> {
+  await api(`/warehouses/chiqim/${id}`, {
+    method: "DELETE"
+  });
 }
 
 // All chiqim records across all China warehouses
-export function getAllChiqimRecordsGlobal(): ChiqimRecord[] {
-  return getAllChiqimV2();
+export async function getAllChiqimRecordsGlobal(): Promise<ChiqimRecord[]> {
+  return await api<ChiqimRecord[]>('/warehouses/chiqim/all');
 }
 
 // All kirim records across all China warehouses
-export function getAllKirimRecordsGlobal(): KirimRecord[] {
-  try {
-    const raw = localStorage.getItem(KIRIM_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+export async function getAllKirimRecordsGlobal(): Promise<KirimRecord[]> {
+  return await api<KirimRecord[]>('/warehouses/kirim/all');
 }
 
 // ─── UZB Warehouse — Truck Receipt (Fura qabul qilish) ────────

@@ -14,6 +14,7 @@ import {
   type KirimProduct,
   type KirimMeasurement,
   type KirimPlace,
+  type KirimAttachment,
 } from "@/lib/warehouse";
 
 // ─── Constants ────────────────────────────────────────────
@@ -140,7 +141,7 @@ export function WarehouseKirimWizard({ warehouseId, onClose, onSaved }: Props) {
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   );
   const [notifyAt, setNotifyAt] = useState("09:00");
-  const [attachments, setAttachments] = useState<{ name: string; type: string; size: number }[]>([]);
+  const [attachments, setAttachments] = useState<KirimAttachment[]>([]);
 
   // Step 3 – Products
   const [completedProducts, setCompletedProducts] = useState<KirimProduct[]>([]);
@@ -229,10 +230,18 @@ export function WarehouseKirimWizard({ warehouseId, onClose, onSaved }: Props) {
 
   // ── File handler ───────────────────────────────────────
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAttachments(prev => [
-      ...prev,
-      ...Array.from(e.target.files || []).map(f => ({ name: f.name, type: f.type, size: f.size })),
-    ]);
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        setAttachments(prev => [
+          ...prev,
+          { name: file.name, type: file.type, size: file.size, dataUrl },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
     e.target.value = "";
   };
 
@@ -340,7 +349,7 @@ export function WarehouseKirimWizard({ warehouseId, onClose, onSaved }: Props) {
           ? (employees.find(e => e.id === selectedEmployeeId)?.name ?? assignedEmployee)
           : assignedEmployee;
 
-      addKirimRecord({
+      await addKirimRecord({
         warehouseId,
         date,
         clientCode: clientCode.toUpperCase().trim(),

@@ -365,14 +365,14 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
 
   const storedIds = getStoredClientIds();
 
-  const refresh = () => {
-    setKirimRecords(getKirimRecords(warehouse.id));
-    setChiqimRecords(getChiqimRecordsV2(warehouse.id));
+  const refresh = async () => {
+    setKirimRecords(await getKirimRecords(warehouse.id));
+    setChiqimRecords(await getChiqimRecordsV2(warehouse.id));
     setUzbKirimRecords(getUzbKirimRecords(warehouse.id));
-    setAllWarehouses(getWarehouses());
+    setAllWarehouses(await getWarehouses());
     if (warehouse.type !== "china") {
-      setAllChinaChiqim(getAllChiqimRecordsGlobal());
-      setAllChinaKirim(getAllKirimRecordsGlobal());
+      setAllChinaChiqim(await getAllChiqimRecordsGlobal());
+      setAllChinaKirim(await getAllKirimRecordsGlobal());
       setUzbReceipts(getChiqimReceipts(warehouse.id));
       setUzbDispatches(getUzbDispatches(warehouse.id));
       setOutgoingTransfers(getOutgoingUzbTransfers(warehouse.id));
@@ -804,7 +804,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
 
       for (const [kirimRecordId, productIds] of Object.entries(groups)) {
         const kr = allProductMap[productIds[0]]?.kirimRecord;
-        addChiqimRecordV2({
+        await addChiqimRecordV2({
           warehouseId: warehouse.id,
           date: new Date().toISOString().slice(0, 10),
           clientCode: kr?.clientCode ?? "",
@@ -830,14 +830,14 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
               if (entered >= remainingJoys) {
                 fullIds.push(pid);
               } else {
-                updateDispatchedPlaces(kirimRecordId, pid, entered, totalJoys);
+                await updateDispatchedPlaces(kirimRecordId, pid, entered, totalJoys);
               }
             }
           } else {
             fullIds.push(pid);
           }
         }
-        if (fullIds.length > 0) markProductsDispatched(kirimRecordId, fullIds);
+        if (fullIds.length > 0) await markProductsDispatched(kirimRecordId, fullIds);
       }
 
       toast.success("Chiqim saqlandi va tovarlar arxivlandi");
@@ -871,7 +871,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
       }
 
       for (const [kirimRecordId, { productIds, source }] of Object.entries(groups)) {
-        addChiqimRecordV2({
+        await addChiqimRecordV2({
           warehouseId: warehouse.id,
           date: new Date().toISOString().slice(0, 10),
           clientCode: source.clientCode,
@@ -898,17 +898,17 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
     }
   };
 
-  const handleDeleteKirim = () => {
+  const handleDeleteKirim = async () => {
     if (!deleteKirimId) return;
-    deleteKirimRecord(deleteKirimId);
+    await deleteKirimRecord(deleteKirimId);
     toast.success("Kirim yozuvi o'chirildi");
     setDeleteKirimId(null);
     refresh();
   };
 
-  const handleDeleteChiqim = () => {
+  const handleDeleteChiqim = async () => {
     if (!deleteChiqimId) return;
-    deleteChiqimRecordV2(deleteChiqimId);
+    await deleteChiqimRecordV2(deleteChiqimId);
     toast.success("O'chirildi");
     setDeleteChiqimId(null);
     refresh();
@@ -1186,23 +1186,39 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
               </div>
             )}
 
-            {record.attachments.length > 0 && (
+            {(record.attachments ?? []).length > 0 && (
               <div>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-1.5">Hujjatlar</p>
                 <div className="space-y-1">
-                  {record.attachments.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs bg-card rounded-lg px-3 py-2 border border-border/50">
-                      <FileText className="w-3 h-3 text-primary/60 shrink-0" />
-                      <span className="truncate flex-1">{f.name}</span>
-                    </div>
-                  ))}
+                  {record.attachments.map((f, i) => {
+                    const content = (
+                      <>
+                        <FileText className="w-3 h-3 text-primary/60 shrink-0" />
+                        <span className="truncate flex-1 font-medium">{f.name}</span>
+                      </>
+                    );
+                    return f.dataUrl ? (
+                      <a
+                        key={i}
+                        href={f.dataUrl}
+                        download={f.name}
+                        className="flex items-center gap-2 text-xs bg-card hover:bg-secondary/40 rounded-lg px-3 py-2 border border-border/50 hover:text-primary transition-colors cursor-pointer"
+                      >
+                        {content}
+                      </a>
+                    ) : (
+                      <div key={i} className="flex items-center gap-2 text-xs bg-card rounded-lg px-3 py-2 border border-border/50 text-muted-foreground">
+                        {content}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             <div>
               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-2">
-                Tovarlar ({record.products.length} ta)
+                Tovarlar ({(record.products ?? []).length} ta)
               </p>
               <div className="space-y-2">
                 {record.products.map((p, i) => {
