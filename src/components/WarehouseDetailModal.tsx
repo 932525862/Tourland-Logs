@@ -1832,7 +1832,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                         <div className="grid grid-cols-4 gap-px bg-[#EEF0F5]">
                           {[
                             { val: receiptTotals.products, label: "Tovar" },
-                            { val: receiptTotals.qty,      label: "Paket" },
+                            { val: receiptTotals.qty,      label: "Soni" },
                             { val: receiptTotals.places,   label: "Joy" },
                             { val: receiptTotals.volume,   label: "m³" },
                           ].map(({ val, label }) => (
@@ -2319,7 +2319,6 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
   return (
     <>
       <div className="fixed inset-0 z-50 bg-background flex flex-col">
-
         {/* ── Header ── */}
         <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border bg-card shrink-0">
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
@@ -2532,7 +2531,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                     <div className="mx-3 mb-3 p-4 bg-white border-2 border-violet-100 rounded-2xl shadow-sm">
                       <p className="text-[10px] font-black uppercase tracking-widest text-violet-500 mb-3">Jami hisob · {receiptTotals.clients} mijoz</p>
                       <div className="grid grid-cols-4 gap-2">
-                        {[{ val: receiptTotals.products, label: "Tovar" }, { val: receiptTotals.qty, label: "Paket" }, { val: receiptTotals.places, label: "Joy" }, { val: receiptTotals.volume, label: "m³" }]
+                        {[{ val: receiptTotals.products, label: "Tovar" }, { val: receiptTotals.qty, label: "Soni" }, { val: receiptTotals.places, label: "Joy" }, { val: receiptTotals.volume, label: "m³" }]
                           .map(({ val, label }) => (
                             <div key={label} className="text-center bg-violet-50 rounded-xl py-2.5 border border-violet-100">
                               <p className="text-base font-black text-violet-700">{val || "—"}</p>
@@ -2906,7 +2905,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                       <div className="grid grid-cols-3 gap-2">
                         <div className="text-center bg-white rounded-lg py-2 border border-blue-600/10">
                           <p className="text-lg font-black text-blue-700">{chiqimTotals.qty || "—"}</p>
-                          <p className="text-[10px] text-gray-400 font-medium">Paket soni</p>
+                          <p className="text-[10px] text-gray-400 font-medium">Soni</p>
                         </div>
                         <div className="text-center bg-white rounded-lg py-2 border border-blue-600/10">
                           <p className="text-lg font-black text-blue-700">{chiqimTotals.places || "—"}</p>
@@ -3206,7 +3205,7 @@ export function WarehouseDetailModal({ warehouse, onClose }: Props) {
                       <div className="grid grid-cols-4 gap-2">
                         <div className="text-center bg-white rounded-lg py-2 border border-amber-500/10">
                           <p className="text-lg font-black text-amber-700">{ortaTotals.qty || "—"}</p>
-                          <p className="text-[10px] text-gray-400 font-medium">Paket soni</p>
+                          <p className="text-[10px] text-gray-400 font-medium">Soni</p>
                         </div>
                         <div className="text-center bg-white rounded-lg py-2 border border-amber-500/10">
                           <p className="text-lg font-black text-amber-700">{ortaTotals.places || "—"}</p>
