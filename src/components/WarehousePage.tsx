@@ -25,6 +25,7 @@ import {
   type WarehouseType,
 } from "@/lib/warehouse";
 
+
 const WAREHOUSE_TYPE_META: Record<WarehouseType, { badge: string; icon: typeof Globe; wrap: string; text: string }> = {
   china:      { badge: "Yaratuvchi",  icon: Globe,        wrap: "bg-orange-500/10 text-orange-500", text: "bg-orange-500/10 text-orange-500" },
   uzbekistan: { badge: "Chiqaruvchi", icon: Building2,    wrap: "bg-blue-600/10 text-blue-600",      text: "bg-blue-600/10 text-blue-600" },
